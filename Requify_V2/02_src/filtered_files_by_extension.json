@@ -1,0 +1,88 @@
+{
+    ".pdf": [
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec_4_metadata_change.pdf",
+            "extension": ".pdf",
+            "size": 2135,
+            "hash": "9f420b7ed9e9e5599f8046bcf0f71ac2"
+        },
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec_3_language_variant.pdf",
+            "extension": ".pdf",
+            "size": 2160,
+            "hash": "a552cdc6b059f526cf6c7fd43ecec9b4"
+        },
+        {
+            "filename": "01_input/raw/Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf",
+            "extension": ".pdf",
+            "size": 8874,
+            "hash": "ffd434ab22bdd17d0aa6396776bb07ba"
+        },
+        {
+            "filename": "01_input/raw/Fighter_Jet_Engine_Detailed_Requirements.pdf",
+            "extension": ".pdf",
+            "size": 4516,
+            "hash": "482d1d9241e0ec5a9bb9bfef8b919aef"
+        },
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec_5_reordered.pdf",
+            "extension": ".pdf",
+            "size": 2125,
+            "hash": "2e40c8eeeffd4044504b7f0821943389"
+        },
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf",
+            "extension": ".pdf",
+            "size": 2135,
+            "hash": "ef3e394175eb34bcc1a081face8c7bda"
+        },
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec_4_reworded.pdf",
+            "extension": ".pdf",
+            "size": 2133,
+            "hash": "3d976b6dae2699b08b6afb323ad210d1"
+        },
+        {
+            "filename": "01_input/raw/SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf",
+            "extension": ".pdf",
+            "size": 720740,
+            "hash": "0087c01c28dc491d1930d250ed090865"
+        },
+        {
+            "filename": "01_input/raw/fighter_jet_rocket_launcher_spec.pdf",
+            "extension": ".pdf",
+            "size": 82866,
+            "hash": "fbd7bf933f9af28b81a9c7ce07784ecc"
+        }
+    ],
+    ".pptx": [
+        {
+            "filename": "01_input/raw/Extlst-test.pptx",
+            "extension": ".pptx",
+            "size": 60908,
+            "hash": "77582908eae92f26d14928f7528f068d"
+        }
+    ],
+    ".docx": [
+        {
+            "filename": "01_input/raw/file-sample_1MB.docx",
+            "extension": ".docx",
+            "size": 1026736,
+            "hash": "73659a2e1fe6fa69d0a250e0ae497913"
+        }
+    ],
+    ".txt": [
+        {
+            "filename": "01_input/raw/high-level_requirements_V2.txt",
+            "extension": ".txt",
+            "size": 9351,
+            "hash": "12a142289f3d8551559c182eb0660d19"
+        },
+        {
+            "filename": "01_input/raw/top_requirements.txt",
+            "extension": ".txt",
+            "size": 7909,
+            "hash": "7ee5fc06aaab7dec17683fd37d4d3476"
+        }
+    ]
+}

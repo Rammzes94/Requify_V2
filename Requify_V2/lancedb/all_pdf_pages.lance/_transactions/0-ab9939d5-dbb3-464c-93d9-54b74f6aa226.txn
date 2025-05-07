@@ -1,0 +1,6 @@
+$ab9939d5-dbb3-464c-93d9-54b74f6aa226²Æ.pdf_identifier ÿÿÿÿÿÿÿÿÿ*string8Zdefault.page_number ÿÿÿÿÿÿÿÿÿ*int6408Zdefault2document_title ÿÿÿÿÿÿÿÿÿ*string08Zdefault+summary ÿÿÿÿÿÿÿÿÿ*string08Zdefault*hashtags ÿÿÿÿÿÿÿÿÿ*list08Zdefaultitem *string08Zdefault.
+md_content ÿÿÿÿÿÿÿÿÿ*string08Zdefault/input_tokens ÿÿÿÿÿÿÿÿÿ*int6408Zdefault0output_tokens ÿÿÿÿÿÿÿÿÿ*int6408Zdefault7processing_duration	 ÿÿÿÿÿÿÿÿÿ*double08Zdefault,
+error_flag
+ ÿÿÿÿÿÿÿÿÿ*bool08Zdefault-	timestamp ÿÿÿÿÿÿÿÿÿ*string08ZdefaultA	embedding ÿÿÿÿÿÿÿÿÿ*fixed_size_list:float:102408Zdefault"!
+lance.auto_cleanup.interval20"'
+lance.auto_cleanup.older_than14days
