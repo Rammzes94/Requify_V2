@@ -136,8 +136,13 @@ for ext, files in filtered_files_by_extension.items():
         print(f"  {file['filename']}")
 
 
-# Save the filtered files by extension to a JSON file
-output_json_path = os.path.abspath(os.path.join("02_src", "filtered_files_by_extension.json"))
+# Save the filtered files by extension to a JSON file in the 03_output directory
+# Ensure the 03_output directory exists
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+output_dir = os.path.join(project_root, "03_output")
+os.makedirs(output_dir, exist_ok=True)
+
+output_json_path = os.path.join(output_dir, "filtered_files_by_extension.json")
 
 with open(output_json_path, 'w', encoding='utf-8') as json_file:
     json.dump(filtered_files_by_extension, json_file, indent=4)

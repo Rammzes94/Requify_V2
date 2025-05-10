@@ -3,6 +3,7 @@ import sys
 import pathlib
 import pdfplumber
 import re
+import logging
 
 
 # Initialize token counters as global variables
@@ -286,6 +287,119 @@ def chunk_markdown_file(input_md, max_tokens):
         print(f"Error chunking file {input_md}: {e}")
         return []
     
+
+# -------------------------------------------------------------------------------------
+# [Logging Setup]
+# -------------------------------------------------------------------------------------
+
+# Filter to ensure 'icon' is present in all log records
+class EnsureIconFilter(logging.Filter):
+    def filter(self, record):
+        if not hasattr(record, 'icon'):
+            # Determine a generic default icon based on level if possible,
+            # otherwise a truly generic one.
+            level_name = record.levelname
+            if level_name == 'INFO':
+                record.icon = 'ℹ️'
+            elif level_name == 'WARNING':
+                record.icon = '⚠️'
+            elif level_name == 'ERROR':
+                record.icon = '❌'
+            elif level_name == 'CRITICAL':
+                record.icon = '💥'
+            elif level_name == 'DEBUG':
+                record.icon = '🐞'
+            else:
+                record.icon = ' ' # A space or an empty string if preferred
+        return True
+
+# Custom adapter to add icons to log messages if not already present
+class IconAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        # Ensure 'extra' dictionary exists and has an 'icon' key
+        extra = kwargs.get('extra', {})
+        
+        # Determine icon based on log level and message content if not provided
+        if 'icon' not in extra:
+            # Get level name from level number if available, otherwise from logger's effective level
+            level_name = logging.getLevelName(kwargs.get('levelno', self.logger.getEffectiveLevel()))
+
+            if level_name == 'INFO':
+                if "found" in msg.lower() and "similar" in msg.lower():
+                    extra['icon'] = '🎯'
+                elif "processing" in msg.lower() or "querying" in msg.lower():
+                    extra['icon'] = '🔄'
+                elif "connected" in msg.lower() or "loaded" in msg.lower() or "completed" in msg.lower() or "successfully" in msg.lower():
+                    extra['icon'] = '✅'
+                elif "skipped" in msg.lower() or "no new similar" in msg.lower() or "no pages found" in msg.lower() or "no search results" in msg.lower(): # Added more skip/empty conditions
+                    extra['icon'] = '⏩'
+                else:
+                    extra['icon'] = 'ℹ️'  # Default for INFO
+            elif level_name == 'WARNING':
+                extra['icon'] = '⚠️'
+            elif level_name == 'ERROR':
+                extra['icon'] = '❌'
+            elif level_name == 'CRITICAL':
+                extra['icon'] = '💥'
+            elif level_name == 'DEBUG':
+                extra['icon'] = '🐞'
+            else:
+                extra['icon'] = 'ℹ️' # Default icon for unknown levels
+
+        kwargs['extra'] = extra
+        return msg, kwargs
+
+def setup_logging():
+    """
+    Configures logging for the project based on .env settings.
+    Returns a logger instance with an IconAdapter.
+    """
+    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_format = os.getenv("LOG_FORMAT", '%(asctime)s [%(levelname)s] (%(module)s:%(lineno)d) %(icon)s - %(message)s')
+    log_date_format = os.getenv("LOG_DATE_FORMAT", '%Y-%m-%d %H:%M:%S')
+    log_to_console = os.getenv("LOG_TO_CONSOLE", "True").lower() == "true"
+    log_to_file = os.getenv("LOG_TO_FILE", "False").lower() == "true"
+    log_file_path = os.getenv("LOG_FILE_PATH", "logs/requify_agent.log")
+    log_file_mode = os.getenv("LOG_FILE_MODE", "a")
+
+    handlers = []
+    ensure_icon_filter = EnsureIconFilter() # Create an instance of the filter
+
+    if log_to_console:
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.addFilter(ensure_icon_filter) # Add filter to handler
+        handlers.append(console_handler)
+    
+    if log_to_file:
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        file_handler = logging.FileHandler(log_file_path, mode=log_file_mode)
+        file_handler.addFilter(ensure_icon_filter) # Add filter to handler
+        handlers.append(file_handler)
+
+    logging.basicConfig(
+        level=getattr(logging, log_level, logging.INFO),
+        format=log_format,
+        datefmt=log_date_format,
+        handlers=handlers
+    )
+    
+    # Suppress INFO logs from specific modules
+    logging.getLogger("httpx._client").setLevel(logging.WARNING)
+    for logger_name in logging.root.manager.loggerDict:
+        if logger_name.startswith("agno") or logger_name.startswith("groq"):
+            logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+    logger_name = os.path.splitext(os.path.basename(sys.argv[0]))[0] if sys.argv[0] else "interactive"
+    base_logger = logging.getLogger(logger_name)
+    icon_logger = IconAdapter(base_logger, {})
+    return icon_logger
+
+# Example usage within a script:
+# import _00_utils
+# logger = _00_utils.setup_logging()
+# logger.info("This is an info message.")
+# logger.error("This is an error.", extra={"icon": "🔥"}) 
+
 
 # Example usage
 if __name__ == "__main__":

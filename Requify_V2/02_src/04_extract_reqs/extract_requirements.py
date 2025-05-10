@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 # Setup project directory and load environment variables
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import _00_utils
 from _00_utils import setup_project_directory, update_token_counters, print_token_usage
 setup_project_directory()
 load_dotenv()
@@ -43,7 +44,9 @@ logging.getLogger('requests').setLevel(logging.ERROR)
 api_key = os.getenv("OPENAI_API_KEY")
 
 # LanceDB settings
-LANCEDB_DIR_PATH = "lancedb"
+OUTPUT_DIR_BASE = "03_output"  # Define base output directory
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within 03_output
+LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
 SOURCE_TABLE_NAME = "all_pdf_pages"
 TARGET_TABLE_NAME = "requirements"
 EMBEDDING_DIMENSION = 1024  # Maintain same dimension as source table
@@ -51,12 +54,7 @@ EMBEDDING_DIMENSION = 1024  # Maintain same dimension as source table
 # Document filter - set to None to process all documents
 # To process all documents, change to: TARGET_DOCUMENT = None
 TARGET_DOCUMENT = "fighter_jet_rocket_launcher_spec_3_language_variant.pdf"
-
-# Define cost per million tokens
-INPUT_COST_PER_MILLION = 0.15  # per million input tokens for 4o-mini
-OUTPUT_COST_PER_MILLION = 0.60  # per million output tokens for 4o-mini
-
-# Initialize token counters as global variables - using the ones from _00_utils
+TARGET_DOCUMENT = None
 
 # -------------------------------------------------------------------------------------
 # Prompt Templates
@@ -69,7 +67,10 @@ For the following input, identify ALL individual requirements and break them dow
 Each atomic requirement should be a single, testable statement. You have to give me all requirements!
 Extract all technical prescriptions, specifications, and mandatory elements.
 
-For each requirement, provide a rationale explaining why it is considered a technical product requirement. This should focus on the technical aspects that affect the physical vehicle or its systems.
+For each requirement, provide:
+1. The requirement ID, section, title, and description.
+2. A rationale explaining why it is considered a technical product requirement. This should focus on the technical aspects that affect the physical vehicle or its systems.
+3. The 'requirement_source_snippet', which is the exact text segment from the input TEXT that directly led to this requirement's extraction.
 
 The input may not have a single technical product requirement in it. In that case, just give back nothing. 
 We only care about requirements for the product!
@@ -121,6 +122,7 @@ class AtomicRequirement(BaseModel):
     title: str = Field(..., description="Short title summarizing the requirement")
     description: str = Field(..., description="Full text of the requirement")
     rationale: str = Field(..., description="Explanation of why this is considered a technical product requirement")
+    requirement_source_snippet: str = Field(..., description="The exact text snippet from the source document that led to this requirement's extraction.")
 
 class RequirementsExtractor(BaseModel):
     """Collection of extracted requirements from a document."""
@@ -153,6 +155,7 @@ class Requirement(LanceModel):
     software_confidence: float
     software_rationale: str
     source_text: str
+    requirement_source_snippet: str
     created_timestamp: str
     embedding: Vector(EMBEDDING_DIMENSION)
 
@@ -184,7 +187,7 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
         
         # Extract requirements using the agent
         response = requirements_agent.run(prompt)
-        update_token_counters(response)
+        _00_utils.update_token_counters(response)
         
         extracted_reqs = response.content
         
@@ -217,7 +220,7 @@ def analyze_requirement(requirement: AtomicRequirement, agent: Agent) -> Softwar
         prompt = ANALYZE_REQUIREMENT_PROMPT.format(requirement_description=requirement.description)
         
         response = agent.run(prompt)
-        update_token_counters(response)
+        _00_utils.update_token_counters(response)
         return response.content
     except Exception as e:
         logger.error(f"❌ Error analyzing requirement: {e}")
@@ -232,7 +235,12 @@ def connect_to_lancedb():
     """Connect to LanceDB and return the connection object."""
     try:
         logger.info("🔄 Connecting to LanceDB...")
-        db = lancedb.connect(LANCEDB_DIR_PATH)
+        # Construct absolute path to LanceDB directory
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+        absolute_lancedb_path = os.path.join(project_root, LANCEDB_DIR_PATH)
+
+        db = lancedb.connect(absolute_lancedb_path)
         logger.info(f"✅ Connected to LanceDB. Available tables: {db.table_names()}")
         return db
     except Exception as e:
@@ -262,9 +270,9 @@ def save_requirements_to_lancedb(requirements_list, source_text_map, embedding_m
     records = []
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     
-    for req in requirements_list:
-        req_id = req["id"]
-        source_text = source_text_map.get(req_id, "")
+    for req_dict in requirements_list:
+        req_id = req_dict["id"]
+        source_text_full_page = source_text_map.get(req_id, "")
         embedding = embedding_map.get(req_id, None)
         
         if not embedding:
@@ -274,16 +282,17 @@ def save_requirements_to_lancedb(requirements_list, source_text_map, embedding_m
         # Create record for LanceDB using direct column values
         record = Requirement(
             requirement_id=req_id,
-            document_id=req["document_id"],
-            page_number=req["page_number"],
-            section=req["section"],
-            title=req["title"],
-            description=req["description"],
-            requirement_rationale=req["requirement_rationale"],
-            is_software_related=req["software_analysis"].is_software_related,
-            software_confidence=req["software_analysis"].confidence,
-            software_rationale=req["software_analysis"].rationale,
-            source_text=source_text,
+            document_id=req_dict["document_id"],
+            page_number=req_dict["page_number"],
+            section=req_dict["section"],
+            title=req_dict["title"],
+            description=req_dict["description"],
+            requirement_rationale=req_dict["requirement_rationale"],
+            is_software_related=req_dict["software_analysis"].is_software_related,
+            software_confidence=req_dict["software_analysis"].confidence,
+            software_rationale=req_dict["software_analysis"].rationale,
+            source_text=source_text_full_page,
+            requirement_source_snippet=req_dict.get("requirement_source_snippet", ""),
             created_timestamp=timestamp,
             embedding=embedding
         )
@@ -314,7 +323,7 @@ def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Age
         prompt = BATCH_ANALYZE_REQUIREMENTS_PROMPT.format(requirements_text=requirements_text)
         
         response = agent.run(prompt)
-        update_token_counters(response)
+        _00_utils.update_token_counters(response)
         
         batch_analysis = response.content
         
@@ -410,6 +419,7 @@ def process_document_page(page_data, embedder):
                 "title": req.title,
                 "description": req.description,
                 "requirement_rationale": req.rationale,
+                "requirement_source_snippet": req.requirement_source_snippet,
                 "software_analysis": software_analysis
             }
             analyzed_requirements.append(analyzed_req)
@@ -517,7 +527,7 @@ def main():
         logger.info(f"✅ Total processing time: {elapsed_time:.2f} seconds")
         
         # Log token usage using utility function
-        print_token_usage("gpt-4o-mini")
+        _00_utils.print_token_usage("gpt-4o-mini")
         
     except Exception as e:
         logger.error(f"❌ An error occurred: {e}")

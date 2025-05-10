@@ -37,8 +37,9 @@ load_dotenv()
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-PARSED_CONTENT_DIR = os.path.join("01_input", "processed", "parsed_content")
-LANCEDB_DIR_NAME = "lancedb" # In project root folder
+OUTPUT_DIR_BASE = "03_output" # Define base output directory
+PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from 03_output
+LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within 03_output
 LANCEDB_TABLE_NAME = "all_pdf_pages"
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
 EMBEDDING_DIMENSION = 1024 # Dimension for e5-large models
@@ -58,7 +59,7 @@ def load_markdown(folder, page_key):
             print(f"Error reading markdown file {md_path}: {e}")
     return ""
 
-def process_folder(folder_path, embedder):
+def process_folder(folder_path, text_embedder):
     """Processes a single folder containing parsed content."""
     records = []
     for combined_file in glob.glob(os.path.join(folder_path, "*_combined.json")):
@@ -86,17 +87,16 @@ def process_folder(folder_path, embedder):
             # Use markdown content if available, otherwise fallback to summary
             text_to_embed = md if md else info.get("summary", "")
             if not text_to_embed:
-                print(f"Warning: No text content found for {pdf_id}, page {page_key}. Skipping embedding.")
-                embedding = [0.0] * EMBEDDING_DIMENSION # Placeholder for missing text
+                print(f"Warning: No text content found for {pdf_id}, page {page_key}. Skipping text embedding.")
+                text_embedding_vector = [0.0] * EMBEDDING_DIMENSION # Placeholder for missing text
             else:
                 # Prepend "passage: " as required by the e5-instruct model for document embeddings
                 instruction_text = f"passage: {text_to_embed}"
                 try:
-                    embedding = embedder.encode(instruction_text).tolist()
+                    text_embedding_vector = text_embedder.encode(instruction_text).tolist()
                 except Exception as e:
                     print(f"Error encoding text for {pdf_id}, page {page_key}: {e}")
-                    embedding = [0.0] * EMBEDDING_DIMENSION # Placeholder on error
-
+                    text_embedding_vector = [0.0] * EMBEDDING_DIMENSION # Placeholder on error
 
             records.append({
                 "pdf_identifier":   pdf_id,
@@ -110,7 +110,8 @@ def process_folder(folder_path, embedder):
                 "processing_duration": info.get("processing_duration"),
                 "error_flag":       info.get("error_flag"),
                 "timestamp":        info.get("timestamp"),
-                "embedding":        embedding
+                "embedding":        text_embedding_vector, # This is the text embedding
+                "image_b64":        info.get("image_b64") # Add image_b64 back
             })
     return records
 
@@ -130,24 +131,27 @@ class PDFPage(LanceModel):
     processing_duration: Optional[float]
     error_flag: Optional[bool]
     timestamp: Optional[str]
-    embedding: Vector(EMBEDDING_DIMENSION) # Updated dimension
+    embedding: Vector(EMBEDDING_DIMENSION) # Text embedding
+    image_b64: Optional[str] # Add image_b64 back
 
 # -------------------------------------------------------------------------------------
 # Main Execution
 # -------------------------------------------------------------------------------------
 
+# Setup centralized logging
+logger = _00_utils.setup_logging()
 
-print(f"Using parsed content directory: {PARSED_CONTENT_DIR}")
+logger.info(f"Using parsed content directory: {PARSED_CONTENT_DIR}", extra={'icon': '📂'})
 if not os.path.isdir(PARSED_CONTENT_DIR):
-    print(f"Error: Parsed content directory not found: {PARSED_CONTENT_DIR}")
+    logger.error(f"Error: Parsed content directory not found: {PARSED_CONTENT_DIR}", extra={'icon': '❌'})
     sys.exit(1)
 
-print(f"Loading embedding model: {EMBEDDING_MODEL_NAME}")
+logger.info(f"Loading text embedding model: {EMBEDDING_MODEL_NAME}", extra={'icon': '🔄'})
 try:
-    embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
 except Exception as e:
-    print(f"Error loading sentence transformer model '{EMBEDDING_MODEL_NAME}': {e}")
-    print("Please ensure the model is available or install dependencies.")
+    logger.error(f"Error loading sentence transformer model '{EMBEDDING_MODEL_NAME}': {e}", extra={'icon': '❌'})
+    logger.error("Please ensure the model is available or install dependencies.", extra={'icon': '❌'})
     sys.exit(1)
 
 all_records = []
@@ -159,32 +163,24 @@ for root, dirs, _ in os.walk(PARSED_CONTENT_DIR):
         for dir_name in dirs:
             folder_path = os.path.join(root, dir_name)
             print(f"Scanning folder: {folder_path}")
-            recs = process_folder(folder_path, embedder)
+            recs = process_folder(folder_path, text_embedder)
             if recs:
                 print(f"Found {len(recs)} records in folder: {folder_path}")
                 all_records.extend(recs)
 
+logger.info(f"Total records collected: {len(all_records)}", extra={'icon': '✅'})
 
-
-if not all_records:
-    print("No records found in any subfolder. Exiting.")
-    
-
-print(f"Total records collected: {len(all_records)}")
-
-# Connect to LanceDB in project root folder
+# Connect to LanceDB in the 03_output folder
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-lancedb_path = os.path.join(project_root, LANCEDB_DIR_NAME)
-os.makedirs(lancedb_path, exist_ok=True)
-print(f"Connecting to LanceDB at: {lancedb_path}")
+lancedb_output_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Path for lancedb within 03_output
+os.makedirs(lancedb_output_path, exist_ok=True)
+logger.info(f"Connecting to LanceDB at: {lancedb_output_path}", extra={'icon': '🔗'})
 try:
-    db = lancedb.connect(lancedb_path)
+    db = lancedb.connect(lancedb_output_path)
 except Exception as e:
-    print(f"Error connecting to LanceDB at {lancedb_path}: {e}")
+    logger.error(f"Error connecting to LanceDB at {lancedb_output_path}: {e}", extra={'icon': '❌'})
     sys.exit(1)
-
-
 
 # Check if table exists, then open or create
 try:
@@ -194,7 +190,7 @@ try:
         tbl = db.open_table(LANCEDB_TABLE_NAME)
         print(f"Appending {len(all_records)} records...")
         tbl.add(all_records)
-        print(f"Successfully appended records to table '{LANCEDB_TABLE_NAME}'.")
+        logger.info(f"Successfully appended records to table '{LANCEDB_TABLE_NAME}'.", extra={'icon': '✅'})
     else:
         print(f"Table '{LANCEDB_TABLE_NAME}' not found. Creating new table.")
         tbl = db.create_table(LANCEDB_TABLE_NAME, schema=PDFPage, mode="overwrite") # mode="overwrite" ensures it starts fresh if somehow name exists but wasn't listed?
@@ -204,8 +200,6 @@ try:
 except Exception as e:
      print(f"An unexpected error occurred during LanceDB table operations for '{LANCEDB_TABLE_NAME}': {e}")
 
-
-
 # Optional: Build index if needed (consider performance impact)
 try:
     print(f"Checking record count before creating index...")
@@ -214,13 +208,20 @@ try:
     MIN_RECORDS_FOR_PQ = 256  # Minimum records needed for Product Quantization index
     
     if record_count >= MIN_RECORDS_FOR_PQ:
-        print(f"Creating index on 'embedding' column for table '{LANCEDB_TABLE_NAME}' with {record_count} records...")
+        # Check if an index already exists for the 'embedding' column
+        # LanceDB Python API v0.6.0+ has tbl.list_indexes()
+        # For older versions, this might be different or not available.
+        # Assuming we want to create/replace text embedding index if it does not fit or is old.
+        print(f"Creating/replacing index on TEXT 'embedding' column for table '{LANCEDB_TABLE_NAME}' with {record_count} records...")
         tbl.create_index(vector_column_name="embedding", metric="cosine", replace=True)
-        print("Index successfully created.")
+        logger.info("Text embedding index successfully created/re-created.", extra={'icon': '✅'})
+        print("Text embedding index successfully created/re-created.")
     else:
         print(f"Skipping index creation: Not enough records ({record_count}/{MIN_RECORDS_FOR_PQ} needed) to build PQ index.")
         print("The table will still work for vector searches but might be slower.")
         print("Add more documents to exceed the threshold and then run this script again to create the index.")
+        logger.warning("The table will still work for vector searches but might be slower.", extra={'icon': '⚠️'})
+        logger.warning("Add more documents to exceed the threshold and then run this script again to create the index.", extra={'icon': '⚠️'})
 except Exception as e:
     print(f"Failed to check record count or create index: {e}")
 
