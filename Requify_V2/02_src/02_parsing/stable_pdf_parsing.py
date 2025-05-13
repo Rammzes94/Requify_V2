@@ -1,4 +1,22 @@
 # ---------------------------------------------------------------------
+# PDF Parsing Script - stable_pdf_parsing.py
+# ---------------------------------------------------------------------
+"""
+stable_pdf_parsing.py
+
+This script parses PDF documents and extracts their content in a structured format.
+It performs the following operations:
+1. Converts PDF pages to high-resolution images
+2. Uses vision-enabled LLMs to extract text, tables, and descriptions of non-text elements
+3. Processes extracted content into markdown format
+4. Generates metadata such as document title, page summaries, and relevant hashtags
+5. Creates a combined JSON output with all extracted information
+6. Saves page images as encoded base64 strings for later reference
+
+The script supports both OpenAI and Groq models for vision and text processing tasks.
+It uses PyMuPDF for PDF manipulation and handles pages sequentially to avoid memory issues.
+"""
+# ---------------------------------------------------------------------
 # Section 1: Imports and Setup
 # ---------------------------------------------------------------------
 import os
@@ -9,6 +27,7 @@ import json
 import base64 # Added for image encoding
 from datetime import datetime, timezone
 from typing import List, Optional, Tuple # Added Tuple
+import logging
 
 import fitz  # PyMuPDF
 from dotenv import load_dotenv
@@ -22,8 +41,19 @@ from agno.models.groq import Groq
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 
-# Setup centralized logging
+# Setup centralized logging with script prefix
 logger = _00_utils.setup_logging()
+logger = logging.LoggerAdapter(logger, {"prefix": "[PDF_Parsing] "})
+
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
+logger = ScriptLogger(_00_utils.setup_logging(), "[PDF_Parsing] ")
 
 # Load environment variables
 load_dotenv()
@@ -31,9 +61,6 @@ load_dotenv()
 # ---------------------------------------------------------------------
 # Section 2: Configuration Constants
 # ---------------------------------------------------------------------
-# Target PDF file to process (set to None to process all PDFs in the input directory)
-TARGET_PDF_FILES: Optional[List[str]] = ["fighter_jet_rocket_launcher_spec_3_language_variant.pdf", "fighter_jet_rocket_launcher_spec_4_metadata_change.pdf"]
-TARGET_PDF_FILES = None  # Uncomment to process all PDFs
 
 # Default paths
 RAW_INPUT_DIR = os.path.join("01_input", "raw")
@@ -44,6 +71,25 @@ FILTERED_FILES_JSON = os.path.join(OUTPUT_DIR_BASE, "filtered_files_by_extension
 # DPI setting for PDF to image conversion
 PDF_TO_IMAGE_DPI = 300
 # Note: We process files sequentially to avoid pickling errors with agent objects
+
+# API keys from environment variables
+api_key = os.getenv("OPENAI_API_KEY")
+groq_api_key = os.getenv("GROQ_API_KEY")
+
+# Model Configuration
+# Initialize OpenAI models for vision and text processing
+openai_vision_model = OpenAIChat(id="gpt-4o", api_key=api_key)
+openai_text_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key)
+
+# Groq models (commented out by default)
+groq_vision_model = Groq(id="meta-llama/llama-4-scout-17b-16e-instruct", api_key=groq_api_key)
+groq_text_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key)
+
+# Select which models to use
+#active_vision_model = openai_vision_model
+#active_text_model = openai_text_model
+active_vision_model = groq_vision_model
+active_text_model = groq_text_model
 
 # ---------------------------------------------------------------------
 # Section 3: Pydantic Models for AI bot and for final extracted data
@@ -69,21 +115,9 @@ class PageExtractedData(AgnoPageMetadata):
 # ---------------------------------------------------------------------
 # Section 4: Agent Initialization
 # ---------------------------------------------------------------------
-# Note: The api_key variable is used by both agent types as in your original code.
-api_key = os.getenv("OPENAI_API_KEY")
-api_key = os.getenv("GROQ_API_KEY")
-
-# Initialize agents for vision and text processing
-vision_model = OpenAIChat(id="gpt-4o", api_key=api_key)
-text_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key)
-
-# Overwrite with Groq models as in the original code
-vision_model = Groq(id="meta-llama/llama-4-scout-17b-16e-instruct", api_key=api_key)
-text_model = Groq(id="llama-3.3-70b-versatile", api_key=api_key)
-
 # Plain agent for PDF parsing (no structured outputs)
 plain_agent = Agent(
-    model=vision_model,
+    model=active_vision_model,
     markdown=True,
     debug_mode=False,
     structured_outputs=False,
@@ -96,7 +130,7 @@ plain_agent = Agent(
 
 # Structured agent to generate metadata from extracted markdown.
 structured_agent = Agent(
-    model=text_model,
+    model=active_text_model,
     markdown=False,
     debug_mode=False,
     structured_outputs=True,
@@ -114,7 +148,7 @@ structured_agent = Agent(
 
 # Add a new agent for document title generation
 document_title_agent = Agent(
-    model=text_model,
+    model=active_text_model,
     markdown=False,
     debug_mode=False,
     structured_outputs=False,
@@ -190,6 +224,7 @@ class PDFProcessor:
                 try:
                     prompt = f"Summarize this page content in 1-2 sentences:\n\n{content[:1000]}"  # Limit content size
                     response = self.structured_agent.run(prompt)
+                    _00_utils.update_token_counters(response) # Added token counting
                     summary = response.content
                     if isinstance(summary, str):
                         page_summaries.append(summary)
@@ -216,6 +251,7 @@ class PDFProcessor:
             )
             
             response = self.document_title_agent.run(prompt)
+            _00_utils.update_token_counters(response) # Added token counting
             document_title = response.content.strip()
             logger.info(f"Generated document title from summaries: {document_title}")
             return document_title
@@ -242,12 +278,16 @@ class PDFProcessor:
             logger.info(f"Successfully converted PDF to {len(image_data_list)} images and encoded them.")
             pdf_identifier = os.path.basename(pdf_path)
             
-            # First, extract markdown content from each page
-            md_contents = []
+            # First, extract markdown content from each page and capture token usage
+            md_extraction_results = []
             for i, (image_path, _) in enumerate(image_data_list):
+                page_input_tokens = 0
+                page_output_tokens = 0
+                page_md_content_extracted = ""
+                extraction_error = False
                 try:
                     base_name = os.path.splitext(os.path.basename(image_path))[0]
-                    output_md_path = os.path.join(specific_output_dir, f"{base_name}.md") # Save .md to specific_output_dir
+                    output_md_path = os.path.join(specific_output_dir, f"{base_name}.md")
                     
                     response = self.plain_agent.run(
                         "Extract the image contents. Do not say anything extra, such as 'Here is the content:'. "
@@ -259,81 +299,68 @@ class PDFProcessor:
                         "Text will be used as input for further processing, so structure it as well as possible.",
                         images=[Image(filepath=image_path)]
                     )
+                    _00_utils.update_token_counters(response) # Added token counting
+
+                    tokens_metrics = response.metrics if hasattr(response, 'metrics') else {}
+                    page_input_tokens = tokens_metrics.get('input_tokens', [0])[0] if tokens_metrics.get('input_tokens') else 0
+                    page_output_tokens = tokens_metrics.get('output_tokens', [0])[0] if tokens_metrics.get('output_tokens') else 0
                     
-                    md_content = response.content
+                    page_md_content_extracted = response.content
                     with open(output_md_path, "w", encoding="utf-8") as f:
-                        f.write(md_content)
-                    md_contents.append(md_content)
+                        f.write(page_md_content_extracted)
                     logger.info(f"Successfully extracted markdown for {base_name}")
                 except Exception as e:
                     logger.error(f"Error extracting markdown for {image_path}: {str(e)}")
-                    md_contents.append("")
+                    extraction_error = True
+                
+                md_extraction_results.append({
+                    'content': page_md_content_extracted,
+                    'input_tokens': page_input_tokens,
+                    'output_tokens': page_output_tokens,
+                    'error': extraction_error
+                })
             
-            # Generate document title from page summaries
-            document_title = self.generate_document_title(md_contents, pdf_identifier)
+            # Generate document title from page summaries (pass only content strings)
+            md_content_strings_for_title = [res['content'] for res in md_extraction_results]
+            document_title = self.generate_document_title(md_content_strings_for_title, pdf_identifier)
             
             # Process each page with the document title
-            logger.info(f"Processing pages sequentially...")
+            logger.info("Processing pages sequentially...")
             contents_dict = {}
             
             for i, (image_path, image_b64_content) in enumerate(image_data_list):
                 page_number = i + 1
                 key = f"page_{page_number:03d}"
                 
-                # Use the extracted markdown if available, otherwise will be an empty string
-                page_md_content = md_contents[i] if i < len(md_contents) else ""
+                # Use the extracted markdown and tokens from the first pass
+                extraction_result = md_extraction_results[i] if i < len(md_extraction_results) else {'content': "", 'input_tokens': 0, 'output_tokens': 0, 'error': True}
+                page_md_content = extraction_result['content']
+                plain_agent_input_tokens = extraction_result['input_tokens']
+                plain_agent_output_tokens = extraction_result['output_tokens']
                 current_image_b64 = image_b64_content
                 
                 # Process page directly
                 try:
                     logger.info(f"Processing page {page_number}...")
                     
-                    # Skip markdown extraction if it's already done above
-                    if not page_md_content:
-                        try:
-                            base_name = os.path.splitext(os.path.basename(image_path))[0]
-                            output_md_path = os.path.join(specific_output_dir, f"{base_name}.md") # Save .md to specific_output_dir
-                            
-                            response = self.plain_agent.run(
-                                "Extract the image contents. Do not say anything extra, such as 'Here is the content:'. "
-                                "First, decide which elements are text only - here you will just extract it exactly as it is. "
-                                "Preserve Tables in Markdown format. Make sure tables are wide enough - add about 10 spaces extra always. "
-                                "If there are pictures, graphs, diagrams or other non-text elements, describe them in great technical detail (100-300 words). "
-                                "Focus on the key takeaway of what is shown. Ensure to keep the order of the elements as they are in the input. "
-                                "Do not summarize what is shown in the input, other than pictures, graphs, diagrams or other non-text elements. "
-                                "Text will be used as input for further processing, so structure it as well as possible.",
-                                images=[Image(filepath=image_path)]
-                            )
-                            
-                            tokens_metrics = response.metrics if hasattr(response, 'metrics') else {}
-                            
-                            input_tokens = tokens_metrics.get('input_tokens', [0])[0] if tokens_metrics.get('input_tokens') else 0
-                            output_tokens = tokens_metrics.get('output_tokens', [0])[0] if tokens_metrics.get('output_tokens') else 0
-                            
-                            page_md_content = response.content
-                            with open(output_md_path, "w", encoding="utf-8") as f:
-                                f.write(page_md_content)
-                        except Exception as e:
-                            logger.error(f"Error extracting markdown for {image_path}: {str(e)}")
-                            input_tokens = 0
-                            output_tokens = 0
-                    else:
-                        input_tokens = 0
-                        output_tokens = 0
-                    
+                    # Fallback for markdown extraction is removed. 
+                    # We now rely on the md_content from md_extraction_results.
+                    # plain_agent_input_tokens and plain_agent_output_tokens are from the first pass.
+
                     # Process the markdown content to get structured data
                     start_time = time.time()
                     prompt = (
                         "Given the markdown text below and the document title, extract and return a JSON object with the following fields: "
                         f"document_title (use: '{document_title}'), summary (a short summary of this specific page within 300 characters), "
-                        "and hashtags (a list of key search words without the '#' symbol). "
+                        "and hashtags (a list of key search words without the '#' symbol). The Hashtags shall focus on the technical details, not highlevel."
                         "Markdown Input:\n" + page_md_content
                     )
                     
-                    response = self.structured_agent.run(prompt)
+                    response_structured = self.structured_agent.run(prompt)
+                    _00_utils.update_token_counters(response_structured) # Added token counting
                     processing_duration = time.time() - start_time
                     
-                    json_output = response.content
+                    json_output = response_structured.content
                     if isinstance(json_output, str):
                         json_output = json.loads(json_output)
                         
@@ -349,11 +376,13 @@ class PDFProcessor:
                             hashtags=getattr(json_output, "hashtags", [])
                         )
                     
-                    tokens_metrics = response.metrics if hasattr(response, 'metrics') else {}
-                    input_tokens_structured = tokens_metrics.get('input_tokens', [0])[0] if tokens_metrics.get('input_tokens') else 0
-                    output_tokens_structured = tokens_metrics.get('output_tokens', [0])[0] if tokens_metrics.get('output_tokens') else 0
-                    total_input_tokens = input_tokens + input_tokens_structured
-                    total_output_tokens = output_tokens + output_tokens_structured
+                    tokens_metrics_structured = response_structured.metrics if hasattr(response_structured, 'metrics') else {}
+                    input_tokens_structured = tokens_metrics_structured.get('input_tokens', [0])[0] if tokens_metrics_structured.get('input_tokens') else 0
+                    output_tokens_structured = tokens_metrics_structured.get('output_tokens', [0])[0] if tokens_metrics_structured.get('output_tokens') else 0
+                    
+                    # Combine tokens from the first-pass plain_agent and the structured_agent
+                    total_input_tokens = plain_agent_input_tokens + input_tokens_structured
+                    total_output_tokens = plain_agent_output_tokens + output_tokens_structured
                     
                     page_data = PageExtractedData(
                         **meta_data.model_dump(),
@@ -361,10 +390,10 @@ class PDFProcessor:
                         page_number=page_number,
                         md_content=page_md_content,
                         image_b64=current_image_b64,
-                        input_tokens=total_input_tokens,
-                        output_tokens=total_output_tokens,
+                        input_tokens=total_input_tokens, # Use combined tokens
+                        output_tokens=total_output_tokens, # Use combined tokens
                         processing_duration=processing_duration,
-                        error_flag=False,
+                        error_flag=False, # Or consider extraction_result['error']
                         timestamp=datetime.now(tz=timezone.utc).isoformat()
                     )
                     contents_dict[key] = page_data
@@ -379,10 +408,10 @@ class PDFProcessor:
                         hashtags=[],
                         pdf_identifier=pdf_identifier,
                         page_number=page_number,
-                        md_content=page_md_content if page_md_content else "",
+                        md_content=page_md_content, # Content from first pass
                         image_b64=current_image_b64,
-                        input_tokens=0,
-                        output_tokens=0,
+                        input_tokens=plain_agent_input_tokens, # Tokens from first pass plain_agent
+                        output_tokens=plain_agent_output_tokens, # Tokens from first pass plain_agent
                         processing_duration=0.0,
                         error_flag=True,
                         timestamp=datetime.now(tz=timezone.utc).isoformat()
@@ -407,75 +436,5 @@ class PDFProcessor:
 # ---------------------------------------------------------------------
 # Section 5: Main Entry Point
 # ---------------------------------------------------------------------
-if __name__ == '__main__':
-    # Set up logging - Removed, handled globally
-    # logging.basicConfig(
-    #     level=logging.INFO,
-    #     format='%(asctime)s [%(levelname)s] %(message)s',
-    #     datefmt='%Y-%m-%d %H:%M:%S'
-    # )
-    
-    processor = PDFProcessor(plain_agent, structured_agent, document_title_agent)
-    
-    if TARGET_PDF_FILES is None:
-        # Process all PDFs from the filtered files list
-        logger.info("Processing all PDFs in the filtered files list...")
-        
-        if not os.path.exists(FILTERED_FILES_JSON):
-            logger.error(f"Filtered files list not found: {FILTERED_FILES_JSON}")
-            sys.exit(1)
-            
-        try:
-            with open(FILTERED_FILES_JSON, "r") as f:
-                pre_filtered = json.load(f)
-                
-            if ".pdf" not in pre_filtered or not pre_filtered[".pdf"]:
-                logger.warning("No PDF files found in the filtered files list.")
-                sys.exit(0)
-                
-            logger.info(f"Found {len(pre_filtered['.pdf'])} PDF files to process")
-            
-            for pdf_info in pre_filtered[".pdf"]:
-                pdf_file = os.path.normpath(pdf_info["filename"])
-                if not os.path.exists(pdf_file):
-                    logger.error(f"PDF file not found: {pdf_file}")
-                    continue
-                logger.info(f"Processing PDF: {pdf_file}")
-                
-                # Process the PDF
-                output_file = processor.pdf_to_structured_json(
-                    pdf_file
-                    # output_dir is now handled internally by pdf_to_structured_json
-                )
-                
-                # Report results
-                if output_file and os.path.exists(output_file):
-                    logger.info(f"Process completed successfully. Output saved to: {output_file}")
-                else:
-                    logger.error(f"Process failed for {pdf_file}: No output file was generated.")
-                    
-        except Exception as e:
-            logger.error(f"Error processing files: {str(e)}")
-            traceback.print_exc()
-            sys.exit(1)
-    elif isinstance(TARGET_PDF_FILES, list):
-        # Process a list of specified PDF files
-        logger.info(f"Processing {len(TARGET_PDF_FILES)} specified PDF files...")
-        for target_file_name in TARGET_PDF_FILES:
-            pdf_file = os.path.join(RAW_INPUT_DIR, target_file_name)
-            if not os.path.exists(pdf_file):
-                logger.error(f"Target PDF file not found: {pdf_file}")
-                continue
-            
-            logger.info(f"Processing PDF: {pdf_file}")
-            
-            # Process the PDF
-            output_file = processor.pdf_to_structured_json(
-                pdf_file
-                # output_dir is now handled internally by pdf_to_structured_json
-            )
-            
-            if output_file and os.path.exists(output_file):
-                logger.info(f"Process completed successfully for {target_file_name}. Output saved to: {output_file}")
-            else:
-                logger.error(f"Process failed for {target_file_name}: No output file was generated.")
+
+# Removed if __name__ == '__main__' block as this script is imported as a module.

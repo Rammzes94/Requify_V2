@@ -10,8 +10,8 @@ The Requirements Extraction Agent streamlines the process of converting large vo
 - **File Types**: PDF, DOCX, XLSX, PPTX, PPT, DOC, TXT, etc.  
 - **Source Locations**: Local directories and OneDrive cloud storage.  
 - **Ingestion Modes**:  
-  - **Bulk Import**: User-triggered “Ingest Now” button for initial load of thousands of files.  
-  - **Manual Add**: On-demand addition of individual files.
+  - **Incremental Document Processing**: Process one document at a time to ensure consistency and proper duplicate detection.
+  - **Manual Add**: On-demand addition of individual files with immediate deduplication.
 
 ## 3. Preliminary Duplicate Scan
 - **Tools**: `scan_directory`, `find_similar_files`, `determine_newer_file`, `compare_file_contents`.  
@@ -22,19 +22,22 @@ The Requirements Extraction Agent streamlines the process of converting large vo
   4. Automatically mark and unselect duplicates, keeping the most up-to-date version by timestamp or size.  
 - **Output**: JSON of filtered file list for downstream parsing.
 
-## 4. Secondary Embedding Similarity Scan
-- **Vector Store**: PostgreSQL with vector extension (e.g., pgvector).  
+## 4. Incremental Embedding Similarity Scan
+- **Vector Store**: LanceDB for efficient vector-based similarity search.
 - **Process**:  
-  1. Embed each page or chunk and store vectors in PostgreSQL.  
-  2. Run similarity queries (threshold ≥0.9) directly in the database to detect redundant content.  
-  3. Automatically flag or remove outdated or redundant content, retaining the most recent.  
-- **Integration**: This pass further refines the set of documents/segments for final requirement extraction.
+  1. Pre-check each new document against existing content before saving.
+  2. Embed each page and compare with existing vectors to detect duplicates.
+  3. Use cosine similarity with threshold ≥0.99 to identify duplicate pages.
+  4. Skip duplicate pages, add only unique content to the database.
+  5. For updated versions of existing documents, overwrite the old versions.
+- **Integration**: This check ensures only unique content is processed for requirement extraction.
 
 ## 5. Parsing & Embedding Pipeline
 - **Vision-LLM** for direct PDF parsing.  
 - **Conversion**: DOC/DOCX/PPT/PPTX → PDF → PNG.  
 - **Extraction**: Text from raw documents and generated images.  
-- **Embeddings**: Store both text embeddings and vision embeddings for each chunk in PostgreSQL.
+- **Embeddings**: Store both text embeddings and vision embeddings for each chunk in LanceDB.
+- **Process Flow**: Parse one document at a time → Check for duplicates → Save to database → Extract requirements.
 
 ## 6. Fixed Extraction Schema
 Every extracted requirement shall include:  
@@ -45,37 +48,39 @@ Every extracted requirement shall include:
 5. Acceptance Criteria  
 6. Source Text
 
-## 7. Unified Database (PostgreSQL)
+## 7. Unified Database (LanceDB)
 Each requirement record stores:  
 - **Requirement ID** (unique)  
 - **Project/Folder ID**  
 - **File Identifier** (filename or internal file ID)  
 - **Page Number** (for PDF/image sources)  
 - **Original Context** (exact text or image segment)  
-- **Embedding Vector** (stored via pgvector)  
+- **Embedding Vector** (stored in LanceDB)  
 - **Similarity Score** (for deduplication)  
 - **Ingestion Batch ID**  
 - **Creation Timestamp**  
 - **Last Updated Timestamp**  
 - **Status** (`active` / `deleted` / `review_needed`)  
+- **Duplicate Status** (`is_duplicate` flag, `canonical_id` reference)
 - **User Action Log** (who edited/approved/deleted, when)  
 - **User-Defined Tags** (optional)
 
 ## 8. Duplicate Detection & Resolution
-- **Threshold**: cosine similarity ≥ 0.9 (hard-coded).  
+- **Page-Level Duplicates**: cosine similarity ≥ 0.99 threshold.  
+- **Requirements-Level Duplicates**: vector similarity ≥ 0.97 + LLM verification.
 - **Behavior**:  
-  - **Preliminary Scan**: metadata-based removal of identical files.  
-  - **Secondary Scan**: embedding-based removal of redundant segments in PostgreSQL.  
-  - Automatically keep the newest version; mark older as `deleted` and log it.  
-- **Edge Cases**: LLM flags uncertain duplicates as `review_needed`.
+  - **Pre-Save Document Check**: Detect duplicate pages before adding to database.
+  - **Pre-Save Requirements Check**: Detect duplicate requirements before adding to database.
+  - Automatically keep the newest version; mark older as duplicates and reference the canonical version.
+- **Edge Cases**: LLM flags uncertain duplicates as needing review.
 
 ## 9. Manual Curation & Batch Operations
 - Inline edit and delete of individual requirements.  
 - Bulk-select actions (delete, tag, mark reviewed).  
-- Deleted items remain marked so they won’t reappear on re-ingestion.
+- Deleted items remain marked so they won't reappear on re-ingestion.
 
 ## 10. Traceability & Audit
-- Maintain full history of edits/deletions so that once removed or altered, the requirement won’t be re-suggested.  
+- Maintain full history of edits/deletions so that once removed or altered, the requirement won't be re-suggested.  
 - Audit log for all user actions and system events.
 
 ## 11. Exports & Integration
@@ -83,7 +88,7 @@ Each requirement record stores:
 - **Configuration**: Export settings defined via environment variables (dotenv).
 
 ## 12. Logs & Notifications
-- **Logged Events**: ingestion successes/failures, parsing errors, preliminary and secondary deduplication actions, LLM “review_needed” flags.  
+- **Logged Events**: ingestion successes/failures, parsing errors, deduplication actions, LLM "review_needed" flags.  
 - **UI**: Log viewer with filters (timestamp, event type).  
 - **Email**: Optional notifications on ingestion completion and review-needed events.
 
@@ -93,11 +98,11 @@ Each requirement record stores:
 
 ## 14. Tech Stack & Agent Tools
 - **Agent Framework**: pydantic_ai (with built-in support for agentic RAG patterns).  
-- **Extraction Engine**: Vision-capable LLM via pydantic_ai, embedding storage and retrieval on PostgreSQL using pgvector.  
+- **Extraction Engine**: Vision-capable LLM via pydantic_ai, embedding storage and retrieval on LanceDB.  
 - **LightRAG** layered for lightweight retrieval tasks.  
 - **RAG Tools Provided**: keyword search, hashtag search, basic dense retrieval (text + vision embeddings), LightRAG index queries.  
 - **Directory Scan Tools**: `scan_directory`, `find_similar_files`, `determine_newer_file`, `compare_file_contents`.  
-- **Database**: PostgreSQL (primary).  
+- **Database**: LanceDB (primary vector store).  
 - **UI**: Web-based dashboard (e.g., React/Next.js)
 
 ## 15. Quality & Testing

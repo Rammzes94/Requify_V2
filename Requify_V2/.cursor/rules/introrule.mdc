@@ -3,6 +3,8 @@ description:
 globs: 
 alwaysApply: true
 ---
+add a rough description of what the script does to any script we have, even if its there already. Use """..."""
+
 add this to any script we start from scratch:
 
 import os

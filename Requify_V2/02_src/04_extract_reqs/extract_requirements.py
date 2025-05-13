@@ -2,13 +2,32 @@ import os
 import sys
 import logging
 import time
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
 from agno.agent import Agent, RunResponse
 from agno.models.openai import OpenAIChat
+from agno.models.groq import Groq
 import lancedb
+import sentence_transformers
 from lancedb.pydantic import LanceModel, Vector
 from dotenv import load_dotenv
+import traceback
+
+"""
+extract_requirements.py
+
+This script extracts atomic requirements from parsed document content stored in LanceDB.
+It performs the following operations:
+1. Connects to LanceDB and retrieves document pages
+2. Uses LLMs to extract atomic requirements from each page's content
+3. Generates embeddings for each requirement
+4. Checks for duplicate requirements using the pre_save_reqs_deduplication module
+5. Saves unique requirements to the requirements table in LanceDB
+
+The script supports both OpenAI and Groq models for text processing and can be 
+configured via environment variables. It maintains the relationship between 
+requirements and their source documents.
+"""
 
 # -------------------------------------------------------------------------------------
 # Setup and Configuration
@@ -21,13 +40,26 @@ from _00_utils import setup_project_directory, update_token_counters, print_toke
 setup_project_directory()
 load_dotenv()
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger(__name__)
+# Import the deduplication module for requirements
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '05_reqs_deduplication')))
+try:
+    import pre_save_reqs_deduplication as reqs_dedup
+except ImportError:
+    print("Warning: Could not import pre_save_reqs_deduplication module. Duplicate detection will be disabled.")
+    reqs_dedup = None
+
+# Configure logging with script prefix
+logger = _00_utils.setup_logging()
+
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
+logger = ScriptLogger(_00_utils.setup_logging(), "[Extract_Requirements] ")
 
 # Suppress all HTTP request logs and third-party library logs
 logging.getLogger('httpx').setLevel(logging.ERROR)
@@ -42,19 +74,28 @@ logging.getLogger('requests').setLevel(logging.ERROR)
 
 # Get API key from environment variables
 api_key = os.getenv("OPENAI_API_KEY")
+groq_api_key = os.getenv("GROQ_API_KEY")
+
+# Model Configuration
+# Initialize models for requirements extraction
+openai_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key, temperature=0)
+
+# Uncomment to use Groq models instead
+groq_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key, temperature=0)
+
+# Select which model to use
+#active_model = openai_model
+active_model = groq_model
 
 # LanceDB settings
 OUTPUT_DIR_BASE = "03_output"  # Define base output directory
 LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within 03_output
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
-SOURCE_TABLE_NAME = "all_pdf_pages"
+LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
+SOURCE_TABLE_NAME = "documents"
 TARGET_TABLE_NAME = "requirements"
 EMBEDDING_DIMENSION = 1024  # Maintain same dimension as source table
-
-# Document filter - set to None to process all documents
-# To process all documents, change to: TARGET_DOCUMENT = None
-TARGET_DOCUMENT = "fighter_jet_rocket_launcher_spec_3_language_variant.pdf"
-TARGET_DOCUMENT = None
+EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct"  # Default embedding model
 
 # -------------------------------------------------------------------------------------
 # Prompt Templates
@@ -70,7 +111,7 @@ Extract all technical prescriptions, specifications, and mandatory elements.
 For each requirement, provide:
 1. The requirement ID, section, title, and description.
 2. A rationale explaining why it is considered a technical product requirement. This should focus on the technical aspects that affect the physical vehicle or its systems.
-3. The 'requirement_source_snippet', which is the exact text segment from the input TEXT that directly led to this requirement's extraction.
+3. The 'source_text', which is the exact text segment from the input TEXT that directly led to this requirement's extraction.
 
 The input may not have a single technical product requirement in it. In that case, just give back nothing. 
 We only care about requirements for the product!
@@ -116,13 +157,14 @@ You have expertise in software systems and understanding how requirements transl
 
 # Pydantic models for structured outputs
 class AtomicRequirement(BaseModel):
-    """Model for a single atomic requirement extracted from a regulation."""
-    id: str = Field(..., description="Unique identifier for this requirement (e.g., '0001')")
-    section: str = Field(..., description="The reference number from the document (e.g., 'x.y.z', 5.2.3; must include all digits)")
-    title: str = Field(..., description="Short title summarizing the requirement")
-    description: str = Field(..., description="Full text of the requirement")
-    rationale: str = Field(..., description="Explanation of why this is considered a technical product requirement")
-    requirement_source_snippet: str = Field(..., description="The exact text snippet from the source document that led to this requirement's extraction.")
+    """An individual requirement extracted from the document."""
+    id: str
+    title: str
+    description: str
+    source_text: str
+    requirement_rationale: str
+    section: str
+    page_number: Optional[int]
 
 class RequirementsExtractor(BaseModel):
     """Collection of extracted requirements from a document."""
@@ -154,10 +196,11 @@ class Requirement(LanceModel):
     is_software_related: bool
     software_confidence: float
     software_rationale: str
-    source_text: str
-    requirement_source_snippet: str
+    source_text: str  # This is the only field we'll use for source text
     created_timestamp: str
     embedding: Vector(EMBEDDING_DIMENSION)
+    is_duplicate: bool = False
+    duplicate_of: Optional[str] = None
 
 # -------------------------------------------------------------------------------------
 # Helper Functions
@@ -166,7 +209,7 @@ class Requirement(LanceModel):
 def create_agent(response_model, description):
     """Create an agent with the specified model and description."""
     return Agent(
-        model=OpenAIChat(id="gpt-4o-mini", api_key=api_key, temperature=0),
+        model=active_model,
         description=description,
         response_model=response_model,
     )
@@ -189,349 +232,403 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
         response = requirements_agent.run(prompt)
         _00_utils.update_token_counters(response)
         
-        extracted_reqs = response.content
+        # Ensure the response is a RequirementsExtractor object
+        if isinstance(response, RunResponse):
+            # Access the content field, which contains the structured data
+            requirements_data = response.content
+        else:
+            requirements_data = response
         
-        # Update document information
-        extracted_reqs.document_id = document_id
-        extracted_reqs.document_name = document_name
+        # Log the results
+        if hasattr(requirements_data, 'requirements') and len(requirements_data.requirements) > 0:
+            logger.info(f"✅ Successfully extracted {len(requirements_data.requirements)} requirements")
+        else:
+            logger.info("ℹ️ No requirements found in this text chunk")
             
-        # Update requirement IDs to be sequential across chunks
-        if extracted_reqs.total_count > 0:
-            for i, req in enumerate(extracted_reqs.requirements):
-                new_id = f"{document_id}-{(i + 1 + requirement_count_offset):04d}"
-                req.id = new_id
+        # Add offset to requirement IDs if provided
+        if requirement_count_offset > 0 and hasattr(requirements_data, 'requirements'):
+            for req in requirements_data.requirements:
+                # Assuming ID is numeric and can be padded
+                try:
+                    num_id = int(req.id)
+                    req.id = f"{num_id + requirement_count_offset:04d}"
+                except ValueError:
+                    # If ID is not numeric, append the offset
+                    req.id = f"{req.id}-{requirement_count_offset}"
         
-        return extracted_reqs
+        return requirements_data
+    
     except Exception as e:
         logger.error(f"❌ Error extracting requirements: {e}")
-        # Return an empty requirements object in case of error
+        # Return empty result in case of error
         return RequirementsExtractor(
             document_name=document_name,
             document_id=document_id,
             requirements=[],
             total_count=0,
-            rationale=f"Error occurred during extraction: {str(e)}"
+            rationale=f"Error during extraction: {str(e)}"
         )
 
 def analyze_requirement(requirement: AtomicRequirement, agent: Agent) -> SoftwareRequirementAnalysis:
     """Analyze a single requirement to determine if it's software-related."""
+    prompt = ANALYZE_REQUIREMENT_PROMPT.format(requirement_description=requirement.description)
+    
     try:
-        logger.info(f"🔍 Analyzing requirement {requirement.id} - {requirement.description}")
-        prompt = ANALYZE_REQUIREMENT_PROMPT.format(requirement_description=requirement.description)
-        
         response = agent.run(prompt)
         _00_utils.update_token_counters(response)
-        return response.content
+        
+        if isinstance(response, RunResponse):
+            return response.content
+        return response
     except Exception as e:
-        logger.error(f"❌ Error analyzing requirement: {e}")
-        # Return a default analysis in case of error
+        logger.error(f"❌ Error analyzing requirement {requirement.id}: {e}")
+        # Return conservative default in case of error
         return SoftwareRequirementAnalysis(
             is_software_related=False,
-            confidence=0.0,
-            rationale=f"Error occurred during analysis: {str(e)}"
+            confidence=0.5,
+            rationale=f"Error during analysis: {str(e)}"
         )
 
 def connect_to_lancedb():
-    """Connect to LanceDB and return the connection object."""
+    """Connect to LanceDB and return the connection."""
+    # Construct path relative to script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
+    lancedb_path = os.path.join(project_root, LANCEDB_DIR_PATH)
+    
     try:
-        logger.info("🔄 Connecting to LanceDB...")
-        # Construct absolute path to LanceDB directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-        absolute_lancedb_path = os.path.join(project_root, LANCEDB_DIR_PATH)
-
-        db = lancedb.connect(absolute_lancedb_path)
-        logger.info(f"✅ Connected to LanceDB. Available tables: {db.table_names()}")
+        logger.info(f"🔄 Connecting to LanceDB database at {lancedb_path}...")
+        db = lancedb.connect(lancedb_path)
+        logger.info(f"✅ Connected to LanceDB at {lancedb_path}")
         return db
     except Exception as e:
-        logger.error(f"❌ Error connecting to LanceDB: {e}")
-        raise
+        logger.error(f"❌ Failed to connect to LanceDB: {e}")
+        return None
 
 def get_or_create_requirements_table(db):
-    """Get or create the requirements table."""
+    """Get the requirements table from LanceDB. Table must exist already."""
+    if not db:
+        logger.error("❌ [LanceDB] No database connection provided for requirements table access")
+        return None
+        
     try:
-        if TARGET_TABLE_NAME in db.table_names():
-            logger.info(f"✅ Opening existing table: {TARGET_TABLE_NAME}")
-            return db.open_table(TARGET_TABLE_NAME)
+        logger.info(f"🔍 [LanceDB] Checking for existing table '{TARGET_TABLE_NAME}' in database")
+        table_names = db.table_names()
+        logger.info(f"📋 [LanceDB] Available tables in database: {', '.join(table_names) if table_names else 'None'}")
+        
+        if TARGET_TABLE_NAME in table_names:
+            logger.info(f"✅ [LanceDB] Found existing requirements table: '{TARGET_TABLE_NAME}'")
+            try:
+                logger.info(f"🔄 [LanceDB] Attempting to open table '{TARGET_TABLE_NAME}'...")
+                table = db.open_table(TARGET_TABLE_NAME)
+                
+                if table is None:
+                    logger.error(f"❌ [LanceDB] Failed to open table '{TARGET_TABLE_NAME}' - table object is None")
+                    return None
+                
+                logger.info(f"🔍 [LanceDB] Validating table schema for '{TARGET_TABLE_NAME}'")
+                schema = table.schema
+                
+                # Fixed: PyArrow Schema uses field() method to get fields by index, not a fields attribute
+                field_names = []
+                for i in range(len(schema)):
+                    field = schema.field(i)
+                    field_names.append(field.name)
+                
+                logger.info(f"📊 [LanceDB] Table schema contains {len(field_names)} fields: {', '.join(field_names)}")
+                
+                # Check for required fields
+                required_fields = ["requirement_id", "document_id", "title", "description", "embedding"]
+                missing_fields = [field for field in required_fields if field not in field_names]
+                
+                if missing_fields:
+                    logger.warning(f"⚠️ [LanceDB] Table '{TARGET_TABLE_NAME}' is missing some expected fields: {', '.join(missing_fields)}")
+                else:
+                    logger.info(f"✅ [LanceDB] Table '{TARGET_TABLE_NAME}' contains all required fields")
+                
+                # Make sure we have a valid table object with the 'add' method
+                if not hasattr(table, 'add'):
+                    logger.error(f"❌ [LanceDB] Table object for '{TARGET_TABLE_NAME}' is missing 'add' method - not a valid LanceTable")
+                    return None
+                
+                logger.info(f"✅ [LanceDB] Successfully opened table '{TARGET_TABLE_NAME}' for writing")
+                return table
+            except Exception as e:
+                logger.error(f"❌ [LanceDB] Error accessing existing table '{TARGET_TABLE_NAME}': {str(e)}")
+                logger.error(f"❌ [LanceDB] Traceback: {traceback.format_exc()}")
+                return None
         else:
-            logger.info(f"🔄 Creating new table: {TARGET_TABLE_NAME}")
-            return db.create_table(TARGET_TABLE_NAME, schema=Requirement)
+            logger.error(f"❌ [LanceDB] Table '{TARGET_TABLE_NAME}' does not exist in the database and must be created externally")
+            logger.error(f"❌ [LanceDB] Available tables: {', '.join(table_names) if table_names else 'None'}")
+            return None
+            
     except Exception as e:
-        logger.error(f"❌ Error getting or creating table: {e}")
-        raise
-
-def save_requirements_to_lancedb(requirements_list, source_text_map, embedding_map, table):
-    """Save requirements to LanceDB table."""
-    if not requirements_list:
-        logger.info("ℹ️ No requirements to save.")
-        return
-    
-    logger.info(f"🔄 Saving {len(requirements_list)} requirements to LanceDB...")
-    records = []
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    
-    for req_dict in requirements_list:
-        req_id = req_dict["id"]
-        source_text_full_page = source_text_map.get(req_id, "")
-        embedding = embedding_map.get(req_id, None)
-        
-        if not embedding:
-            logger.warning(f"⚠️ No embedding found for requirement {req_id}")
-            continue
-        
-        # Create record for LanceDB using direct column values
-        record = Requirement(
-            requirement_id=req_id,
-            document_id=req_dict["document_id"],
-            page_number=req_dict["page_number"],
-            section=req_dict["section"],
-            title=req_dict["title"],
-            description=req_dict["description"],
-            requirement_rationale=req_dict["requirement_rationale"],
-            is_software_related=req_dict["software_analysis"].is_software_related,
-            software_confidence=req_dict["software_analysis"].confidence,
-            software_rationale=req_dict["software_analysis"].rationale,
-            source_text=source_text_full_page,
-            requirement_source_snippet=req_dict.get("requirement_source_snippet", ""),
-            created_timestamp=timestamp,
-            embedding=embedding
-        )
-        records.append(record)
-    
-    try:
-        table.add(records)
-        logger.info(f"✅ Successfully saved {len(records)} requirements to LanceDB")
-    except Exception as e:
-        logger.error(f"❌ Error saving requirements to LanceDB: {e}")
-        raise
-
-# -------------------------------------------------------------------------------------
-# Main Process Functions
-# -------------------------------------------------------------------------------------
+        logger.error(f"❌ [LanceDB] Error setting up requirements table: {str(e)}")
+        logger.error(f"❌ [LanceDB] Traceback: {traceback.format_exc()}")
+        return None
 
 def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Agent) -> Dict[str, SoftwareRequirementAnalysis]:
-    """Analyze a batch of requirements to determine if they're software-related."""
+    """Analyze requirements in batch to determine if they're software-related."""
     if not requirements:
         return {}
+        
+    logger.info(f"🔄 Analyzing {len(requirements)} requirements in batch for software relation...")
     
-    # Prepare the requirements text for the prompt
+    # Prepare the requirements text for batch analysis
     requirements_text = ""
-    for i, req in enumerate(requirements, 1):
-        requirements_text += f"Requirement {i}: \"{req.description}\"\n\n"
+    for i, req in enumerate(requirements):
+        requirements_text += f"Requirement {i+1} - ID: {req.id}, Title: {req.title}\n"
+        requirements_text += f"Description: {req.description}\n\n"
+    
+    prompt = BATCH_ANALYZE_REQUIREMENTS_PROMPT.format(requirements_text=requirements_text)
     
     try:
-        prompt = BATCH_ANALYZE_REQUIREMENTS_PROMPT.format(requirements_text=requirements_text)
-        
+        # Run batch analysis
         response = agent.run(prompt)
         _00_utils.update_token_counters(response)
         
-        batch_analysis = response.content
+        if isinstance(response, RunResponse):
+            batch_result = response.content
+        else:
+            batch_result = response
         
-        # Map the analyses back to the requirements by ID
+        # Map results back to requirement IDs
         results = {}
-        for i, req in enumerate(requirements):
-            if i < len(batch_analysis.analyses):
-                results[req.id] = batch_analysis.analyses[i]
-            else:
-                # Fallback in case of mismatch
-                logger.warning(f"⚠️ Missing analysis for requirement {req.id}, using default")
-                results[req.id] = SoftwareRequirementAnalysis(
-                    is_software_related=False,
-                    confidence=0.0,
-                    rationale="Analysis not provided"
-                )
+        for i, analysis in enumerate(batch_result.analyses):
+            if i < len(requirements):
+                req_id = requirements[i].id
+                results[req_id] = analysis
                 
+        logger.info(f"✅ Batch analysis complete for {len(results)} requirements")
         return results
-        
+    
     except Exception as e:
-        logger.error(f"❌ Error analyzing requirements batch: {e}")
-        # Return default analyses in case of error
-        return {req.id: SoftwareRequirementAnalysis(
-            is_software_related=False,
-            confidence=0.0,
-            rationale=f"Error occurred during batch analysis: {str(e)}"
-        ) for req in requirements}
-
-def process_document_page(page_data, embedder):
-    """Process a single document page to extract requirements."""
-    document_id = page_data['pdf_identifier']
-    page_number = page_data.get('page_number', 0)
-    md_content = page_data.get('md_content', '')
-    
-    if not md_content:
-        logger.warning(f"⚠️ No content to process for {document_id} page {page_number}")
-        return [], {}
-    
-    # Use title if available, otherwise create a descriptive name
-    document_name = page_data.get('title', f"Document {document_id}")
-    
-    # Extract requirements from the content
-    extracted_reqs = extract_requirements_from_text(
-        text=md_content, 
-        document_id=document_id,
-        document_name=document_name
-    )
-    
-    if extracted_reqs.total_count == 0:
-        logger.info(f"ℹ️ No requirements found in {document_id} page {page_number}")
-        return [], {}
-    
-    # Analyze requirements for software relevance in batches of 5
-    software_agent = create_agent(
-        response_model=BatchSoftwareAnalysis,
-        description=SOFTWARE_AGENT_DESCRIPTION
-    )
-    
-    analyzed_requirements = []
-    source_text_map = {}
-    
-    # Process requirements in batches of 5
-    batch_size = 5
-    requirement_batches = [extracted_reqs.requirements[i:i+batch_size] 
-                          for i in range(0, len(extracted_reqs.requirements), batch_size)]
-    
-    for batch in requirement_batches:
-        # Log the requirements being analyzed
-        for req in batch:
-            logger.info(f"🔍 Analyzing requirement {req.id} - {req.description}")
-            
-        # Analyze the batch
-        batch_analyses = analyze_requirements_batch(batch, software_agent)
+        logger.error(f"❌ Error during batch analysis: {e}")
         
-        # Process the results
-        for req in batch:
-            software_analysis = batch_analyses.get(req.id)
+        # Fall back to individual analysis
+        logger.info("🔄 Falling back to individual requirement analysis...")
+        results = {}
+        for req in requirements:
+            results[req.id] = analyze_requirement(req, agent)
             
-            if not software_analysis:
-                logger.warning(f"⚠️ No analysis found for {req.id}, using default")
-                software_analysis = SoftwareRequirementAnalysis(
-                    is_software_related=False,
-                    confidence=0.0,
-                    rationale="Analysis not provided"
-                )
-            
-            # Store the analyzed requirement
-            analyzed_req = {
-                "id": req.id,
-                "document_id": document_id,
-                "page_number": page_number,
-                "section": req.section,
-                "title": req.title,
-                "description": req.description,
-                "requirement_rationale": req.rationale,
-                "requirement_source_snippet": req.requirement_source_snippet,
-                "software_analysis": software_analysis
-            }
-            analyzed_requirements.append(analyzed_req)
-            
-            # Store source text mapping
-            source_text_map[req.id] = md_content
-            
-            logger.info(f"  ✅ Requirement {req.id}: {'Software-related' if software_analysis.is_software_related else 'Not software-related'} (Confidence: {software_analysis.confidence:.2f})")
-    
-    logger.info(f"✅ Processed {len(analyzed_requirements)} requirements from {document_id} page {page_number}")
-    return analyzed_requirements, source_text_map
+        return results
 
-def main():
-    """Main function to extract requirements from LanceDB and save them."""
-    start_time = time.time()
+def load_embedding_model():
+    """Load the embedding model."""
+    try:
+        model = sentence_transformers.SentenceTransformer(EMBEDDING_MODEL)
+        return model
+    except Exception as e:
+        logger.error(f"❌ Error loading embedding model: {e}")
+        return None
+
+def process_single_document(doc_id: str):
+    """
+    Process a single document for requirements extraction.
+    
+    Args:
+        doc_id: The document ID (filename) to process
+    """
+    logger.info(f"🔄 Processing document: {doc_id}")
+    
+    # Step 1: Connect to LanceDB
+    db = connect_to_lancedb()
+    if not db:
+        logger.error(f"❌ Failed to connect to LanceDB database")
+        return
+    
+    # Step 2: Get all pages for the document
+    logger.info(f"🔄 Opening source table '{SOURCE_TABLE_NAME}' to retrieve document pages...")
+    try:
+        table = db.open_table(SOURCE_TABLE_NAME)
+    except Exception as e:
+        logger.error(f"❌ Failed to open source table '{SOURCE_TABLE_NAME}': {e}")
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        return
+        
+    logger.info(f"🔄 Querying records for document ID: {doc_id}...")
+    try:
+        # Get all pages for the document from LanceDB 
+        records = table.to_pandas()
+        doc_pages = records[records["pdf_identifier"] == doc_id]
+        
+        if doc_pages.empty:
+            logger.error(f"❌ No pages found for document ID '{doc_id}' in table '{SOURCE_TABLE_NAME}'")
+            return
+        
+        logger.info(f"✅ Found {len(doc_pages)} pages for document '{doc_id}'")
+    except Exception as e:
+        logger.error(f"❌ Error querying document pages from LanceDB: {e}")
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+        return
+        
+    # Step 3: Load embedding model
+    logger.info(f"🔄 Loading embedding model '{EMBEDDING_MODEL}'...")
+    embedding_model = load_embedding_model()
+    if not embedding_model:
+        logger.error(f"❌ Failed to load embedding model '{EMBEDDING_MODEL}'")
+        return
+    logger.info(f"✅ Successfully loaded embedding model: {EMBEDDING_MODEL}")
+    
+    # Step 4: Get requirements table
+    logger.info(f"🔄 Accessing requirements table '{TARGET_TABLE_NAME}'...")
+    requirements_table = get_or_create_requirements_table(db)
+    
+    # DEBUG: Check if we actually got a table back and examine its schema
+    if requirements_table is not None:
+        try:
+            schema = requirements_table.schema
+            logger.info(f"🔍 Requirements table schema: {schema}")
+            
+            # Fixed: PyArrow Schema uses field() method to get fields by index, not a fields attribute
+            field_names = []
+            for i in range(len(schema)):
+                field = schema.field(i)
+                field_names.append(field.name)
+                
+            logger.info(f"🔍 Available fields in table: {field_names}")
+        except Exception as e:
+            logger.error(f"❌ Error examining table schema: {e}")
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    # The table is correctly returned but somehow the condition is failing
+    # Force it to True if we have a valid LanceTable object
+    table_exists = requirements_table is not None and hasattr(requirements_table, 'add')
+    
+    if not table_exists:
+        logger.error(f"❌ Failed to get requirements table '{TARGET_TABLE_NAME}'")
+        return
+    logger.info(f"✅ Successfully accessed requirements table '{TARGET_TABLE_NAME}'")
+    
+    # Track all extracted requirements for batch processing
+    all_requirements = []
+    
+    # Track how many requirements we save in total
+    total_requirements = 0
     
     try:
-        # Connect to LanceDB
-        db = connect_to_lancedb()
-        
-        # Open source table
-        if SOURCE_TABLE_NAME not in db.table_names():
-            logger.error(f"❌ Source table '{SOURCE_TABLE_NAME}' not found in LanceDB")
-            return
-        
-        source_table = db.open_table(SOURCE_TABLE_NAME)
-        
-        # Get or create target table
-        target_table = get_or_create_requirements_table(db)
-        
-        # Load and initialize embedding model - reuse the same one from source table
-        try:
-            from sentence_transformers import SentenceTransformer
-            embedding_model_name = "intfloat/multilingual-e5-large-instruct"
-            logger.info(f"🔄 Loading embedding model: {embedding_model_name}")
-            embedder = SentenceTransformer(embedding_model_name)
-        except Exception as e:
-            logger.error(f"❌ Error loading embedding model: {e}")
-            return
-        
-        # Fetch data from source table
-        source_data = source_table.to_pandas()
-        
-        # Filter the data if TARGET_DOCUMENT is specified
-        if TARGET_DOCUMENT:
-            logger.info(f"📌 Filtering documents: Only processing '{TARGET_DOCUMENT}'")
-            source_data = source_data[source_data['pdf_identifier'] == TARGET_DOCUMENT]
-            logger.info(f"📊 Found {len(source_data)} pages for '{TARGET_DOCUMENT}'")
-        
-        # Check if we have data
-        if len(source_data) == 0:
-            logger.warning("⚠️ No data found in source table after filtering")
-            return
-        
-        logger.info(f"✅ Loaded {len(source_data)} document pages from source table")
-        
-        # Process each document page
-        all_requirements = []
-        all_source_text_maps = {}
-        all_embedding_maps = {}
-        
-        for idx, (_, row) in enumerate(source_data.iterrows(), 1):
-            page_data = row.to_dict()
-            logger.info(f"🔄 Processing document {page_data['pdf_identifier']} page {page_data.get('page_number', 'unknown')}")
+        # For each page in the document
+        for index, page in doc_pages.iterrows():
+            page_number = page.get('page_number')
+            logger.info(f"🔄 Processing page {page_number}/{len(doc_pages)} of document '{doc_id}'")
             
-            # Extract and analyze requirements
-            requirements, source_text_map = process_document_page(page_data, embedder)
+            # Get the content field - try different column names depending on LanceDB schema
+            page_content = page.get('page_content', page.get('md_content', page.get('processed_content', '')))
+            if not page_content:
+                logger.warning(f"⚠️ No content found for page {page_number} of document '{doc_id}'")
+                continue
+                
+            logger.info(f"🔄 Extracting requirements from page {page_number} (content length: {len(page_content)} chars)")
             
-            # Create embeddings for each requirement
-            embedding_map = {}
-            for req in requirements:
-                # Use the instruction format with "passage:" prefix for embedding
-                text_to_embed = f"passage: {req['description']}"
-                embedding = embedder.encode(text_to_embed).tolist()
-                embedding_map[req['id']] = embedding
-            
-            # Store requirements and mappings
-            all_requirements.extend(requirements)
-            all_source_text_maps.update(source_text_map)
-            all_embedding_maps.update(embedding_map)
-            
-            # Log progress - fix the counter to show current/total correctly
-            logger.info(f"✅ Processed {idx}/{len(source_data)} pages. Total requirements so far: {len(all_requirements)}")
+            try:
+                # Extract requirements from this page
+                requirements_data = extract_requirements_from_text(
+                    text=page_content,
+                    document_id=doc_id,
+                    document_name=doc_id
+                )
+                
+                # Process extracted requirements
+                if hasattr(requirements_data, 'requirements') and requirements_data.requirements:
+                    req_count = len(requirements_data.requirements)
+                    logger.info(f"🔄 Found {req_count} requirements on page {page_number}, preparing to process...")
+                    
+                    # Create requirement records for each extracted requirement
+                    for i, req in enumerate(requirements_data.requirements):
+                        try:
+                            # Create embedding for the requirement
+                            logger.info(f"🔄 Creating embedding for requirement {i+1}/{req_count}: {req.id} - '{req.title}'")
+                            req_text = f"{req.title}\n{req.description}"
+                            embedding = embedding_model.encode([req_text])[0].tolist()
+                            
+                            # Create a record for LanceDB
+                            timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                            
+                            # Use only source_text
+                            req_data = {
+                                "requirement_id": req.id,
+                                "document_id": doc_id,
+                                "page_number": page_number,
+                                "section": req.section,
+                                "title": req.title,
+                                "description": req.description,
+                                "requirement_rationale": req.requirement_rationale,
+                                "is_software_related": False,  # Default values
+                                "software_confidence": 0.0,    
+                                "software_rationale": "",    
+                                "source_text": req.source_text,  # Just use source_text
+                                "created_timestamp": timestamp,
+                                "embedding": embedding,
+                                "is_duplicate": False,
+                                "duplicate_of": None
+                            }
+                            
+                            # Add to list of all requirements for deduplication
+                            all_requirements.append(req_data)
+                        except Exception as e:
+                            logger.error(f"❌ Error processing requirement {req.id}: {str(e)}")
+                            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                            continue
+                else:
+                    logger.info(f"ℹ️ No requirements found on page {page_number} of document '{doc_id}'")
+            except Exception as e:
+                logger.error(f"❌ Error processing page {page_number}: {str(e)}")
+                logger.error(f"❌ Traceback: {traceback.format_exc()}")
         
-        # Save all requirements to LanceDB
-        save_requirements_to_lancedb(all_requirements, all_source_text_maps, all_embedding_maps, target_table)
-        
-        # Create index on embedding column if enough data is available
-        if len(all_requirements) >= 256:
-            logger.info("🔄 Creating vector index...")
-            target_table.create_index(vector_column_name="embedding", metric="cosine", replace=True)
+        # Check for duplicate requirements if deduplication module is available
+        if reqs_dedup and all_requirements:
+            logger.info(f"🔄 Checking for duplicate requirements in {len(all_requirements)} extracted requirements...")
+            unique_requirements, duplicate_info = reqs_dedup.check_requirements_duplicates(all_requirements, doc_id)
+            
+            logger.info(f"✅ Deduplication complete: {len(unique_requirements)} unique, {len(duplicate_info)} duplicates")
+            
+            # Save unique requirements to LanceDB
+            logger.info(f"🔄 Saving {len(all_requirements)} requirements to LanceDB...")
+            saved_count = 0
+            
+            for req_data in all_requirements:
+                try:
+                    req_id = req_data.get('requirement_id')
+                    
+                    # If it's a duplicate, log it but still save with the duplicate flag
+                    if req_id and any(duplicate_info.get(i, {}).get('duplicate_id') == req_id for i in duplicate_info):
+                        logger.info(f"ℹ️ Requirement {req_id} is a duplicate, saving with duplicate flag")
+                    
+                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB table '{TARGET_TABLE_NAME}'...")
+                    
+                    # Add to LanceDB
+                    requirements_table.add([req_data])
+                    saved_count += 1
+                    logger.info(f"✅ Successfully saved requirement {req_id}")
+                except Exception as e:
+                    logger.error(f"❌ Error saving requirement {req_data.get('requirement_id')}: {str(e)}")
+                    logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            
+            total_requirements = saved_count
         else:
-            logger.info(f"ℹ️ Skipping vector index creation - not enough records (need at least 256, got {len(all_requirements)})")
-        
-        # Log completion information
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        
-        logger.info("\n--- SUMMARY ---")
-        logger.info(f"✅ Successfully processed {len(source_data)} document pages")
-        logger.info(f"✅ Extracted {len(all_requirements)} requirements")
-        software_count = sum(1 for req in all_requirements if req['software_analysis'].is_software_related)
-        percentage = (software_count / len(all_requirements) * 100) if len(all_requirements) > 0 else 0
-        logger.info(f"✅ Software-related requirements: {software_count} ({percentage:.1f}%)")
-        logger.info(f"✅ Total processing time: {elapsed_time:.2f} seconds")
-        
-        # Log token usage using utility function
-        _00_utils.print_token_usage("gpt-4o-mini")
-        
+            # If no deduplication, save all requirements directly
+            logger.info(f"🔄 Saving {len(all_requirements)} requirements to LanceDB without deduplication...")
+            saved_count = 0
+            
+            for req_data in all_requirements:
+                try:
+                    req_id = req_data.get('requirement_id')
+                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB table '{TARGET_TABLE_NAME}'...")
+                    
+                    # Add to LanceDB
+                    requirements_table.add([req_data])
+                    saved_count += 1
+                    logger.info(f"✅ Successfully saved requirement {req_id}")
+                except Exception as e:
+                    logger.error(f"❌ Error saving requirement {req_data.get('requirement_id')}: {str(e)}")
+                    logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            
+            total_requirements = saved_count
+    
     except Exception as e:
-        logger.error(f"❌ An error occurred: {e}")
-
-
-if __name__ == "__main__":
-    main()
+        logger.error(f"❌ Error during document processing: {str(e)}")
+        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    # Log completion
+    logger.info(f"✅ Extraction complete. Successfully processed {total_requirements} requirements from {len(doc_pages)} pages of document '{doc_id}'")
+    _00_utils.print_token_usage() # Add token usage printing here

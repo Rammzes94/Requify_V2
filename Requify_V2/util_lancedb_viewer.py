@@ -27,13 +27,13 @@ table_names = db.table_names()
 excel_path = os.path.join(excel_output_dir, "lancedb_tables.xlsx")
 with pd.ExcelWriter(excel_path) as writer:
     
-    if "all_pdf_pages" in table_names:
-        table = db.open_table("all_pdf_pages")
+    if "documents" in table_names:
+        table = db.open_table("documents")
         df1 = table.to_pandas()
-        df1.to_excel(writer, sheet_name='all_pdf_pages', index=False)
-        print(f"Saved all_pdf_pages table to Excel sheet")
+        df1.to_excel(writer, sheet_name='documents', index=False)
+        print(f"Saved documents table to Excel sheet")
     else:
-        print("Table 'all_pdf_pages' not found")
+        print("Table 'documents' not found")
 
     if "requirements" in table_names:
         table2 = db.open_table("requirements")
