@@ -42,7 +42,7 @@ import _00_utils
 _00_utils.setup_project_directory()
 
 # Import the deduplication module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '03_docs_deduplication')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_03_docs_deduplication')))
 try:
     import pre_save_deduplication as dedup
 except ImportError:
@@ -66,9 +66,9 @@ logger = ScriptLogger(_00_utils.setup_logging(), "[Save_To_LanceDB] ")
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "03_output" # Define base output directory
-PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from 03_output
-LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within 03_output
+OUTPUT_DIR_BASE = "_03_output" # Define base output directory
+PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from _03_output
+LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within _03_output
 LANCEDB_TABLE_NAME = "documents"
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
 EMBEDDING_DIMENSION = 1024 # Dimension for e5-large models
@@ -237,6 +237,16 @@ def save_document_to_lancedb(document_path):
     # Initialize SentenceTransformer for text embeddings
     try:
         logger.info(f"Loading embedding model: {EMBEDDING_MODEL_NAME}", extra={"icon": "🧠"})
+        
+        # Set up sentence-transformers logging to include our script prefix
+        st_logger = logging.getLogger('sentence_transformers')
+        for handler in st_logger.handlers:
+            st_logger.removeHandler(handler)
+        st_logger.addHandler(logging.StreamHandler())
+        st_logger.setLevel(logging.INFO)
+        # Wrap the sentence-transformers logger with our ScriptLogger
+        st_logger = ScriptLogger(st_logger, "[Save_To_LanceDB] ")
+        
         text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
         logger.info("Model loaded successfully", extra={"icon": "✅"})
     except Exception as e:

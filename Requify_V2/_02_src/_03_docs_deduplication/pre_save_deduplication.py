@@ -49,8 +49,8 @@ load_dotenv()
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "03_output"  # Define base output directory
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within 03_output
+OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
 LANCEDB_TABLE_NAME = "documents"
 EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
 DUPLICATE_SIMILARITY_THRESHOLD = 0.99  # Cosine similarity threshold for duplicate pages

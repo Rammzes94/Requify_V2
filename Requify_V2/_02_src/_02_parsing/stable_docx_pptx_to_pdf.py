@@ -4,8 +4,8 @@ import win32com.client
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-INPUT_DIR = "01_input/raw"
-OUTPUT_DIR = "01_input/processed"
+INPUT_DIR = "_01_input/raw"
+OUTPUT_DIR = "_01_input/processed"
 # Example input file within the raw directory (adjust as needed)
 EXAMPLE_INPUT_FILE = os.path.join(INPUT_DIR, "sample_for_comparer", "demo.pptx")
 

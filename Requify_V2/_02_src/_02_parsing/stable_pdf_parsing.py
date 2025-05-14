@@ -63,9 +63,9 @@ load_dotenv()
 # ---------------------------------------------------------------------
 
 # Default paths
-RAW_INPUT_DIR = os.path.join("01_input", "raw")
+RAW_INPUT_DIR = os.path.join("_01_input", "raw")
 # Define the main output directory for this script's products
-OUTPUT_DIR_BASE = os.path.join("03_output") 
+OUTPUT_DIR_BASE = os.path.join("_03_output") 
 PROCESSED_OUTPUT_BASE_DIR = os.path.join(OUTPUT_DIR_BASE) # Changed to use OUTPUT_DIR_BASE
 FILTERED_FILES_JSON = os.path.join(OUTPUT_DIR_BASE, "filtered_files_by_extension.json") # Changed to read from OUTPUT_DIR_BASE
 # DPI setting for PDF to image conversion
@@ -181,7 +181,7 @@ class PDFProcessor:
             image_data_list = []
             if output_images_dir is None:
                 base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-                # Use the central processed directory, now under 03_output
+                # Use the central processed directory, now under _03_output
                 output_images_dir = os.path.join(PROCESSED_OUTPUT_BASE_DIR, "pdf_images", base_name)
             os.makedirs(output_images_dir, exist_ok=True)
             for i, page in enumerate(pdf):
@@ -264,7 +264,7 @@ class PDFProcessor:
     # -----------------------------------------------------------------
     def pdf_to_structured_json(self, pdf_path, output_dir=None): # output_dir will be constructed, not taken as default
         try:
-            # Ensure the base output directory for parsed content exists under 03_output
+            # Ensure the base output directory for parsed content exists under _03_output
             # output_dir for specific PDF will be a subfolder of this
             pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0]
             # Construct specific output_dir for this PDF's parsed content

@@ -1,0 +1,77 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Requirements Extraction Agent – Functional Specification
+
+## Product Summary
+The Requirements Extraction Agent streamlines the process of converting large volumes of technical and business documents into structured, searchable requirements. It addresses the challenge of manual extraction and management of requirements from diverse file types by leveraging vision-capable LLMs and automated embedding pipelines. Users ingest documents from local directories or OneDrive, immediately drop exact-duplicate files via hash checks, and then deduplicate and update content via embedding similarity in LanceDB. The system maintains consistency of chunk boundaries across document versions to ensure reliable comparison and requirement extraction.
+
+## 1. User Roles
+- Systems engineers, software engineers, product managers, and other stakeholders in complex systems/software engineering.
+
+## 2. Supported Input & Ingestion
+- **File Types**: PDF, DOCX, XLSX, PPTX, PPT, DOC, TXT, etc.  
+- **Source Locations**: Local directories and OneDrive cloud storage.  
+- **Ingestion Modes**:  
+  - **Bulk Import**: “Ingest Now” for large file sets.  
+  - **Manual Add**: On-demand ingestion.
+
+## 3. Preliminary Hash-Based Duplicate Removal
+- **Process**  
+  1. Scan target directory, compute a content hash (e.g. MD5/SHA) for each file.  
+  2. Immediately discard any file whose hash matches an existing record—no further processing.  
+  3. Log each removal for audit.
+
+## 4. Page-Level Embedding Scan & Document Update Detection
+- **Vector Store**: LanceDB  
+- **Process**  
+  1. After hash filtering, extract every page of the new file as a base64-encoded PNG and generate its embedding.  
+  2. Write these pages into the LanceDB **documents** table with fields:  
+     - `document_id`, `filename`, `page_number`, `page_image_b64`, `page_embedding`  
+  3. For each new page embedding, run a cosine-similarity query (threshold ≥ 0.9) against existing page embeddings:  
+     - **Exact duplicate file**: if _all_ pages match existing ones, abort ingestion and report “duplicate file.”  
+     - **Updated version**: if many pages match but some are new/changed, mark the file as an “update” and carry forward the original document’s chunking metadata.  
+
+## 5. Agentic Chunking with Consistent Boundaries
+- **Chunking Agent**: Agno + GPT-4o-mini  
+- **Process**  
+  1. Retrieve the original document’s chunk boundary metadata (character offsets or sentence indices) when flagged as an update.  
+  2. Prompt the chunking agent with:  
+     - the full markdown text of the new/updated document  
+     - the previous boundary offsets and instructions to align with those boundaries where content is unchanged  
+     - a target chunk size (~128 tokens)  
+  3. Generate a list of chunks, each with:  
+     - `chunk_id`, `start_offset`, `end_offset`, `chunk_text`  
+  4. Generate and store embeddings for each chunk in LanceDB **document_chunks** table with fields:  
+     - `chunk_id`, `document_id`, `start_offset`, `end_offset`, `chunk_embedding`  
+
+## 6. Chunk-Level Embedding Deduplication & Update Handling
+- **Process**  
+  1. For each newly created chunk embedding, run a cosine-similarity query (thresholds: ≥0.99 = identical, ≥0.90 = near-duplicate) against existing chunks in **document_chunks**.  
+     - **Identical chunk**: skip storing; reuse existing `chunk_id` and associated requirements.  
+     - **Near-duplicate chunk**: mark as “updated chunk,” store new embedding but link to the old `chunk_id` for traceability.  
+     - **Novel chunk**: store normally and queue for requirement extraction.  
+  2. If the file was flagged as an update:  
+     - Delete the old document’s pages and chunks from LanceDB.  
+     - Replace with the new pages and chunks (retaining links for identical chunks so no re-extraction needed).  
+
+## 7. Fixed Extraction Schema & Traceability
+Each final chunk processed for requirement extraction shall yield:  
+1. AI Summary  
+2. Description  
+3. Verification Method  
+4. Test Environment  
+5. Acceptance Criteria  
+6. Source Text  
+7. `source_chunk_id`  
+8. `chunk_hash` (for future change detection)
+
+## 8. Tech Stack & Agent Tools
+- **Agent Framework**: Agno (agentic RAG patterns)  
+- **Language Model**: GPT-4o-mini (vision + text)  
+- **Vector Store**: LanceDB for pages and chunks  
+- **Duplication Tools**: cosine-similarity queries in LanceDB  
+- **Chunking Tools**: custom Agno agent prompts with boundary metadata  
+- **UI**: Web dashboard (React/Next.js) for ingestion, deduplication results, update prompts, and traceability views  

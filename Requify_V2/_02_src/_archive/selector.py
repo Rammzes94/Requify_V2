@@ -32,7 +32,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 # Section: Global Configuration
 # Description: Set the target directory to analyze.
 # ---------------------------------------------------------------------
-TARGET_DIR = "01_input/raw"
+TARGET_DIR = "_01_input/raw"
 
 # ---------------------------------------------------------------------
 # Section: File Scanning and Similarity Tools with Debug Prints

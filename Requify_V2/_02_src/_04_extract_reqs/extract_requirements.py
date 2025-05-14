@@ -16,17 +16,19 @@ import traceback
 """
 extract_requirements.py
 
-This script extracts atomic requirements from parsed document content stored in LanceDB.
+This script extracts atomic requirements from document chunks stored in LanceDB.
 It performs the following operations:
-1. Connects to LanceDB and retrieves document pages
-2. Uses LLMs to extract atomic requirements from each page's content
+1. Connects to LanceDB and retrieves document chunks
+2. Uses LLMs to extract atomic requirements from each chunk's content
 3. Generates embeddings for each requirement
 4. Checks for duplicate requirements using the pre_save_reqs_deduplication module
 5. Saves unique requirements to the requirements table in LanceDB
+6. Maintains traceability between requirements and their source chunks
+7. Reuses existing requirements for duplicate chunks
 
 The script supports both OpenAI and Groq models for text processing and can be 
-configured via environment variables. It maintains the relationship between 
-requirements and their source documents.
+configured via environment variables. For document updates, it preserves 
+requirements from identical chunks while processing only new or modified content.
 """
 
 # -------------------------------------------------------------------------------------
@@ -41,7 +43,7 @@ setup_project_directory()
 load_dotenv()
 
 # Import the deduplication module for requirements
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '05_reqs_deduplication')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_05_reqs_deduplication')))
 try:
     import pre_save_reqs_deduplication as reqs_dedup
 except ImportError:
@@ -88,12 +90,13 @@ groq_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key, temperatur
 active_model = groq_model
 
 # LanceDB settings
-OUTPUT_DIR_BASE = "03_output"  # Define base output directory
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within 03_output
+OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
 LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
-SOURCE_TABLE_NAME = "documents"
-TARGET_TABLE_NAME = "requirements"
+DOCUMENT_CHUNKS_TABLE = "document_chunks"
+DOCUMENTS_TABLE = "documents"
+REQUIREMENTS_TABLE = "requirements"
 EMBEDDING_DIMENSION = 1024  # Maintain same dimension as source table
 EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct"  # Default embedding model
 
@@ -165,6 +168,7 @@ class AtomicRequirement(BaseModel):
     requirement_rationale: str
     section: str
     page_number: Optional[int]
+    source_chunk_id: Optional[str] = None
 
 class RequirementsExtractor(BaseModel):
     """Collection of extracted requirements from a document."""
@@ -197,6 +201,7 @@ class Requirement(LanceModel):
     software_confidence: float
     software_rationale: str
     source_text: str  # This is the only field we'll use for source text
+    source_chunk_id: str # ID of the chunk this requirement came from
     created_timestamp: str
     embedding: Vector(EMBEDDING_DIMENSION)
     is_duplicate: bool = False
@@ -214,9 +219,9 @@ def create_agent(response_model, description):
         response_model=response_model,
     )
 
-def extract_requirements_from_text(text: str, document_id: str, document_name: str, requirement_count_offset: int = 0) -> RequirementsExtractor:
+def extract_requirements_from_text(text: str, document_id: str, document_name: str, chunk_id: str, requirement_count_offset: int = 0) -> RequirementsExtractor:
     """Extract requirements from text."""
-    logger.info("🔄 Extracting requirements from text chunk...")
+    logger.info(f"🔄 Extracting requirements from chunk {chunk_id}")
     
     # Initialize the agent with structured outputs
     requirements_agent = create_agent(
@@ -241,9 +246,9 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
         
         # Log the results
         if hasattr(requirements_data, 'requirements') and len(requirements_data.requirements) > 0:
-            logger.info(f"✅ Successfully extracted {len(requirements_data.requirements)} requirements")
+            logger.info(f"✅ Successfully extracted {len(requirements_data.requirements)} requirements from chunk {chunk_id}")
         else:
-            logger.info("ℹ️ No requirements found in this text chunk")
+            logger.info(f"ℹ️ No requirements found in chunk {chunk_id}")
             
         # Add offset to requirement IDs if provided
         if requirement_count_offset > 0 and hasattr(requirements_data, 'requirements'):
@@ -256,10 +261,15 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
                     # If ID is not numeric, append the offset
                     req.id = f"{req.id}-{requirement_count_offset}"
         
+        # Add source chunk ID to each requirement
+        if hasattr(requirements_data, 'requirements'):
+            for req in requirements_data.requirements:
+                req.source_chunk_id = chunk_id
+        
         return requirements_data
     
     except Exception as e:
-        logger.error(f"❌ Error extracting requirements: {e}")
+        logger.error(f"❌ Error extracting requirements from chunk {chunk_id}: {e}")
         # Return empty result in case of error
         return RequirementsExtractor(
             document_name=document_name,
@@ -297,70 +307,52 @@ def connect_to_lancedb():
     lancedb_path = os.path.join(project_root, LANCEDB_DIR_PATH)
     
     try:
-        logger.info(f"🔄 Connecting to LanceDB database at {lancedb_path}...")
+        logger.info(f"Connecting to LanceDB database at {lancedb_path}", extra={"icon": "🔄"})
         db = lancedb.connect(lancedb_path)
-        logger.info(f"✅ Connected to LanceDB at {lancedb_path}")
+        logger.info(f"Connected to LanceDB at {lancedb_path}", extra={"icon": "✅"})
         return db
     except Exception as e:
-        logger.error(f"❌ Failed to connect to LanceDB: {e}")
+        logger.error(f"Failed to connect to LanceDB: {e}", extra={"icon": "❌"})
         return None
 
 def get_or_create_requirements_table(db):
-    """Get the requirements table from LanceDB. Table must exist already."""
+    """Get the requirements table from LanceDB or create it if it doesn't exist."""
     if not db:
         logger.error("❌ [LanceDB] No database connection provided for requirements table access")
         return None
         
     try:
-        logger.info(f"🔍 [LanceDB] Checking for existing table '{TARGET_TABLE_NAME}' in database")
+        logger.info(f"🔍 [LanceDB] Checking for existing table '{REQUIREMENTS_TABLE}' in database")
         table_names = db.table_names()
         logger.info(f"📋 [LanceDB] Available tables in database: {', '.join(table_names) if table_names else 'None'}")
         
-        if TARGET_TABLE_NAME in table_names:
-            logger.info(f"✅ [LanceDB] Found existing requirements table: '{TARGET_TABLE_NAME}'")
+        if REQUIREMENTS_TABLE in table_names:
+            logger.info(f"✅ [LanceDB] Found existing requirements table: '{REQUIREMENTS_TABLE}'")
             try:
-                logger.info(f"🔄 [LanceDB] Attempting to open table '{TARGET_TABLE_NAME}'...")
-                table = db.open_table(TARGET_TABLE_NAME)
+                logger.info(f"🔄 [LanceDB] Attempting to open table '{REQUIREMENTS_TABLE}'...")
+                table = db.open_table(REQUIREMENTS_TABLE)
                 
                 if table is None:
-                    logger.error(f"❌ [LanceDB] Failed to open table '{TARGET_TABLE_NAME}' - table object is None")
+                    logger.error(f"❌ [LanceDB] Failed to open table '{REQUIREMENTS_TABLE}' - table object is None")
                     return None
                 
-                logger.info(f"🔍 [LanceDB] Validating table schema for '{TARGET_TABLE_NAME}'")
-                schema = table.schema
-                
-                # Fixed: PyArrow Schema uses field() method to get fields by index, not a fields attribute
-                field_names = []
-                for i in range(len(schema)):
-                    field = schema.field(i)
-                    field_names.append(field.name)
-                
-                logger.info(f"📊 [LanceDB] Table schema contains {len(field_names)} fields: {', '.join(field_names)}")
-                
-                # Check for required fields
-                required_fields = ["requirement_id", "document_id", "title", "description", "embedding"]
-                missing_fields = [field for field in required_fields if field not in field_names]
-                
-                if missing_fields:
-                    logger.warning(f"⚠️ [LanceDB] Table '{TARGET_TABLE_NAME}' is missing some expected fields: {', '.join(missing_fields)}")
-                else:
-                    logger.info(f"✅ [LanceDB] Table '{TARGET_TABLE_NAME}' contains all required fields")
-                
-                # Make sure we have a valid table object with the 'add' method
-                if not hasattr(table, 'add'):
-                    logger.error(f"❌ [LanceDB] Table object for '{TARGET_TABLE_NAME}' is missing 'add' method - not a valid LanceTable")
-                    return None
-                
-                logger.info(f"✅ [LanceDB] Successfully opened table '{TARGET_TABLE_NAME}' for writing")
+                logger.info(f"✅ [LanceDB] Successfully opened table '{REQUIREMENTS_TABLE}' for writing")
                 return table
             except Exception as e:
-                logger.error(f"❌ [LanceDB] Error accessing existing table '{TARGET_TABLE_NAME}': {str(e)}")
+                logger.error(f"❌ [LanceDB] Error accessing existing table '{REQUIREMENTS_TABLE}': {str(e)}")
                 logger.error(f"❌ [LanceDB] Traceback: {traceback.format_exc()}")
                 return None
         else:
-            logger.error(f"❌ [LanceDB] Table '{TARGET_TABLE_NAME}' does not exist in the database and must be created externally")
-            logger.error(f"❌ [LanceDB] Available tables: {', '.join(table_names) if table_names else 'None'}")
-            return None
+            # Create the table if it doesn't exist
+            logger.info(f"🆕 [LanceDB] Creating new requirements table: '{REQUIREMENTS_TABLE}'")
+            try:
+                table = db.create_table(REQUIREMENTS_TABLE, schema=Requirement)
+                logger.info(f"✅ [LanceDB] Successfully created table '{REQUIREMENTS_TABLE}'")
+                return table
+            except Exception as e:
+                logger.error(f"❌ [LanceDB] Error creating table '{REQUIREMENTS_TABLE}': {str(e)}")
+                logger.error(f"❌ [LanceDB] Traceback: {traceback.format_exc()}")
+                return None
             
     except Exception as e:
         logger.error(f"❌ [LanceDB] Error setting up requirements table: {str(e)}")
@@ -416,10 +408,172 @@ def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Age
 def load_embedding_model():
     """Load the embedding model."""
     try:
+        # Set up sentence-transformers logging to include our script prefix
+        st_logger = logging.getLogger('sentence_transformers')
+        for handler in st_logger.handlers:
+            st_logger.removeHandler(handler)
+        st_logger.addHandler(logging.StreamHandler())
+        st_logger.setLevel(logging.INFO)
+        # Wrap the sentence-transformers logger with our ScriptLogger
+        st_logger = ScriptLogger(st_logger, "[Extract_Requirements] ")
+        
         model = sentence_transformers.SentenceTransformer(EMBEDDING_MODEL)
         return model
     except Exception as e:
         logger.error(f"❌ Error loading embedding model: {e}")
+        return None
+
+def get_document_chunks(db, document_id: str):
+    """
+    Get all chunks for a document from the LanceDB document_chunks table.
+    
+    Args:
+        db: LanceDB connection
+        document_id: The document ID to get chunks for
+    
+    Returns:
+        DataFrame containing all chunks for the document
+    """
+    if not db:
+        logger.error("❌ No database connection")
+        return None
+    
+    try:
+        # Check if table exists
+        logger.info(f"Checking if document_chunks table exists in database")
+        table_names = db.table_names()
+        logger.info(f"Available tables in database: {', '.join(table_names)}")
+        
+        if DOCUMENT_CHUNKS_TABLE not in table_names:
+            logger.error(f"❌ Document chunks table '{DOCUMENT_CHUNKS_TABLE}' does not exist")
+            return None
+        
+        # Open table
+        logger.info(f"Opening document_chunks table...")
+        table = db.open_table(DOCUMENT_CHUNKS_TABLE)
+        
+        # Query chunks for document
+        # For LanceDB 0.22.0, use pandas filtering
+        try:
+            logger.info(f"Reading all chunks from table and filtering for document_id: {document_id}")
+            all_chunks = table.to_pandas()
+            
+            if all_chunks.empty:
+                logger.warning(f"⚠️ Chunks table is empty - no chunks found at all")
+                return None
+                
+            # Debug - show the columns in the table
+            logger.info(f"Columns in chunks table: {list(all_chunks.columns)}")
+            
+            # Debug - check if document_id column exists
+            if 'document_id' not in all_chunks.columns:
+                logger.error(f"❌ 'document_id' column not found in chunks table. Available columns: {list(all_chunks.columns)}")
+                return None
+                
+            # Debug - Show all unique document IDs
+            unique_docs = all_chunks['document_id'].unique()
+            logger.info(f"Documents in chunks table: {unique_docs}")
+            
+            results = all_chunks[all_chunks['document_id'] == document_id]
+            
+            if results.empty:
+                logger.warning(f"⚠️ No chunks found for document '{document_id}'")
+                return None
+            
+            logger.info(f"✅ Found {len(results)} chunks for document '{document_id}'")
+            return results
+        except Exception as e:
+            logger.error(f"❌ Error querying document chunks: {e}")
+            return None
+    
+    except Exception as e:
+        logger.error(f"❌ Error querying document chunks: {e}")
+        return None
+
+def get_document_info(db, document_id: str):
+    """
+    Get document info from the LanceDB documents table.
+    
+    Args:
+        db: LanceDB connection
+        document_id: The document ID to get info for
+    
+    Returns:
+        DataFrame containing document info (first page is sufficient)
+    """
+    if not db:
+        logger.error("❌ No database connection")
+        return None
+    
+    try:
+        # Check if table exists
+        if DOCUMENTS_TABLE not in db.table_names():
+            logger.error(f"❌ Documents table '{DOCUMENTS_TABLE}' does not exist")
+            return None
+        
+        # Open table
+        table = db.open_table(DOCUMENTS_TABLE)
+        
+        # Query first page of document using to_pandas() for LanceDB 0.22.0
+        try:
+            all_docs = table.to_pandas()
+            results = all_docs[all_docs['pdf_identifier'] == document_id]
+            
+            if results.empty:
+                logger.warning(f"⚠️ No document info found for '{document_id}'")
+                return None
+            
+            return results.iloc[0]
+        except Exception as e:
+            logger.error(f"❌ Error querying document info: {e}")
+            return None
+    
+    except Exception as e:
+        logger.error(f"❌ Error querying document info: {e}")
+        return None
+
+def get_existing_requirements_for_chunk(db, chunk_id: str):
+    """
+    Get existing requirements for a specific chunk.
+    
+    Args:
+        db: LanceDB connection
+        chunk_id: The chunk ID to get requirements for
+    
+    Returns:
+        DataFrame containing requirements for the chunk
+    """
+    if not db:
+        logger.error("❌ No database connection")
+        return None
+    
+    # Check if table exists
+    if REQUIREMENTS_TABLE not in db.table_names():
+        logger.info(f"ℹ️ Requirements table '{REQUIREMENTS_TABLE}' does not exist yet")
+        return None
+    
+    try:
+        # Open table
+        table = db.open_table(REQUIREMENTS_TABLE)
+        
+        # Query requirements for chunk
+        # For LanceDB 0.22.0, use pandas filtering
+        try:
+            all_reqs = table.to_pandas()
+            results = all_reqs[all_reqs['source_chunk_id'] == chunk_id]
+            
+            if results.empty:
+                logger.info(f"ℹ️ No existing requirements found for chunk '{chunk_id}'")
+                return None
+            
+            logger.info(f"✅ Found {len(results)} existing requirements for chunk '{chunk_id}'")
+            return results
+        except Exception as e:
+            logger.error(f"❌ Error querying existing requirements: {e}")
+            return None
+    
+    except Exception as e:
+        logger.error(f"❌ Error querying existing requirements: {e}")
         return None
 
 def process_single_document(doc_id: str):
@@ -437,32 +591,22 @@ def process_single_document(doc_id: str):
         logger.error(f"❌ Failed to connect to LanceDB database")
         return
     
-    # Step 2: Get all pages for the document
-    logger.info(f"🔄 Opening source table '{SOURCE_TABLE_NAME}' to retrieve document pages...")
-    try:
-        table = db.open_table(SOURCE_TABLE_NAME)
-    except Exception as e:
-        logger.error(f"❌ Failed to open source table '{SOURCE_TABLE_NAME}': {e}")
-        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    # Step 2: Get document info and check tables exist
+    document_info = get_document_info(db, doc_id)
+    if document_info is None:
+        logger.error(f"❌ Document {doc_id} not found in database")
         return
-        
-    logger.info(f"🔄 Querying records for document ID: {doc_id}...")
-    try:
-        # Get all pages for the document from LanceDB 
-        records = table.to_pandas()
-        doc_pages = records[records["pdf_identifier"] == doc_id]
-        
-        if doc_pages.empty:
-            logger.error(f"❌ No pages found for document ID '{doc_id}' in table '{SOURCE_TABLE_NAME}'")
-            return
-        
-        logger.info(f"✅ Found {len(doc_pages)} pages for document '{doc_id}'")
-    except Exception as e:
-        logger.error(f"❌ Error querying document pages from LanceDB: {e}")
-        logger.error(f"❌ Traceback: {traceback.format_exc()}")
+    
+    document_title = document_info.get('document_title', doc_id)
+    logger.info(f"✅ Found document info: {document_title}")
+    
+    # Step 3: Get document chunks
+    chunks_df = get_document_chunks(db, doc_id)
+    if chunks_df is None or chunks_df.empty:
+        logger.error(f"❌ No chunks found for document {doc_id}")
         return
-        
-    # Step 3: Load embedding model
+    
+    # Step 4: Load embedding model
     logger.info(f"🔄 Loading embedding model '{EMBEDDING_MODEL}'...")
     embedding_model = load_embedding_model()
     if not embedding_model:
@@ -470,35 +614,13 @@ def process_single_document(doc_id: str):
         return
     logger.info(f"✅ Successfully loaded embedding model: {EMBEDDING_MODEL}")
     
-    # Step 4: Get requirements table
-    logger.info(f"🔄 Accessing requirements table '{TARGET_TABLE_NAME}'...")
+    # Step 5: Get requirements table
+    logger.info(f"🔄 Accessing requirements table '{REQUIREMENTS_TABLE}'...")
     requirements_table = get_or_create_requirements_table(db)
-    
-    # DEBUG: Check if we actually got a table back and examine its schema
-    if requirements_table is not None:
-        try:
-            schema = requirements_table.schema
-            logger.info(f"🔍 Requirements table schema: {schema}")
-            
-            # Fixed: PyArrow Schema uses field() method to get fields by index, not a fields attribute
-            field_names = []
-            for i in range(len(schema)):
-                field = schema.field(i)
-                field_names.append(field.name)
-                
-            logger.info(f"🔍 Available fields in table: {field_names}")
-        except Exception as e:
-            logger.error(f"❌ Error examining table schema: {e}")
-            logger.error(f"❌ Traceback: {traceback.format_exc()}")
-    
-    # The table is correctly returned but somehow the condition is failing
-    # Force it to True if we have a valid LanceTable object
-    table_exists = requirements_table is not None and hasattr(requirements_table, 'add')
-    
-    if not table_exists:
-        logger.error(f"❌ Failed to get requirements table '{TARGET_TABLE_NAME}'")
+    if not requirements_table:
+        logger.error(f"❌ Failed to get requirements table '{REQUIREMENTS_TABLE}'")
         return
-    logger.info(f"✅ Successfully accessed requirements table '{TARGET_TABLE_NAME}'")
+    logger.info(f"✅ Successfully accessed requirements table '{REQUIREMENTS_TABLE}'")
     
     # Track all extracted requirements for batch processing
     all_requirements = []
@@ -506,32 +628,69 @@ def process_single_document(doc_id: str):
     # Track how many requirements we save in total
     total_requirements = 0
     
+    # Create a software analysis agent for later batch processing
+    software_agent = create_agent(
+        response_model=BatchSoftwareAnalysis,
+        description=SOFTWARE_AGENT_DESCRIPTION
+    )
+    
     try:
-        # For each page in the document
-        for index, page in doc_pages.iterrows():
-            page_number = page.get('page_number')
-            logger.info(f"🔄 Processing page {page_number}/{len(doc_pages)} of document '{doc_id}'")
+        # Sort chunks by index
+        sorted_chunks = chunks_df.sort_values(by="chunk_index")
+        
+        # Process each chunk
+        for index, chunk in sorted_chunks.iterrows():
+            chunk_id = chunk.get('chunk_id')
+            chunk_text = chunk.get('chunk_text', '')
+            chunk_index = chunk.get('chunk_index', index)
+            is_duplicate = chunk.get('is_duplicate', False)
+            duplicate_of = chunk.get('duplicate_of')
             
-            # Get the content field - try different column names depending on LanceDB schema
-            page_content = page.get('page_content', page.get('md_content', page.get('processed_content', '')))
-            if not page_content:
-                logger.warning(f"⚠️ No content found for page {page_number} of document '{doc_id}'")
+            logger.info(f"🔄 Processing chunk {chunk_index+1}/{len(sorted_chunks)}: {chunk_id}")
+            
+            # If this chunk is a duplicate, get requirements from the original chunk
+            if is_duplicate and duplicate_of:
+                logger.info(f"ℹ️ Chunk {chunk_id} is a duplicate of {duplicate_of}, reusing requirements")
+                existing_reqs = get_existing_requirements_for_chunk(db, duplicate_of)
+                
+                if existing_reqs is not None and not existing_reqs.empty:
+                    # Update source_chunk_id to point to the new chunk
+                    for i, req in existing_reqs.iterrows():
+                        req_data = req.to_dict()
+                        req_data['source_chunk_id'] = chunk_id
+                        all_requirements.append(req_data)
+                    
+                    logger.info(f"✅ Reused {len(existing_reqs)} requirements from duplicate chunk")
+                    continue
+                else:
+                    logger.warning(f"⚠️ No requirements found for original chunk {duplicate_of}, will extract new ones")
+            
+            # Check if there are already requirements for this chunk
+            existing_reqs = get_existing_requirements_for_chunk(db, chunk_id)
+            if existing_reqs is not None and not existing_reqs.empty:
+                logger.info(f"ℹ️ {len(existing_reqs)} existing requirements found for chunk {chunk_id}, skipping extraction")
+                continue
+            
+            # Extract requirements from this chunk
+            if not chunk_text:
+                logger.warning(f"⚠️ Empty chunk text for {chunk_id}, skipping")
                 continue
                 
-            logger.info(f"🔄 Extracting requirements from page {page_number} (content length: {len(page_content)} chars)")
+            logger.info(f"🔄 Extracting requirements from chunk {chunk_id} (content length: {len(chunk_text)} chars)")
             
             try:
-                # Extract requirements from this page
+                # Extract requirements from this chunk
                 requirements_data = extract_requirements_from_text(
-                    text=page_content,
+                    text=chunk_text,
                     document_id=doc_id,
-                    document_name=doc_id
+                    document_name=document_title,
+                    chunk_id=chunk_id
                 )
                 
                 # Process extracted requirements
                 if hasattr(requirements_data, 'requirements') and requirements_data.requirements:
                     req_count = len(requirements_data.requirements)
-                    logger.info(f"🔄 Found {req_count} requirements on page {page_number}, preparing to process...")
+                    logger.info(f"🔄 Found {req_count} requirements in chunk {chunk_id}, preparing to process...")
                     
                     # Create requirement records for each extracted requirement
                     for i, req in enumerate(requirements_data.requirements):
@@ -539,16 +698,18 @@ def process_single_document(doc_id: str):
                             # Create embedding for the requirement
                             logger.info(f"🔄 Creating embedding for requirement {i+1}/{req_count}: {req.id} - '{req.title}'")
                             req_text = f"{req.title}\n{req.description}"
-                            embedding = embedding_model.encode([req_text])[0].tolist()
+                            # Prepend instruction for e5 models
+                            embedding_text = f"passage: {req_text}"
+                            embedding = embedding_model.encode(embedding_text).tolist()
                             
                             # Create a record for LanceDB
                             timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
                             
-                            # Use only source_text
+                            # Correctly set the source_chunk_id field
                             req_data = {
                                 "requirement_id": req.id,
                                 "document_id": doc_id,
-                                "page_number": page_number,
+                                "page_number": None,  # Will be updated in batch processing
                                 "section": req.section,
                                 "title": req.title,
                                 "description": req.description,
@@ -556,23 +717,24 @@ def process_single_document(doc_id: str):
                                 "is_software_related": False,  # Default values
                                 "software_confidence": 0.0,    
                                 "software_rationale": "",    
-                                "source_text": req.source_text,  # Just use source_text
+                                "source_text": req.source_text,
+                                "source_chunk_id": req.source_chunk_id or chunk_id,
                                 "created_timestamp": timestamp,
                                 "embedding": embedding,
                                 "is_duplicate": False,
                                 "duplicate_of": None
                             }
                             
-                            # Add to list of all requirements for deduplication
+                            # Add to list of all requirements for batch processing
                             all_requirements.append(req_data)
                         except Exception as e:
                             logger.error(f"❌ Error processing requirement {req.id}: {str(e)}")
                             logger.error(f"❌ Traceback: {traceback.format_exc()}")
                             continue
                 else:
-                    logger.info(f"ℹ️ No requirements found on page {page_number} of document '{doc_id}'")
+                    logger.info(f"ℹ️ No requirements found in chunk {chunk_id}")
             except Exception as e:
-                logger.error(f"❌ Error processing page {page_number}: {str(e)}")
+                logger.error(f"❌ Error processing chunk {chunk_id}: {str(e)}")
                 logger.error(f"❌ Traceback: {traceback.format_exc()}")
         
         # Check for duplicate requirements if deduplication module is available
@@ -582,19 +744,44 @@ def process_single_document(doc_id: str):
             
             logger.info(f"✅ Deduplication complete: {len(unique_requirements)} unique, {len(duplicate_info)} duplicates")
             
+            # Batch process requirements for software relation
+            if unique_requirements:
+                # Convert requirements to AtomicRequirement objects for the agent
+                atomic_reqs = []
+                for req_data in unique_requirements:
+                    atomic_req = AtomicRequirement(
+                        id=req_data.get("requirement_id", ""),
+                        title=req_data.get("title", ""),
+                        description=req_data.get("description", ""),
+                        source_text=req_data.get("source_text", ""),
+                        requirement_rationale=req_data.get("requirement_rationale", ""),
+                        section=req_data.get("section", ""),
+                        page_number=req_data.get("page_number"),
+                        source_chunk_id=req_data.get("source_chunk_id", "")
+                    )
+                    atomic_reqs.append(atomic_req)
+                
+                # Analyze for software relation
+                logger.info(f"🔄 Analyzing {len(atomic_reqs)} requirements for software relation...")
+                software_results = analyze_requirements_batch(atomic_reqs, software_agent)
+                
+                # Update requirements with software analysis
+                for req_data in unique_requirements:
+                    req_id = req_data.get("requirement_id")
+                    if req_id in software_results:
+                        analysis = software_results[req_id]
+                        req_data["is_software_related"] = analysis.is_software_related
+                        req_data["software_confidence"] = analysis.confidence
+                        req_data["software_rationale"] = analysis.rationale
+            
             # Save unique requirements to LanceDB
-            logger.info(f"🔄 Saving {len(all_requirements)} requirements to LanceDB...")
+            logger.info(f"🔄 Saving {len(unique_requirements)} requirements to LanceDB...")
             saved_count = 0
             
-            for req_data in all_requirements:
+            for req_data in unique_requirements:
                 try:
                     req_id = req_data.get('requirement_id')
-                    
-                    # If it's a duplicate, log it but still save with the duplicate flag
-                    if req_id and any(duplicate_info.get(i, {}).get('duplicate_id') == req_id for i in duplicate_info):
-                        logger.info(f"ℹ️ Requirement {req_id} is a duplicate, saving with duplicate flag")
-                    
-                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB table '{TARGET_TABLE_NAME}'...")
+                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB...")
                     
                     # Add to LanceDB
                     requirements_table.add([req_data])
@@ -603,6 +790,28 @@ def process_single_document(doc_id: str):
                 except Exception as e:
                     logger.error(f"❌ Error saving requirement {req_data.get('requirement_id')}: {str(e)}")
                     logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            
+            # Save duplicates with the duplicate flag
+            if duplicate_info:
+                logger.info(f"🔄 Saving {len(duplicate_info)} duplicate requirements with duplicate flag...")
+                
+                for idx, dup_info in duplicate_info.items():
+                    idx = int(idx)
+                    if idx < len(all_requirements):
+                        req_data = all_requirements[idx]
+                        req_data["is_duplicate"] = True
+                        req_data["duplicate_of"] = dup_info.get("duplicate_id")
+                        
+                        try:
+                            req_id = req_data.get('requirement_id')
+                            logger.info(f"🔄 Saving duplicate requirement {req_id} (duplicate of {dup_info.get('duplicate_id')})...")
+                            
+                            # Add to LanceDB
+                            requirements_table.add([req_data])
+                            saved_count += 1
+                            logger.info(f"✅ Successfully saved duplicate requirement {req_id}")
+                        except Exception as e:
+                            logger.error(f"❌ Error saving duplicate requirement: {str(e)}")
             
             total_requirements = saved_count
         else:
@@ -613,7 +822,7 @@ def process_single_document(doc_id: str):
             for req_data in all_requirements:
                 try:
                     req_id = req_data.get('requirement_id')
-                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB table '{TARGET_TABLE_NAME}'...")
+                    logger.info(f"🔄 Saving requirement {req_id} to LanceDB...")
                     
                     # Add to LanceDB
                     requirements_table.add([req_data])
@@ -630,5 +839,16 @@ def process_single_document(doc_id: str):
         logger.error(f"❌ Traceback: {traceback.format_exc()}")
     
     # Log completion
-    logger.info(f"✅ Extraction complete. Successfully processed {total_requirements} requirements from {len(doc_pages)} pages of document '{doc_id}'")
+    logger.info(f"✅ Extraction complete. Successfully processed {total_requirements} requirements from document '{doc_id}'")
     _00_utils.print_token_usage() # Add token usage printing here
+
+if __name__ == "__main__":
+    # Simple call when run directly
+    if len(sys.argv) > 1:
+        doc_id = sys.argv[1]
+        logger.info(f"Processing document: {doc_id}")
+        process_single_document(doc_id)
+    else:
+        logger.error("Please provide a document ID as argument")
+        print("Usage: python extract_requirements.py <document_id>")
+        sys.exit(1)

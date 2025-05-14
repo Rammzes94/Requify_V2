@@ -41,7 +41,7 @@ The system maintains full traceability between documents and requirements, with 
 Process a document through the entire pipeline:
 
 ```bash
-python 02_src/00_pipeline_controller.py --input 01_input/raw/your_document.pdf
+python _02_src/pipeline_controller.py --input _01_input/raw/your_document.pdf
 ```
 
 ### Processing Documents in a Directory
@@ -49,7 +49,7 @@ python 02_src/00_pipeline_controller.py --input 01_input/raw/your_document.pdf
 Process one document from a directory (will choose the first PDF found):
 
 ```bash
-python 02_src/00_pipeline_controller.py --input-dir 01_input/raw
+python _02_src/pipeline_controller.py --input-dir _01_input/raw
 ```
 
 ### Individual Pipeline Steps
@@ -58,32 +58,32 @@ If needed, you can run individual steps:
 
 1. Parse a PDF:
    ```bash
-   python 02_src/02_parsing/stable_pdf_parsing.py
+   python _02_src/_02_parsing/stable_pdf_parsing.py
    ```
 
 2. Save parsed document to LanceDB:
    ```bash
-   python 02_src/02_parsing/stable_save_to_lancedb.py
+   python _02_src/_02_parsing/stable_save_to_lancedb.py
    ```
 
 3. Extract requirements:
    ```bash
-   python 02_src/04_extract_reqs/extract_requirements.py
+   python _02_src/_04_extract_reqs/extract_requirements.py
    ```
 
 ## Directory Structure
 
-- `01_input/`: Input documents
+- `_01_input/`: Input documents
   - `raw/`: Raw input documents
   - `processed/`: Processed documents (temporary storage)
-- `02_src/`: Source code
-  - `00_pipeline_controller.py`: Main pipeline controller
-  - `01_ingestion/`: Document ingestion modules
-  - `02_parsing/`: Document parsing modules
-  - `03_docs_deduplication/`: Document deduplication modules
-  - `04_extract_reqs/`: Requirements extraction modules
-  - `05_reqs_deduplication/`: Requirements deduplication modules
-- `03_output/`: Output data
+- `_02_src/`: Source code
+  - `pipeline_controller.py`: Main pipeline controller
+  - `_01_ingestion/`: Document ingestion modules
+  - `_02_parsing/`: Document parsing modules
+  - `_03_docs_deduplication/`: Document deduplication modules
+  - `_04_extract_reqs/`: Requirements extraction modules
+  - `_05_reqs_deduplication/`: Requirements deduplication modules
+- `_03_output/`: Output data
   - `lancedb/`: LanceDB vector database
   - `parsed_content/`: Parsed document content
   - `pdf_images/`: Images extracted from PDFs

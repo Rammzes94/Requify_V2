@@ -53,7 +53,7 @@ logger = ScriptLogger(_00_utils.setup_logging(), "[Reqs_Deduplication] ")
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "03_output"
+OUTPUT_DIR_BASE = "_03_output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 # Construct path relative to project root
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)

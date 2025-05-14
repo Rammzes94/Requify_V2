@@ -57,7 +57,7 @@ def excel_to_markdown_table(file_path, sheet_name=None):
 # === Example usage ===
 path = ""  # Replace with your Excel file
 markdown_output = excel_to_markdown_table(path)
-output_file = "02_src/02_parsing/helpdesk_export_openpyxl.md"
+output_file = "_02_src/_02_parsing/helpdesk_export_openpyxl.md"
 
 with open(output_file, "w", encoding="utf-8") as md_file:
     md_file.write(markdown_output)

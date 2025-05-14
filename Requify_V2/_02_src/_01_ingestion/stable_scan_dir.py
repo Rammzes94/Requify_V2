@@ -25,7 +25,7 @@ _00_utils.setup_project_directory()
 # Allowed file extensions for our application
 allowed_extensions = ['.pdf', '.xlsx', '.xls', '.xlsm', '.pptx', '.docx', '.doc', '.png', '.jpg', '.jpeg', '.txt']
 # Define the directory containing the files to check.
-input_directory = '01_input/raw'
+input_directory = '_01_input/raw'
 
 files = []
 for ext in allowed_extensions:
@@ -136,10 +136,10 @@ for ext, files in filtered_files_by_extension.items():
         print(f"  {file['filename']}")
 
 
-# Save the filtered files by extension to a JSON file in the 03_output directory
-# Ensure the 03_output directory exists
+# Save the filtered files by extension to a JSON file in the _03_output directory
+# Ensure the _03_output directory exists
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-output_dir = os.path.join(project_root, "03_output")
+output_dir = os.path.join(project_root, "_03_output")
 os.makedirs(output_dir, exist_ok=True)
 
 output_json_path = os.path.join(output_dir, "filtered_files_by_extension.json")

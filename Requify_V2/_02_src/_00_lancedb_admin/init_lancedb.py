@@ -1,9 +1,11 @@
 """
 This script initializes and verifies the LanceDB tables used in the requirements extraction pipeline:
 1. 'documents' - stores parsed PDF documents with their content and embeddings
-2. 'requirements' - stores extracted requirements with metadata and embeddings
+2. 'document_chunks' - stores document chunks with their content and embeddings  
+3. 'requirements' - stores extracted requirements with metadata and embeddings
+4. 'file_hashes' - stores file hashes for duplicate detection
 
-It ensures both tables are set up with the correct schemas before any data processing takes place.
+It ensures all tables are set up with the correct schemas before any data processing takes place.
 """
 import os
 import sys
@@ -14,7 +16,7 @@ from typing import Optional, List
 from pydantic import Field
 from dotenv import load_dotenv
 
-# Add the parent directory (02_src) to the system path to allow importing _00_utils
+# Add the parent directory (_02_src) to the system path to allow importing _00_utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory() # Ensures working directory is project root
@@ -35,11 +37,13 @@ logger = ScriptLogger(_00_utils.setup_logging(), "[LanceDB_Admin] ")
 
 # --- Constants ---
 # These should align with constants used in other scripts that access these tables
-OUTPUT_DIR_BASE = "03_output"
+OUTPUT_DIR_BASE = "_03_output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Relative to project root
-REQUIREMENTS_TABLE_NAME = "requirements"
 DOCUMENTS_TABLE_NAME = "documents"
+DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
+REQUIREMENTS_TABLE_NAME = "requirements"
+FILE_HASHES_TABLE_NAME = "file_hashes"
 EMBEDDING_DIMENSION = 1024  # This must be consistent with the embedding model used
 
 # --- LanceDB Schema Definition for the 'documents' table ---
@@ -58,9 +62,25 @@ class PDFPage(LanceModel):
     embedding: Vector(EMBEDDING_DIMENSION) # Text embedding
     image_b64: Optional[str] # Base64 encoded image of the page
 
+# --- LanceDB Schema Definition for the 'document_chunks' table ---
+class DocumentChunk(LanceModel):
+    chunk_id: str
+    document_id: str
+    chunk_index: int
+    start_offset: int
+    end_offset: int
+    chunk_text: str
+    token_count: int
+    embedding: Vector(EMBEDDING_DIMENSION)
+    is_duplicate: bool = False
+    duplicate_of: Optional[str] = None
+    is_updated: bool = False
+    previous_chunk_id: Optional[str] = None
+    timestamp: str
+
 # --- LanceDB Schema Definition for the 'requirements' table ---
 class Requirement(LanceModel):
-    # Fields based on 02_src/04_extract_reqs/extract_requirements.py
+    # Fields based on _02_src/_04_extract_reqs/extract_requirements.py
     requirement_id: str = Field(..., description="Unique identifier for this requirement")
     document_id: str = Field(..., description="ID of the source document")
     page_number: Optional[int] = Field(default=None, description="Page number in the source document, if applicable")
@@ -72,12 +92,22 @@ class Requirement(LanceModel):
     software_confidence: float = Field(..., description="Confidence level (0.0 to 1.0) of the software-related analysis")
     software_rationale: str = Field(..., description="Explanation of why this requirement is or is not software-related")
     source_text: str = Field(..., description="The exact text snippet from the source document that directly led to this requirement's extraction")
+    source_chunk_id: str = Field(..., description="ID of the document chunk this requirement was extracted from")
     created_timestamp: str = Field(..., description="Timestamp (YYYY-MM-DD HH:MM:SS) of when the requirement was extracted or created")
     embedding: Vector(EMBEDDING_DIMENSION) = Field(..., description=f"Embedding vector of dimension {EMBEDDING_DIMENSION}")
 
     # New fields for deduplication tracking
     is_duplicate: bool = Field(default=False, description="Flag indicating if this requirement is considered a duplicate of another (canonical) requirement")
     duplicate_of: Optional[str] = Field(default=None, description="If is_duplicate is True, this field stores the requirement_id of the canonical version")
+
+# --- LanceDB Schema Definition for the 'file_hashes' table ---
+class FileHash(LanceModel):
+    file_path: str = Field(..., description="Full path to the file")
+    file_name: str = Field(..., description="Name of the file")
+    file_size: int = Field(..., description="Size of the file in bytes") 
+    md5_hash: str = Field(..., description="MD5 hash of the file content")
+    sha256_hash: str = Field(..., description="SHA256 hash of the file content")
+    timestamp: str = Field(..., description="Timestamp when the file was processed")
 
 def create_or_verify_table(db, table_name, schema_model):
     """
@@ -120,7 +150,7 @@ def create_or_verify_table(db, table_name, schema_model):
         logger.info(f"Table '{table_name}' does not exist. Attempting to create it now...")
         try:
             table = db.create_table(table_name, schema=schema_model)
-            logger.info(f"✅ Successfully created table '{table_name}'. Schema: {table.schema}")
+            logger.info(f"✅ Successfully created table '{table_name}'.")
             return True
         except Exception as e:
             logger.error(f"❌ Failed to create table '{table_name}': {e}", exc_info=True)
@@ -128,7 +158,7 @@ def create_or_verify_table(db, table_name, schema_model):
 
 def main():
     """
-    Main function to connect to LanceDB and create/verify both tables.
+    Main function to connect to LanceDB and create/verify all tables.
     """
     logger.info(f"🔄 Script started: Initializing LanceDB tables...")
 
@@ -152,22 +182,25 @@ def main():
         logger.error(f"❌ Failed to connect to LanceDB at {absolute_lancedb_path}: {e}", exc_info=True)
         return
 
-    # Create or verify documents table
-    documents_success = create_or_verify_table(db, DOCUMENTS_TABLE_NAME, PDFPage)
-    if documents_success:
-        logger.info(f"✅ '{DOCUMENTS_TABLE_NAME}' table is ready for use.")
-    else:
-        logger.warning(f"⚠️ Issues detected with '{DOCUMENTS_TABLE_NAME}' table.")
-        
-    # Create or verify requirements table
-    requirements_success = create_or_verify_table(db, REQUIREMENTS_TABLE_NAME, Requirement)
-    if requirements_success:
-        logger.info(f"✅ '{REQUIREMENTS_TABLE_NAME}' table is ready for use.")
-    else:
-        logger.warning(f"⚠️ Issues detected with '{REQUIREMENTS_TABLE_NAME}' table.")
+    # Create or verify all tables
+    tables = {
+        DOCUMENTS_TABLE_NAME: PDFPage,
+        DOCUMENT_CHUNKS_TABLE_NAME: DocumentChunk,
+        REQUIREMENTS_TABLE_NAME: Requirement,
+        FILE_HASHES_TABLE_NAME: FileHash
+    }
+    
+    all_success = True
+    for table_name, schema_model in tables.items():
+        success = create_or_verify_table(db, table_name, schema_model)
+        if success:
+            logger.info(f"✅ '{table_name}' table is ready for use.")
+        else:
+            logger.warning(f"⚠️ Issues detected with '{table_name}' table.")
+            all_success = False
         
     # Final status
-    if documents_success and requirements_success:
+    if all_success:
         logger.info(f"✅ All LanceDB tables initialized successfully.")
     else:
         logger.warning(f"⚠️ Some issues were detected during table initialization. Review logs above.")
