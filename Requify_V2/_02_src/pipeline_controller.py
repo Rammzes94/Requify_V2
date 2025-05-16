@@ -5,7 +5,7 @@ This script controls the document processing pipeline, orchestrating the end-to-
 1. Perform initial hash-based deduplication to filter out exact duplicates
 2. Parse PDF documents to extract text and images
 3. Check for document-level duplicates before saving to LanceDB
-4. Perform agentic chunking of document content
+4. Perform content-aligned chunking of document content
 5. Check for chunk-level duplicates and document updates
 6. Extract requirements from unique document chunks
 7. Check for duplicate requirements before saving
@@ -56,7 +56,7 @@ import file_hash_deduplication
 # Import PDF parsing module
 sys.path.append(os.path.join(os.path.dirname(__file__), '_02_parsing'))
 import stable_pdf_parsing
-import agentic_chunking
+import integrated_chunking
 
 # Import document deduplication modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '_03_docs_deduplication'))
@@ -87,7 +87,7 @@ MAX_STEP = 6  # Change this value to control how far the pipeline runs
 # Set to True to check without saving to database
 DRY_RUN = False
 
-def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: bool = False) -> bool:
+def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: bool = False, skip_hash_check: bool = False) -> bool:
     """
     Process a single document through the pipeline up to a specified step.
     
@@ -101,6 +101,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                   5 = Parse + Save to LanceDB + Chunk document
                   6 = Complete pipeline (default)
         dry_run: If True, performs checks but doesn't modify the database
+        skip_hash_check: If True, skips the hash-based duplicate check
         
     Returns:
         True if processing was successful up to the specified step, False otherwise
@@ -108,17 +109,18 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
     start_time = time.time()
     doc_name = os.path.basename(doc_path)
 
-    logger.info(f"🚀 Starting pipeline for document: {doc_name} (max_step={max_step}, dry_run={dry_run})")
+    logger.info(f"🚀 Starting pipeline for document: {doc_name} (max_step={max_step}, dry_run={dry_run}, skip_hash_check={skip_hash_check})")
 
     # Step 1: Hash-based deduplication
-    logger.info(f"Step 1: Performing hash-based duplicate check for {doc_name}")
-    is_duplicate, existing_file = file_hash_deduplication.check_file_duplicate(doc_path)
+    if not skip_hash_check:
+        logger.info(f"Step 1: Performing hash-based duplicate check for {doc_name}")
+        is_duplicate, existing_file = file_hash_deduplication.check_file_duplicate(doc_path)
 
-    if is_duplicate:
-        logger.info(f"❌ Document {doc_name} is an exact duplicate of {existing_file} (by hash). Aborting further processing.")
-        return True  # Successfully determined it's a duplicate, so pipeline "succeeded"
-    
-    logger.info(f"✅ Document {doc_name} passed hash-based duplicate check")
+        if is_duplicate:
+            logger.info(f"❌ Document {doc_name} is an exact duplicate of {existing_file} (by hash). Aborting further processing.")
+            return True  # Successfully determined it's a duplicate, so pipeline "succeeded"
+        
+        logger.info(f"✅ Document {doc_name} passed hash-based duplicate check")
     
     # If we only want to do the hash check, we're done
     if max_step == STEP_HASH_CHECK:
@@ -216,10 +218,10 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         logger.info(f"🏁 Pipeline completed at step {max_step} (Save to LanceDB only) for {doc_name}")
         return True
 
-    # Step 5: Perform agentic chunking and check for chunk-level duplicates
+    # Step 5: Perform content-aligned chunking with page-level deduplication
     logger.info(f"Step 5: Chunking document and checking for duplicate chunks")
     
-    # Load document text from combined JSON
+    # Load document text and pages from combined JSON
     try:
         import json
         with open(combined_json_path, 'r', encoding='utf-8') as f:
@@ -227,10 +229,21 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         
         # Extract document text (combine all page content)
         document_text = ""
+        
+        # Prepare page data for integrated_chunking
+        document_pages = []
+        
         for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
             md_content = page_info.get('md_content', '')
             if md_content:
                 document_text += md_content + "\n\n"
+                # Create page dictionary
+                document_pages.append({
+                    'md_content': md_content,
+                    'page_number': page_info.get('page_number', 0),
+                    'embedding': page_info.get('embedding', []),
+                    'pdf_identifier': doc_data.get('pdf_identifier', os.path.basename(doc_path))
+                })
         
         document_id = doc_data.get('pdf_identifier', os.path.basename(doc_path))
         
@@ -238,37 +251,20 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             logger.error(f"❌ Document has no text content to chunk")
             return False
             
-        # Process document for chunking
+        # Process document for chunking using integrated_chunking
         if dry_run:
             logger.info(f"🔍 Dry run mode - checking document chunks without saving")
-            # Just get the chunks to analyze without saving
-            chunks, duplicate_info, is_update = agentic_chunking.process_document_chunks(document_text, document_id)
-            
-            # Check if document is a complete duplicate at chunk level
-            unique_chunks = [c for c in chunks if c.chunk_id not in duplicate_info or not duplicate_info[c.chunk_id].get("is_duplicate", False)]
-            is_duplicate = len(unique_chunks) == 0 and len(chunks) > 0
-            
-            # Log results
-            if is_duplicate:
-                logger.info(f"📋 Document appears to be a complete duplicate at chunk level")
-            else:
-                logger.info(f"📊 Document chunking results:")
-                logger.info(f"   - Total chunks: {len(chunks)}")
-                logger.info(f"   - Duplicate chunks: {sum(1 for c in chunks if duplicate_info.get(c.chunk_id, {}).get('is_duplicate', False))}")
-                logger.info(f"   - Updated chunks: {sum(1 for c in chunks if duplicate_info.get(c.chunk_id, {}).get('is_updated', False))}")
-                logger.info(f"   - New chunks: {sum(1 for c in chunks if c.chunk_id not in duplicate_info)}")
-            
-            logger.info(f"✅ Dry run chunk check completed")
+            # TODO: Add dry run logic for integrated_chunking if needed
             chunk_success = True
         else:
-            # Actually process and save the document chunks
-            chunk_success, is_duplicate, document_info = agentic_chunking.process_and_save_document(document_text, document_id)
+            # Process document with integrated chunking, passing both text and page data
+            chunk_success = integrated_chunking.process_document(document_text, document_id, document_pages)
             
-            if is_duplicate:
-                logger.info(f"⏭️ Document {doc_name} is a complete duplicate at chunk level. No further processing needed.")
-                return True
+            if not chunk_success:
+                logger.error(f"❌ Agentic chunking failed for {doc_name}")
+                return False
                 
-            logger.info(f"✅ Document chunking completed: {document_info}")
+            logger.info(f"✅ Agentic chunking completed successfully")
             
     except Exception as e:
         logger.error(f"❌ Error during document chunking: {str(e)}")
@@ -303,24 +299,28 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
 
 
 def main():
-    """Run the pipeline with configurable options"""
-    parser = argparse.ArgumentParser(description="Document processing pipeline controller")
-    parser.add_argument("--doc_path", type=str, default=DEFAULT_DOC_PATH,
-                        help=f"Path to the document to process (default: {DEFAULT_DOC_PATH})")
-    parser.add_argument("--max_step", type=int, default=MAX_STEP, choices=[1, 2, 3, 4, 5, 6],
-                        help="Maximum step to run in the pipeline (default from MAX_STEP constant)")
-    parser.add_argument("--dry_run", action="store_true", default=DRY_RUN,
-                        help="Check but don't save to database (default from DRY_RUN constant)")
+    """Parse command-line arguments and run the pipeline."""
+    parser = argparse.ArgumentParser(description='Run the document processing pipeline.')
+    parser.add_argument('--doc_path', type=str, help='Path to the document to process')
+    parser.add_argument('--dir_path', type=str, help='Directory containing documents to process')
+    parser.add_argument('--max_step', type=int, default=STEP_EXTRACT_REQS, 
+                        help=f'Maximum step to run (1-{STEP_EXTRACT_REQS})')
+    parser.add_argument('--dry_run', action='store_true', 
+                        help='Perform checks without modifying the database')
+    parser.add_argument('--skip_hash_check', action='store_true',
+                        help='Skip the hash-based duplicate check (useful for testing)')
     
     args = parser.parse_args()
     
-    doc_path = args.doc_path
-    if not os.path.exists(doc_path):
-        logger.error(f"❌ Document not found: {doc_path}")
-        return 1
-
-    success = process_document(doc_path, max_step=args.max_step, dry_run=args.dry_run)
-    return 0 if success else 1
+    if not args.doc_path and not args.dir_path:
+        parser.error("Either --doc_path or --dir_path must be specified")
+    
+    if args.doc_path:
+        process_document(args.doc_path, args.max_step, args.dry_run, args.skip_hash_check)
+    elif args.dir_path:
+        process_directory(args.dir_path, args.max_step, args.dry_run)
+        
+    return True
 
 if __name__ == "__main__":
     sys.exit(main())

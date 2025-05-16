@@ -120,7 +120,6 @@ plain_agent = Agent(
     model=active_vision_model,
     markdown=True,
     debug_mode=False,
-    structured_outputs=False,
     description=(
         "You are an agent that extracts contents from an image that originated from a pdf file. "
         "You want to extract as much information as possible - not only focussing on text but also images, graphs, diagrams, etc. "
@@ -133,7 +132,6 @@ structured_agent = Agent(
     model=active_text_model,
     markdown=False,
     debug_mode=False,
-    structured_outputs=True,
     description=(
         "You are an agent that receives plain markdown text extracted from a PDF page. "
         "Your sole task is to generate and return a valid JSON object containing the following fields: "
@@ -151,7 +149,6 @@ document_title_agent = Agent(
     model=active_text_model,
     markdown=False,
     debug_mode=False,
-    structured_outputs=False,
     description=(
         "You are an agent that receives combined markdown text from the first pages of a PDF document and generates "
         "a concise, descriptive title that captures the main subject and purpose of the document. "

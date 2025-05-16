@@ -77,6 +77,8 @@ class DocumentChunk(LanceModel):
     is_updated: bool = False
     previous_chunk_id: Optional[str] = None
     timestamp: str
+    aligned_with_chunk_id: Optional[str] = None
+    aligned_with_document_id: Optional[str] = None
 
 # --- LanceDB Schema Definition for the 'requirements' table ---
 class Requirement(LanceModel):
