@@ -109,11 +109,19 @@ def ensure_index(db):
     global INDEX_INITIALIZED
     if INDEX_INITIALIZED or not db or LANCEDB_TABLE_NAME not in db.table_names():
         return
+    
     table = db.open_table(LANCEDB_TABLE_NAME)
+    
+    # Check if there are enough rows to build the index (minimum 256 required)
+    row_count = len(table.to_pandas())
+    
+    if row_count < 256:
+        logger.info(f"Not creating index: table has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+        return
+        
     table.create_index(
         metric="cosine",
-        vector_column_name="embedding",
-        wait_timeout=timedelta(minutes=5)
+        vector_column_name="embedding"
     )
     INDEX_INITIALIZED = True
     logger.info("Built ANN index on embedding column", extra={"icon": "✅"})
