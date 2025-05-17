@@ -21,6 +21,7 @@ import os
 import sys
 import logging
 import time
+import hashlib
 from typing import List, Dict, Tuple, Optional
 import numpy as np
 import pandas as pd
@@ -53,15 +54,19 @@ load_dotenv()
 OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
 LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
 LANCEDB_TABLE_NAME = "documents"
+CHUNKS_TABLE_NAME = "document_chunks"
 EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
-DUPLICATE_THRESHOLD = 0.99  # Cosine similarity threshold for duplicate pages
+DUPLICATE_THRESHOLD = 0.995  # Cosine similarity threshold for duplicate pages
 # LanceDB returns distance for cosine as 1 - similarity. So, distance_threshold = 1 - SIMILARITY_THRESHOLD
 DISTANCE_THRESHOLD = 1.0 - DUPLICATE_THRESHOLD
 SIMILAR_THRESHOLD = 0.90  # Threshold for similar pages
 MIN_PAGES_TO_SAMPLE = 3  # Minimum number of pages to sample for comparison
 MAX_PAGES_TO_SAMPLE = 5  # Maximum number of pages to sample for comparison
 VERSION_SIMILARITY_THRESHOLD = 0.9  # Threshold to consider a document as a new version
-INDEX_INITIALIZED = False
+INDEX_INITIALIZED_DOCS = False
+INDEX_INITIALIZED_CHUNKS = False
+CHUNK_DUPLICATION_THRESHOLD = 0.995  # Threshold for considering chunks as duplicates
+CHUNK_SIMILARITY_THRESHOLD = 0.90  # Threshold for considering chunks as similar
 
 # -------------------------------------------------------------------------------------
 # Helper Functions
@@ -104,27 +109,227 @@ def calculate_cosine_similarity(embed1: np.ndarray, embed2: np.ndarray) -> float
     return float(np.dot(norm_embed1, norm_embed2))
 
 
-def ensure_index(db):
+def create_chunk_hash(chunk_text: str) -> str:
+    """
+    Create a unique hash for a chunk of text.
+    """
+    return hashlib.md5(chunk_text.encode('utf-8')).hexdigest()
+
+
+def ensure_index(db, table_name=None):
     """Ensure ANN index exists on the embedding column."""
-    global INDEX_INITIALIZED
-    if INDEX_INITIALIZED or not db or LANCEDB_TABLE_NAME not in db.table_names():
+    global INDEX_INITIALIZED_DOCS, INDEX_INITIALIZED_CHUNKS
+    
+    if not db:
+        return
+        
+    if not table_name:
+        table_name = LANCEDB_TABLE_NAME
+        
+    if table_name not in db.table_names():
+        return
+        
+    # Check if this table's index is already initialized
+    if (table_name == LANCEDB_TABLE_NAME and INDEX_INITIALIZED_DOCS) or \
+       (table_name == CHUNKS_TABLE_NAME and INDEX_INITIALIZED_CHUNKS):
         return
     
-    table = db.open_table(LANCEDB_TABLE_NAME)
+    table = db.open_table(table_name)
     
     # Check if there are enough rows to build the index (minimum 256 required)
     row_count = len(table.to_pandas())
     
     if row_count < 256:
-        logger.info(f"Not creating index: table has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+        logger.info(f"Not creating index: {table_name} has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
         return
         
     table.create_index(
         metric="cosine",
         vector_column_name="embedding"
     )
-    INDEX_INITIALIZED = True
-    logger.info("Built ANN index on embedding column", extra={"icon": "✅"})
+    
+    if table_name == LANCEDB_TABLE_NAME:
+        INDEX_INITIALIZED_DOCS = True
+    elif table_name == CHUNKS_TABLE_NAME:
+        INDEX_INITIALIZED_CHUNKS = True
+        
+    logger.info(f"Built ANN index on embedding column for {table_name}", extra={"icon": "✅"})
+
+# -------------------------------------------------------------------------------------
+# Chunk Deduplication Logic
+# -------------------------------------------------------------------------------------
+def check_chunk_duplicates(
+    chunks_data: List[Dict], db_connection=None
+) -> Tuple[Dict[int, Dict[str, object]], List[int], Dict[int, Dict[str, object]]]:
+    """
+    Check if newly created chunks have duplicates in the existing database.
+    
+    Returns:
+        duplicate_chunks: dict mapping chunk idx -> {'similar_id', 'similarity', 'hash_match'}
+        new_chunks: list of new chunk indices
+        update_chunks: dict mapping chunk idx -> {'record_id', 'is_newer'}
+    """
+    start_time = time.time()
+    if not chunks_data:
+        logger.warning("Empty chunks data provided", extra={"icon": "⚠️"})
+        return {}, [], {}
+    
+    doc_id = chunks_data[0].get('document_id', 'unknown')
+    logger.info(f"Checking for duplicate chunks in document: {doc_id}", extra={"icon": "🔄"})
+    
+    # Connect to LanceDB
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    db = db_connection or connect_to_lancedb(lancedb_path)
+    
+    if not db or CHUNKS_TABLE_NAME not in db.table_names():
+        logger.info(
+            f"No existing chunks table found. All {len(chunks_data)} chunks are new.",
+            extra={"icon": "✅"}
+        )
+        return {}, list(range(len(chunks_data))), {}
+    
+    # Ensure index exists if we have enough chunks
+    ensure_index(db, CHUNKS_TABLE_NAME)
+    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+    
+    # Get a dataframe of all existing chunks for hash comparison
+    existing_chunks_df = chunks_table.to_pandas()
+    
+    duplicate_chunks = {}
+    new_chunks = []
+    update_chunks = {}
+    
+    for idx, chunk_data in enumerate(chunks_data):
+        chunk_id = chunk_data.get('chunk_id', f"chunk_{idx}")
+        chunk_text = chunk_data.get('chunk_text', '')
+        chunk_hash = create_chunk_hash(chunk_text)
+        
+        # Add hash to chunk data for future use
+        chunks_data[idx]['chunk_hash'] = chunk_hash
+        
+        # First check for hash-based duplicates (exact matches)
+        # Safely check for chunk_hash in dataframe columns
+        if 'chunk_hash' in existing_chunks_df.columns:
+            hash_matches = existing_chunks_df[existing_chunks_df['chunk_hash'] == chunk_hash]
+            
+            if not hash_matches.empty:
+                # We have an exact duplicate based on hash
+                match_id = hash_matches.iloc[0].get('chunk_id', '')
+                duplicate_chunks[idx] = {
+                    'similar_id': match_id,
+                    'similarity': 1.0,  # Perfect match
+                    'hash_match': True
+                }
+                logger.info(
+                    f"Chunk {chunk_id} has an exact hash match with {match_id}. Skipping.",
+                    extra={"icon": "⏩"}
+                )
+                continue
+        else:
+            logger.warning(f"No 'chunk_hash' column in existing chunks table. Skipping hash-based deduplication.", extra={"icon": "⚠️"})
+        
+        # If no hash match, check for vector similarity
+        embedding = chunk_data.get('embedding')
+        if embedding is None:
+            logger.warning(f"Chunk {chunk_id} has no embedding. Marking as new.", extra={"icon": "⚠️"})
+            new_chunks.append(idx)
+            continue
+            
+        if isinstance(embedding, list):
+            embedding = np.array(embedding)
+            
+        try:
+            # Use ANN search if we have an index, otherwise use simple filtering
+            if len(existing_chunks_df) >= 256:
+                df = (
+                    chunks_table.search(embedding)
+                        .metric("cosine")
+                        .limit(10)
+                        .nprobes(32)
+                        .refine_factor(5)
+                        .to_df()
+                )
+            else:
+                # For small tables, use regular filtering
+                results = []
+                for _, row in existing_chunks_df.iterrows():
+                    exist_emb = row.get('embedding')
+                    if exist_emb is not None:
+                        sim = calculate_cosine_similarity(embedding, np.array(exist_emb))
+                        if sim >= CHUNK_SIMILARITY_THRESHOLD:
+                            results.append((row, sim))
+                
+                # Sort by similarity in descending order
+                results.sort(key=lambda x: x[1], reverse=True)
+                df = pd.DataFrame([r[0] for r in results[:10]])
+                if not df.empty:
+                    # Add distance as 1 - similarity to match LanceDB format
+                    df['_distance'] = [1.0 - r[1] for r in results[:10]]
+            
+            if df.empty:
+                logger.info(f"No similar chunks found for {chunk_id}. It's new.", extra={"icon": "✅"})
+                new_chunks.append(idx)
+                continue
+                
+            found = False
+            for _, row in df.iterrows():
+                sim = 1.0 - row.get('_distance', 0)
+                existing_id = row.get('chunk_id', '')
+                existing_doc = row.get('document_id', '')
+                
+                # Same-doc update check
+                if existing_doc == doc_id and existing_id.split('_')[-1] == chunk_id.split('_')[-1]:
+                    exist_ts = pd.to_datetime(row.get('timestamp', None))
+                    new_ts = pd.to_datetime(chunk_data.get('timestamp', None))
+                    if new_ts and exist_ts and new_ts > exist_ts:
+                        update_chunks[idx] = {'record_id': row.name, 'is_newer': True}
+                        logger.info(
+                            f"Chunk {chunk_id} is a newer version. Marked for update.",
+                            extra={"icon": "🔄"}
+                        )
+                    else:
+                        duplicate_chunks[idx] = {
+                            'similar_id': existing_id,
+                            'similarity': sim,
+                            'hash_match': False
+                        }
+                        logger.info(
+                            f"Chunk {chunk_id} is an older version. Skipping.",
+                            extra={"icon": "⏩"}
+                        )
+                    found = True
+                    break
+                    
+                # Cross-doc duplicate based on similarity
+                if sim >= CHUNK_DUPLICATION_THRESHOLD:
+                    duplicate_chunks[idx] = {
+                        'similar_id': existing_id,
+                        'similarity': sim,
+                        'hash_match': False
+                    }
+                    logger.info(
+                        f"Chunk {chunk_id} is similar to {existing_id} (sim={sim:.4f}). Skipping.",
+                        extra={"icon": "⏩"}
+                    )
+                    found = True
+                    break
+                    
+            if not found:
+                logger.info(f"Chunk {chunk_id} has no close matches. It's new.", extra={"icon": "✅"})
+                new_chunks.append(idx)
+                
+        except Exception as e:
+            logger.error(f"Error searching for chunk {chunk_id}: {e}", extra={"icon": "❌"})
+            new_chunks.append(idx)
+    
+    elapsed = time.time() - start_time
+    logger.info(
+        f"Chunk deduplication completed in {elapsed:.2f}s: {len(new_chunks)} new, {len(duplicate_chunks)} duplicates, {len(update_chunks)} updates",
+        extra={"icon": "📊"}
+    )
+    return duplicate_chunks, new_chunks, update_chunks
 
 # -------------------------------------------------------------------------------------
 # Main Deduplication Logic

@@ -57,6 +57,7 @@ import file_hash_deduplication
 sys.path.append(os.path.join(os.path.dirname(__file__), '_02_parsing'))
 import stable_pdf_parsing
 import integrated_chunking
+from _02_parsing.context_aware_chunking import process_document as process_with_context  # Fix import with proper path
 
 # Import document deduplication modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '_03_docs_deduplication'))
@@ -182,14 +183,36 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             update_pages = dedup_results.get('update_pages', {})
             is_new_version = dedup_results.get('is_new_version', False)
             old_version_id = dedup_results.get('old_version_id', None)
+            version_similarity = dedup_results.get('version_similarity', 0.0)
             
             logger.info(f"✅ Deduplication check results for {doc_name}:")
             logger.info(f"   - New pages: {len(new_pages)}")
             logger.info(f"   - Duplicate pages: {len(duplicate_pages)}")
             logger.info(f"   - Pages to update: {len(update_pages)}")
             
-            if is_new_version:
-                logger.info(f"   - Document appears to be a new version of: {old_version_id}")
+            if is_new_version and old_version_id:
+                logger.info(f"   - Document appears to be a new version of {old_version_id} (similarity: {version_similarity:.4f})", extra={"icon": "🔄"})
+            
+            # Also check if ANY of the pages have high similarity to existing pages
+            # This might trigger context-aware chunking even if the whole document isn't detected as a new version
+            similar_document_detected = False
+            similar_document_id = None
+            
+            if not is_new_version and not old_version_id:
+                # Check if ANY page has a match with high similarity
+                for idx in duplicate_pages:
+                    dup_info = duplicate_pages[idx]
+                    similarity = dup_info.get('similarity', 0)
+                    if similarity >= 0.90:  # Using similarity threshold
+                        similar_id = dup_info.get('similar_id', '')
+                        if similar_id:
+                            doc_id = similar_id.split('_')[0]  # Extract document ID from page ID
+                            logger.info(f"📊 Page {idx+1} has high similarity ({similarity:.4f}) with document {doc_id}", extra={"icon": "🔍"})
+                            similar_document_detected = True
+                            similar_document_id = doc_id
+                            break
+            
+            logger.info(f"📊 Using page-level deduplication info: {len(duplicate_pages)} duplicates")
             
             logger.info(f"🏁 Pipeline completed at step {max_step} (Deduplication check only) for {doc_name}")
             return True
@@ -232,8 +255,79 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         
         # Prepare page data for integrated_chunking
         document_pages = []
+        dedup_info = {}
+        old_version_id = None
+        
+        # Get page-level deduplication info from step 4
+        # To support the two-stage deduplication process
+        try:
+            # Import pre_save_deduplication to get the most recent dedup results
+            from _03_docs_deduplication import pre_save_deduplication as dedup
+            
+            # Load all pages from the document to check deduplication status
+            pages_data = []
+            for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
+                # Only include minimal fields needed for deduplication check
+                page_data = {
+                    'pdf_identifier': doc_data.get('pdf_identifier', os.path.basename(doc_path)),
+                    'page_number': page_info.get('page_number'),
+                    'document_title': page_info.get('document_title', ''),
+                    'summary': page_info.get('summary', ''),
+                    'embedding': page_info.get('embedding', []),
+                    'timestamp': page_info.get('timestamp', '')
+                }
+                pages_data.append(page_data)
+                
+            # Get deduplication results
+            dedup_results = dedup.check_new_document(pages_data)
+            
+            # Extract results
+            dedup_info = {
+                'duplicate_pages': dedup_results.get('duplicate_pages', {}),
+                'new_pages': dedup_results.get('new_pages', []),
+                'update_pages': dedup_results.get('update_pages', {})
+            }
+            
+            # Check if this is a new version of an existing document
+            is_new_version = dedup_results.get('is_new_version', False)
+            old_version_id = dedup_results.get('old_version_id', None)
+            version_similarity = dedup_results.get('version_similarity', 0.0)
+            
+            if is_new_version and old_version_id:
+                logger.info(f"📊 Document appears to be a new version of {old_version_id} (similarity: {version_similarity:.4f})", extra={"icon": "🔄"})
+            
+            # Also check if ANY of the pages have high similarity to existing pages
+            # This might trigger context-aware chunking even if the whole document isn't detected as a new version
+            similar_document_detected = False
+            similar_document_id = None
+            
+            if not is_new_version and not old_version_id:
+                # Check if ANY page has a match with high similarity
+                for idx in dedup_info['duplicate_pages']:
+                    dup_info = dedup_info['duplicate_pages'][idx]
+                    similarity = dup_info.get('similarity', 0)
+                    if similarity >= 0.90:  # Using similarity threshold
+                        similar_id = dup_info.get('similar_id', '')
+                        if similar_id:
+                            doc_id = similar_id.split('_')[0]  # Extract document ID from page ID
+                            logger.info(f"📊 Page {idx+1} has high similarity ({similarity:.4f}) with document {doc_id}", extra={"icon": "🔍"})
+                            similar_document_detected = True
+                            similar_document_id = doc_id
+                            break
+            
+            logger.info(f"📊 Using page-level deduplication info: {len(dedup_info['new_pages'])} new, {len(dedup_info['duplicate_pages'])} duplicates")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not get page-level deduplication info: {str(e)}. Will process all pages.")
         
         for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
+            page_num = page_info.get('page_number', 0)
+            page_idx = page_num - 1  # Convert to 0-based index
+            
+            # Skip duplicate pages in two-stage deduplication
+            if dedup_info and page_idx in dedup_info['duplicate_pages']:
+                logger.info(f"⏩ Skipping duplicate page {page_num} for chunking")
+                continue
+                
             md_content = page_info.get('md_content', '')
             if md_content:
                 document_text += md_content + "\n\n"
@@ -250,21 +344,38 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         if not document_text.strip():
             logger.error(f"❌ Document has no text content to chunk")
             return False
-            
-        # Process document for chunking using integrated_chunking
+        
+        logger.info(f"🔄 Processing {len(document_pages)} non-duplicate pages for chunking")
+        
+        # Process document for chunking using either context-aware or integrated chunking
         if dry_run:
             logger.info(f"🔍 Dry run mode - checking document chunks without saving")
-            # TODO: Add dry run logic for integrated_chunking if needed
+            # Add dry run logic if needed
             chunk_success = True
         else:
-            # Process document with integrated chunking, passing both text and page data
-            chunk_success = integrated_chunking.process_document(document_text, document_id, document_pages)
+            # If we detected this is a new version of an existing document OR we found a similar document, 
+            # use context-aware chunking
+            if (is_new_version and old_version_id) or (similar_document_detected and similar_document_id):
+                reference_doc_id = old_version_id or similar_document_id
+                logger.info(f"🔄 Using context-aware chunking with reference document: {reference_doc_id}")
+                
+                # Process document with context-aware chunking
+                chunk_success = process_with_context(
+                    document_text, 
+                    document_id, 
+                    reference_doc_id
+                )
+            else:
+                # Use standard integrated chunking for new documents
+                logger.info(f"🔄 Using standard chunking for new document")
+                # Process document with integrated chunking, passing both text and page data
+                chunk_success = integrated_chunking.process_document(document_text, document_id, document_pages)
             
             if not chunk_success:
-                logger.error(f"❌ Agentic chunking failed for {doc_name}")
+                logger.error(f"❌ Chunking failed for {doc_name}")
                 return False
                 
-            logger.info(f"✅ Agentic chunking completed successfully")
+            logger.info(f"✅ Chunking completed successfully")
             
     except Exception as e:
         logger.error(f"❌ Error during document chunking: {str(e)}")

@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 import lancedb
 from lancedb.pydantic import LanceModel, Vector
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 # -------------------------------------------------------------------------------------
 # Project Setup
@@ -41,13 +41,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory()
 
-# Import the deduplication module
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_03_docs_deduplication')))
-try:
-    import pre_save_deduplication as dedup
-except ImportError:
-    print("Warning: Could not import pre_save_deduplication module. Duplicate detection will be disabled.")
-    dedup = None
+# Import deduplication and pipeline interaction modules
+from _03_docs_deduplication import pre_save_deduplication as dedup
+from _03_docs_deduplication import pipeline_interaction
 
 # Load environment variables
 load_dotenv()
@@ -89,108 +85,144 @@ def load_markdown(folder, page_key):
             logger.error(f"Error reading markdown file {md_path}: {e}", extra={"icon": "❌"})
     return ""
 
-def process_document(document_path, text_embedder):
-    """
-    Processes a single document's combined JSON file and prepares it for LanceDB.
-    Performs deduplication checks before preparing the records.
-    
-    Args:
-        document_path: Path to the combined JSON file
-        text_embedder: SentenceTransformer model for creating embeddings
-        
-    Returns:
-        Tuple of (all_records, new_records, update_records) where:
-            all_records: All records from the document
-            new_records: Records that are new (not duplicates)
-            update_records: Records that should update existing records
-    """
-    logger.info(f"Processing document: {document_path}", extra={"icon": "🔄"})
-    
+def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    """Process a document for ingestion into LanceDB"""
     try:
-        # Load the combined JSON file
-        with open(document_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        logger.error(f"Error loading combined JSON file {document_path}: {e}", extra={"icon": "❌"})
-        return [], [], []
-    
-    folder_path = os.path.dirname(document_path)
-    pdf_id = data.get("pdf_identifier", os.path.basename(folder_path))
-    
-    # Get the first page to extract document_title, as it should be the same for all pages
-    first_page_key = next(iter(data.get("pages", {})), None)
-    document_title = None
-    if first_page_key:
-        document_title = data["pages"][first_page_key].get("document_title", "")
-    
-    # Process each page and prepare for embedding
-    all_records = []
-    for page_key, info in data.get("pages", {}).items():
-        md = load_markdown(folder_path, page_key)
+        # Load document
+        logger.info(f"Loading document: {document_path}", extra={"icon": "🔄"})
+        with open(document_path, 'r', encoding='utf-8') as f:
+            document = json.load(f)
+            
+        doc_identifier = os.path.splitext(os.path.basename(document_path))[0]
+        timestamp = datetime.now().isoformat()
         
-        # Use markdown content if available, otherwise fallback to summary
-        text_to_embed = md if md else info.get("summary", "")
-        if not text_to_embed:
-            logger.warning(f"No text content found for {pdf_id}, page {page_key}. Using placeholder.", extra={"icon": "⚠️"})
-            text_embedding_vector = [0.0] * EMBEDDING_DIMENSION # Placeholder for missing text
+        # Validate document structure - be more flexible about expected structure
+        if not isinstance(document, dict):
+            logger.error(f"Invalid document format: expected dict, got {type(document)}", extra={"icon": "❌"})
+            return [], [], []
+        
+        # Handle different document structures - adapt to what's available
+        all_records = []
+        
+        # Check for common document structures
+        if "pages" in document and isinstance(document["pages"], list):
+            # Standard structure with pages list
+            pages = document["pages"]
+        elif isinstance(document, dict) and all(isinstance(k, str) and isinstance(v, dict) for k, v in document.items()):
+            # Structure where each key is a page ID and value is page content
+            pages = list(document.values())
+            logger.info(f"Using alternative document structure with {len(pages)} pages", extra={"icon": "🔄"})
         else:
-            # Prepend "passage: " as required by the e5-instruct model for document embeddings
-            instruction_text = f"passage: {text_to_embed}"
-            try:
-                text_embedding_vector = text_embedder.encode(instruction_text).tolist()
-            except Exception as e:
-                logger.error(f"Error encoding text for {pdf_id}, page {page_key}: {e}", extra={"icon": "❌"})
-                text_embedding_vector = [0.0] * EMBEDDING_DIMENSION # Placeholder on error
+            # Try to process the document itself as a single page
+            pages = [document]
+            logger.warning(f"Could not find explicit page structure, treating document as single page", extra={"icon": "⚠️"})
         
-        # Create the record with all necessary fields
-        record = {
-            "pdf_identifier": pdf_id,
-            "page_number": info.get("page_number"),
-            "document_title": document_title or info.get("document_title", ""),
-            "summary": info.get("summary"),
-            "hashtags": info.get("hashtags"),
-            "md_content": md,
-            "input_tokens": info.get("input_tokens"),
-            "output_tokens": info.get("output_tokens"),
-            "processing_duration": info.get("processing_duration"),
-            "error_flag": info.get("error_flag"),
-            "timestamp": info.get("timestamp", datetime.now().isoformat()),
-            "embedding": text_embedding_vector,
-            "image_b64": info.get("image_b64")
-        }
-        all_records.append(record)
-    
-    if not all_records:
-        logger.warning(f"No valid records found in {document_path}", extra={"icon": "⚠️"})
-        return [], [], []
-    
-    # Perform deduplication check if the module is available
-    if dedup:
-        logger.info(f"Checking for duplicates in {len(all_records)} pages...", extra={"icon": "🔍"})
+        # Create document records for LanceDB
+        for page_idx, page in enumerate(pages):
+            if not isinstance(page, dict):
+                logger.warning(f"Skipping invalid page at index {page_idx}: not a dictionary", extra={"icon": "⚠️"})
+                continue
+                
+            page_num = page.get("page_number", page_idx + 1)
+            
+            # Try different field names for content
+            content_fields = ["content", "text", "md_content", "summary"]
+            page_content = ""
+            for field in content_fields:
+                if field in page and page[field]:
+                    page_content = page[field]
+                    break
+            
+            # Try different field names for images
+            image_fields = ["image", "image_b64", "base64_image"]
+            page_image = ""
+            for field in image_fields:
+                if field in page and page[field]:
+                    page_image = page[field]
+                    break
+            
+            # Get document title if available
+            document_title = page.get("document_title", "") or document.get("document_title", "")
+            
+            # Create embedding
+            if text_embedder and page_content:
+                embedding = text_embedder.encode(page_content, normalize_embeddings=True).tolist()
+            else:
+                embedding = [0.0] * EMBEDDING_DIMENSION  # Placeholder for testing
+            
+            # Create record compatible with LanceDB schema
+            record = {
+                "pdf_identifier": doc_identifier,
+                "page_number": page_num,
+                "document_title": document_title,
+                "summary": page.get("summary", ""),
+                "hashtags": page.get("hashtags", []),
+                "md_content": page_content,  # Store content in md_content field
+                "input_tokens": page.get("input_tokens", 0),
+                "output_tokens": page.get("output_tokens", 0),
+                "processing_duration": page.get("processing_duration", 0.0),
+                "error_flag": page.get("error_flag", False),
+                "timestamp": timestamp,
+                "embedding": embedding,
+                "image_b64": page_image  # Store image in image_b64 field
+            }
+            all_records.append(record)
+            
+        if not all_records:
+            logger.warning(f"No valid records could be extracted from {document_path}", extra={"icon": "⚠️"})
+            return [], [], []
+            
+        logger.info(f"Successfully extracted {len(all_records)} pages from document", extra={"icon": "✅"})
+        
+        # Check for duplicates before saving
+        logger.info(f"Checking for document duplicates", extra={"icon": "🔄"})
         dedup_results = dedup.check_new_document(all_records)
         
-        # Extract results
+        # Handle document-level similarity detection
+        if dedup_results.get('is_new_version'):
+            logger.info(f"Document similarity detected!", extra={"icon": "⚠️"})
+            should_continue, action = pipeline_interaction.handle_document_similarity(
+                all_records, dedup_results
+            )
+            
+            if not should_continue:
+                logger.info(f"Skipping document based on user choice", extra={"icon": "⏩"})
+                return all_records, [], []
+                
+            if action == "replace_old":
+                # User wants to replace the old document with the new one
+                # We need to prepare for this replacement
+                old_id = dedup_results.get('old_version_id')
+                logger.info(f"Will replace old document {old_id} with new document", extra={"icon": "🔄"})
+                
+                # Mark all pages as updates to the old document's pages
+                # This will trigger replacement in the save function
+                return all_records, [], all_records
+        
+        # Proceed with normal deduplication if no document-level action taken
+        # or if user chose detailed deduplication
         duplicate_pages = dedup_results.get('duplicate_pages', {})
-        new_page_indices = dedup_results.get('new_pages', [])
-        update_page_indices = dedup_results.get('update_pages', {})
-        is_new_version = dedup_results.get('is_new_version', False)
-        old_version_id = dedup_results.get('old_version_id', None)
+        new_pages = dedup_results.get('new_pages', [])
+        update_pages = dedup_results.get('update_pages', {})
         
-        # Create lists of records to add or update
-        new_records = [all_records[i] for i in new_page_indices]
-        update_records = {i: all_records[i] for i in update_page_indices}
+        # Process record collections
+        new_records = [all_records[idx] for idx in new_pages]
+        update_records = [all_records[idx] for idx in update_pages.keys()]
         
-        # Log the results
-        logger.info(f"Deduplication results: {len(new_records)} new pages, {len(duplicate_pages)} duplicates, {len(update_records)} updates", extra={"icon": "📊"})
+        if duplicate_pages:
+            dupes = ", ".join([str(list(duplicate_pages.keys())[:5])])
+            logger.info(f"Found {len(duplicate_pages)} duplicate pages: {dupes}...", extra={"icon": "🔍"})
         
-        if is_new_version:
-            logger.info(f"Document appears to be a new version of {old_version_id}", extra={"icon": "🔄"})
+        logger.info(
+            f"Document has {len(new_records)} new pages, {len(update_records)} updated pages", 
+            extra={"icon": "📊"}
+        )
         
         return all_records, new_records, update_records
-    else:
-        # If deduplication module not available, treat all as new
-        logger.warning("Deduplication module not available. Treating all pages as new.", extra={"icon": "⚠️"})
-        return all_records, all_records, {}
+    
+    except Exception as e:
+        logger.error(f"Error processing document: {e}", extra={"icon": "❌"})
+        return [], [], []
 
 # -------------------------------------------------------------------------------------
 # LanceDB Schema
@@ -203,13 +235,15 @@ class PDFPage(LanceModel):
     summary: Optional[str]
     hashtags: Optional[List[str]]
     md_content: Optional[str]
+    content: Optional[str]  # Add content field to match the records being created
     input_tokens: Optional[int]
     output_tokens: Optional[int]
     processing_duration: Optional[float]
     error_flag: Optional[bool]
     timestamp: Optional[str]
     embedding: Vector(EMBEDDING_DIMENSION) # Text embedding
-    image_b64: Optional[str] # Add image_b64 back
+    image_b64: Optional[str] # Base64 encoded image
+    image: Optional[str] # Alternative image field name
 
 # -------------------------------------------------------------------------------------
 # Main Execution Functions
@@ -234,6 +268,10 @@ def save_document_to_lancedb(document_path):
     Returns:
         True if successful, False otherwise
     """
+    if not os.path.isfile(document_path):
+        logger.error(f"Document file not found: {document_path}", extra={"icon": "❌"})
+        return False
+        
     # Initialize SentenceTransformer for text embeddings
     try:
         logger.info(f"Loading embedding model: {EMBEDDING_MODEL_NAME}", extra={"icon": "🧠"})
@@ -296,7 +334,15 @@ def save_document_to_lancedb(document_path):
             # For LanceDB 0.22.0 we're having issues with delete operations
             # Just add the new versions as additional records
             # When querying later, we'll sort by timestamp and get the latest
-            update_list = [record for idx, record in update_records.items()]
+            
+            # Make sure update_records is a list, not a dictionary
+            if isinstance(update_records, list):
+                update_list = update_records
+            elif isinstance(update_records, dict):
+                update_list = [update_records[idx] for idx in update_records]
+            else:
+                update_list = []
+                logger.warning(f"Unexpected update_records type: {type(update_records)}", extra={"icon": "⚠️"})
             
             if update_list:
                 logger.info(f"Adding {len(update_list)} updated pages to LanceDB", extra={"icon": "➕"})

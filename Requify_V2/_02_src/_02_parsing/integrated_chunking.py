@@ -4,6 +4,58 @@ integrated_chunking.py
 This script implements a simplified approach to document chunking using LLMs.
 It directly asks the model to chunk the text while preserving semantic coherence,
 and handles large documents by processing them in manageable sections.
+
+START
+ │
+ ├──► [Is document_text empty?]
+ │       ├── Yes → Log "Empty document", return []
+ │       └── No → Continue
+ │
+ ├──► [Is document length ≤ MAX_SECTION_SIZE?]
+ │       ├── Yes → Treat full doc as 1 section
+ │       └── No → Split by paragraph ("\n\n")
+ │                 └── [Any section > MAX_SECTION_SIZE?]
+ │                       ├── Yes → Break large sections by size
+ │                       └── No → Use paragraph-based split
+ │
+ └──► FOR EACH SECTION:
+         └── get_chunks_from_llm(section)
+             │
+             └── Retry Loop (max 2 attempts):
+                     ├── Call LLM with section + chunking prompt
+                     ├──► [Response contains valid JSON and "chunks"?]
+                     │       ├── Yes → Proceed
+                     │       └── No
+                     │             ├── Log error
+                     │             ├── Wait (1s, then 2s)
+                     │             └── Retry if allowed
+                     └── [All retries failed?] → Log failure, return []
+             │
+             └── Post-success:
+                 └── Check for oversized chunks (> MAX_CHAR_SIZE)
+                     ├── No → Use chunks as-is
+                     └── Yes → FOR EACH oversized chunk:
+                             └── 🔁 Recursive get_chunks_from_llm(chunk)
+                             └── Flatten all resulting chunks
+ │
+ └──► Accumulate all valid chunks across sections
+ │
+ └──► [Any chunks collected?]
+         ├── No → Log warning, return False
+         └── Yes → Analyze: min/max/avg char/token stats
+ │
+ └──► FOR EACH CHUNK:
+         ├── Generate embedding (E5 model)
+         ├── Build metadata:
+         │     • chunk_id
+         │     • start/end offset
+         │     • token count
+         │     • duplication/alignment flags
+         └── Add to LanceDB
+ │
+ ✅ DONE → Log success, return True
+
+
 """
 
 import os
@@ -22,6 +74,10 @@ from agno.models.openai import OpenAIChat
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory()
+
+# Import deduplication module
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from _03_docs_deduplication import pre_save_deduplication as dedup
 
 # Load environment variables
 load_dotenv()
@@ -58,7 +114,8 @@ class ChunksOutputModel(BaseModel):
 
 # Simplified chunking prompt
 chunking_prompt = """
-chunk the following text, preserving content that goes well together. a chunk shall have no more than {max_size} characters.
+chunk the following text, preserving content that goes well together. 
+A chunk shall have no more than {max_size} and roughly {target_size} characters.
 Format your response as: {{"chunks": ["chunk1", "chunk2", ...]}}
 Do not add ANY extra text that is not in the original input text.
 """
@@ -117,7 +174,7 @@ def get_chunks_from_llm(md_text: str) -> List[str]:
         
     logger.info(f"🔄 Asking LLM to chunk text of {len(md_text)} characters")
     
-    prompt = chunking_prompt.format(max_size=MAX_CHAR_SIZE)
+    prompt = chunking_prompt.format(max_size=MAX_CHAR_SIZE, target_size=TARGET_CHAR_SIZE)
     agent = Agent(
         model=openai_text_model,
         markdown=True,
@@ -283,18 +340,44 @@ def process_document(document_text: str, document_id: str, document_pages: List[
         from sentence_transformers import SentenceTransformer
         import numpy as np
         import datetime
+        import hashlib
         
         # Connect to LanceDB
         db_path = os.path.join("_03_output", "lancedb")
         logger.info(f"🔄 Connecting to LanceDB at {db_path}")
         db = lancedb.connect(db_path)
         
-        # Try to open existing chunks table
+        # Define schema for the chunks table
+        from lancedb.pydantic import LanceModel, Vector
+
+        class ChunkSchema(LanceModel):
+            chunk_id: str
+            document_id: str
+            chunk_index: int
+            start_offset: int
+            end_offset: int
+            chunk_text: str
+            token_count: int
+            embedding: Vector(1024)  # Dimension for e5-large
+            chunk_hash: str  # Hash for deduplication
+            is_duplicate: bool
+            duplicate_of: str
+            is_updated: bool
+            previous_chunk_id: str
+            timestamp: str
+            aligned_with_chunk_id: str
+            aligned_with_document_id: str
+        
+        # Try to open existing chunks table or create a new one with the schema
         try:
-            chunks_table = db.open_table("document_chunks")
-            logger.info(f"✅ Opened existing document_chunks table")
+            if "document_chunks" in db.table_names():
+                chunks_table = db.open_table("document_chunks")
+                logger.info(f"✅ Opened existing document_chunks table")
+            else:
+                chunks_table = db.create_table("document_chunks", schema=ChunkSchema)
+                logger.info(f"✅ Created new document_chunks table with schema")
         except Exception as e:
-            logger.error(f"❌ Failed to open document_chunks table: {str(e)}")
+            logger.error(f"❌ Failed to open or create document_chunks table: {str(e)}")
             return False
         
         # Load the embedding model
@@ -315,6 +398,9 @@ def process_document(document_text: str, document_id: str, document_pages: List[
             chunk_id = f"{document_id}_chunk_{i+1}"
             token_count = approx_token_count(chunk_text)
             
+            # Calculate chunk hash for deduplication
+            chunk_hash = hashlib.md5(chunk_text.encode('utf-8')).hexdigest()
+            
             # For simplified demo, we'll use character indices as offsets
             # In a real system, you'd track actual positions
             start_offset = 0
@@ -332,6 +418,7 @@ def process_document(document_text: str, document_id: str, document_pages: List[
                 "chunk_text": chunk_text,
                 "token_count": token_count,
                 "embedding": embedding,
+                "chunk_hash": chunk_hash,  # Add hash for deduplication
                 "is_duplicate": False,
                 "duplicate_of": "",  # Empty string for non-duplicates
                 "is_updated": False,
@@ -342,10 +429,34 @@ def process_document(document_text: str, document_id: str, document_pages: List[
             }
             chunk_data.append(chunk_record)
         
-        # Add the chunks to the table
-        logger.info(f"🔄 Adding {len(chunk_data)} chunks to LanceDB")
-        chunks_table.add(chunk_data)
-        logger.info(f"✅ Chunks successfully saved to LanceDB")
+        # Perform chunk-level deduplication
+        logger.info(f"🔄 Performing chunk-level deduplication")
+        duplicate_chunks, new_chunks, update_chunks = dedup.check_chunk_duplicates(chunk_data, db)
+        
+        # Filter only new and update chunks for saving
+        chunks_to_save = []
+        for idx in new_chunks:
+            chunk_data[idx]['is_duplicate'] = False
+            chunks_to_save.append(chunk_data[idx])
+            
+        for idx, update_info in update_chunks.items():
+            chunk_data[idx]['is_updated'] = True
+            chunk_data[idx]['previous_chunk_id'] = update_info.get('record_id', '')
+            chunks_to_save.append(chunk_data[idx])
+            
+        # Log deduplication results
+        logger.info(f"📊 Deduplication results: {len(new_chunks)} new chunks, {len(duplicate_chunks)} duplicates, {len(update_chunks)} updates")
+        
+        # Only add non-duplicate chunks to the table
+        if chunks_to_save:
+            logger.info(f"🔄 Adding {len(chunks_to_save)} chunks to LanceDB")
+            chunks_table.add(chunks_to_save)
+            logger.info(f"✅ Chunks successfully saved to LanceDB")
+            
+            # Ensure index is updated after adding data
+            dedup.ensure_index(db, "document_chunks")
+        else:
+            logger.info(f"⚠️ No new chunks to save after deduplication", extra={"icon": "⚠️"})
         
         end_time = time.time()
         logger.info(f"✅ Document processing completed in {end_time - start_time:.2f} seconds")

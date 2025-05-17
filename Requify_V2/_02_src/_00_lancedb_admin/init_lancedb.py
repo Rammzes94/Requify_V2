@@ -72,6 +72,7 @@ class DocumentChunk(LanceModel):
     chunk_text: str
     token_count: int
     embedding: Vector(EMBEDDING_DIMENSION)
+    chunk_hash: str  # Added field for deduplication
     is_duplicate: bool = False
     duplicate_of: Optional[str] = None
     is_updated: bool = False
