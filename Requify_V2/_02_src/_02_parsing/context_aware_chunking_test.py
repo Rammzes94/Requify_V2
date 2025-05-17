@@ -30,6 +30,8 @@ import sys
 import logging
 import time
 import argparse
+import gc  # Add garbage collection
+import torch  # Add torch for cache management
 from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
@@ -417,6 +419,18 @@ def test_context_aware_chunking(scenario_name=None):
         elif not modified_result:
             logger.error(f"Failed to process modified document for {scenario}")
             continue
+        
+        # Clean up memory after each scenario
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
+        # If using MPS (Apple Silicon), clear that cache too
+        if hasattr(torch.mps, 'empty_cache'):
+            torch.mps.empty_cache()
+        
+        # Small delay to ensure memory is freed
+        time.sleep(1)
     
     # Reset environment variable
     os.environ["REQUIFY_AUTO_SELECT_NEW"] = "false"
@@ -428,7 +442,16 @@ if __name__ == "__main__":
     # Add command line argument for specific scenario
     parser = argparse.ArgumentParser(description='Test context-aware chunking with various scenarios')
     parser.add_argument('--scenario', type=str, help='Specific scenario to test (omit to test all)')
+    parser.add_argument('--batch-size', type=int, default=4, help='Batch size for processing chunks (smaller = less memory)')
     args = parser.parse_args()
+    
+    # Set batch size in the module
+    import _02_parsing.context_aware_chunking as chunking_module
+    
+    # Override batch size if specified
+    if args.batch_size:
+        chunking_module.EMBEDDING_BATCH_SIZE = args.batch_size
+        logger.info(f"Setting embedding batch size to {args.batch_size}")
     
     result = test_context_aware_chunking(args.scenario)
     sys.exit(0 if result else 1) 

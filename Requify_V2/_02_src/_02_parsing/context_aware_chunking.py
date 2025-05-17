@@ -26,6 +26,8 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
+import gc  # Add garbage collection
+import torch
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -56,9 +58,16 @@ MAX_SECTION_SIZE = 30000  # Maximum section size for processing with LLM
 MAX_RETRIES = 2  # Maximum number of retries for LLM calls
 SIMILARITY_THRESHOLD = 0.85  # Lowered threshold for considering content similar
 DUPLICATE_THRESHOLD = 0.995  # High threshold for automatic duplicates without LLM
+
 OUTPUT_DIR_BASE = "_03_output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 CHUNKS_TABLE_NAME = "document_chunks"
+
+EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct" # Use existing embedding model from reference chunks
+EMBEDDING_DEVICE = "cpu" # Force CPU usage to avoid MPS memory issues
+EMBEDDING_MAX_SEQ_LENGTH = 256 # Reduce sequence length to save memory
+EMBEDDING_BATCH_SIZE = 8 # Control batch size for memory management
+
 
 # Get OpenAI API key
 api_key = os.getenv("OPENAI_API_KEY")
@@ -298,8 +307,8 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: str) -> Dict[str, Any]:
     diff_text = "\n".join(diff)
     
     evaluation_prompt = """
-    You are an expert document reviewer comparing two versions of technical requirement content.
-    Your task is to determine which version should be kept in the requirements database.
+    You are an expert document reviewer comparing two versions of technical content.
+    Your task is to determine which version should be kept in the database.
     
     Review the chunks carefully and choose ONE of these options:
     
@@ -378,7 +387,7 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: str) -> Dict[str, Any]:
     """
     
     agent = Agent(
-        model=decision_llm,  # Using higher capability model for evaluation
+        model=decision_llm,  
         markdown=True,
         debug_mode=False,
         response_model=ChunkDecisionModel,
@@ -604,68 +613,79 @@ def process_document_with_context(
     # Step 3: Process each chunk and compare with existing chunks
     from sentence_transformers import SentenceTransformer
     import datetime
-    import torch
     
     # Initialize embedding model for comparison
     logger.info("Loading embedding model", extra={"icon": "🧠"})
-    model_name = "intfloat/multilingual-e5-large-instruct"
-    # Force CPU usage to avoid MPS memory issues
-    device = "cpu"
-    embedding_model = SentenceTransformer(model_name, device=device)
+
+    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME, device=EMBEDDING_DEVICE)
     
     # Additional memory optimizations
-    embedding_model.max_seq_length = 256  # Reduce sequence length
+    embedding_model.max_seq_length = EMBEDDING_MAX_SEQ_LENGTH  # Reduce sequence length
     
     processed_chunks = []
     duplicates_found = 0
     updates_kept = 0
     user_decisions = 0
     
-    for i, chunk_text in enumerate(chunks):
-        # Generate chunk metadata
-        chunk_id = f"{document_id}_chunk_{i+1}"
-        chunk_hash = generate_chunk_hash(chunk_text)
-        embedding = embedding_model.encode(chunk_text, normalize_embeddings=True).tolist()
-        token_count = len(chunk_text) // 4  # Simple approximation
+    # Process chunks in batches to manage memory usage
+    chunk_batches = [chunks[i:i + EMBEDDING_BATCH_SIZE] for i in range(0, len(chunks), EMBEDDING_BATCH_SIZE)]
+    
+    for batch_idx, chunk_batch in enumerate(chunk_batches):
+        logger.info(f"Processing batch {batch_idx+1}/{len(chunk_batches)} ({len(chunk_batch)} chunks)", extra={"icon": "🔄"})
         
-        # Check for similar existing chunks
-        similar_chunk = None
-        highest_similarity = 0.0
+        # Compute embeddings for the entire batch at once
+        batch_embeddings = embedding_model.encode(chunk_batch, normalize_embeddings=True)
         
-        # First pass: look for exact hash matches (most efficient)
-        if reference_chunks:
-            for ref_chunk in reference_chunks:
-                # Check hash-based exact match first
-                if ref_chunk.get('chunk_hash') == chunk_hash:
-                    logger.info(f"Exact hash match for chunk {i+1}", extra={"icon": "🔍"})
-                    duplicates_found += 1
-                    # Skip this chunk entirely - it's an exact duplicate
-                    similar_chunk = None
-                    break
+        for i, (chunk_text, embedding) in enumerate(zip(chunk_batch, batch_embeddings)):
+            # Original chunk index in the full list
+            chunk_idx = batch_idx * EMBEDDING_BATCH_SIZE + i
             
-            # If no exact match, look for similar chunks
-            if similar_chunk is None:
+            # Generate chunk metadata
+            chunk_id = f"{document_id}_chunk_{chunk_idx+1}"
+            chunk_hash = generate_chunk_hash(chunk_text)
+            # Convert embedding to list if it's a numpy array
+            if isinstance(embedding, np.ndarray):
+                embedding = embedding.tolist()
+            token_count = len(chunk_text) // 4  # Simple approximation
+            
+            # Check for similar existing chunks
+            similar_chunk = None
+            highest_similarity = 0.0
+            
+            # First pass: look for exact hash matches (most efficient)
+            if reference_chunks:
                 for ref_chunk in reference_chunks:
-                    # Check embedding similarity
-                    ref_embedding = ref_chunk.get('embedding')
-                    if ref_embedding is not None and isinstance(ref_embedding, (list, np.ndarray)):
-                        # Convert to numpy arrays for dot product
-                        if isinstance(ref_embedding, list):
-                            ref_embedding = np.array(ref_embedding)
-                        current_embedding = np.array(embedding)
-                        
-                        # Calculate cosine similarity
-                        similarity = np.dot(ref_embedding, current_embedding) / (
-                            np.linalg.norm(ref_embedding) * np.linalg.norm(current_embedding)
-                        )
-                        
-                        if similarity > highest_similarity:
-                            highest_similarity = similarity
-                            similar_chunk = ref_chunk
+                    # Check hash-based exact match first
+                    if ref_chunk.get('chunk_hash') == chunk_hash:
+                        logger.info(f"Exact hash match for chunk {chunk_idx+1}", extra={"icon": "🔍"})
+                        duplicates_found += 1
+                        # Skip this chunk entirely - it's an exact duplicate
+                        similar_chunk = None
+                        break
+                
+                # If no exact match, look for similar chunks
+                if similar_chunk is None:
+                    for ref_chunk in reference_chunks:
+                        # Check embedding similarity
+                        ref_embedding = ref_chunk.get('embedding')
+                        if ref_embedding is not None and isinstance(ref_embedding, (list, np.ndarray)):
+                            # Convert to numpy arrays for dot product
+                            if isinstance(ref_embedding, list):
+                                ref_embedding = np.array(ref_embedding)
+                            current_embedding = np.array(embedding)
+                            
+                            # Calculate cosine similarity
+                            similarity = np.dot(ref_embedding, current_embedding) / (
+                                np.linalg.norm(ref_embedding) * np.linalg.norm(current_embedding)
+                            )
+                            
+                            if similarity > highest_similarity:
+                                highest_similarity = similarity
+                                similar_chunk = ref_chunk
             
             # Now evaluate if the similar chunk warrants keeping or replacing
             if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD:
-                logger.info(f"Similar chunk found for chunk {i+1} (similarity: {highest_similarity:.4f})", extra={"icon": "🔍"})
+                logger.info(f"Similar chunk found for chunk {chunk_idx+1} (similarity: {highest_similarity:.4f})", extra={"icon": "🔍"})
                 
                 # If it's not an exact duplicate but similar, use LLM to evaluate
                 if highest_similarity < DUPLICATE_THRESHOLD:
@@ -701,7 +721,7 @@ def process_document_with_context(
                     # Very high similarity but not exact hash match - likely just formatting differences
                     if highest_similarity > DUPLICATE_THRESHOLD:
                         # If it's a very high match, treat as duplicate without LLM evaluation
-                        logger.info(f"Chunk {i+1} nearly identical to existing chunk - skipping", extra={"icon": "⏩"})
+                        logger.info(f"Chunk {chunk_idx+1} nearly identical to existing chunk - skipping", extra={"icon": "⏩"})
                         continue
                         
                     # If similarity is high but not quite duplicate threshold, check for formatting or reordering
@@ -712,7 +732,7 @@ def process_document_with_context(
                         
                         # Check for simple reformatting cases: same words in different format
                         if sorted(normalized_old.split()) == sorted(normalized_new.split()):
-                            logger.info(f"Chunk {i+1} has same content in different order - treating as duplicate", extra={"icon": "⏩"})
+                            logger.info(f"Chunk {chunk_idx+1} has same content in different order - treating as duplicate", extra={"icon": "⏩"})
                             continue
                             
                         # Check for whitespace/bullet differences - replacing bullet types and normalizing whitespace
@@ -759,14 +779,14 @@ def process_document_with_context(
                             # Higher threshold than before (0.85 -> 0.90 for overlap ratio)
                             # But also check Jaccard similarity as an additional metric
                             if (overlap_ratio > 0.90 or jaccard_similarity > 0.80) and numbers_match:
-                                logger.info(f"Chunk {i+1} has high word overlap ({overlap_ratio:.2f}, jaccard {jaccard_similarity:.2f}) with existing - treating as duplicate", extra={"icon": "⏩"})
+                                logger.info(f"Chunk {chunk_idx+1} has high word overlap ({overlap_ratio:.2f}, jaccard {jaccard_similarity:.2f}) with existing - treating as duplicate", extra={"icon": "⏩"})
                                 continue
         
         # Add the new chunk to our processed list
         chunk_record = {
             "chunk_id": chunk_id,
             "document_id": document_id,
-            "chunk_index": i,
+            "chunk_index": chunk_idx,
             "start_offset": 0,  # Simplified - would track actual positions in real system
             "end_offset": len(chunk_text),
             "chunk_text": chunk_text,
@@ -785,9 +805,9 @@ def process_document_with_context(
         processed_chunks.append(chunk_record)
         
         if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD:
-            logger.info(f"Chunk {i+1} added as update to existing chunk {similar_chunk.get('chunk_id')}", extra={"icon": "🔄"})
+            logger.info(f"Chunk {chunk_idx+1} added as update to existing chunk {similar_chunk.get('chunk_id')}", extra={"icon": "🔄"})
         else:
-            logger.info(f"Chunk {i+1} added as new chunk", extra={"icon": "✅"})
+            logger.info(f"Chunk {chunk_idx+1} added as new chunk", extra={"icon": "✅"})
     
     end_time = time.time()
     logger.info(f"Document processing completed in {end_time - start_time:.2f} seconds", extra={"icon": "⏱️"})
@@ -901,6 +921,21 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]]) -> bool:
         logger.error(f"Error saving chunks to database: {str(e)}", extra={"icon": "❌"})
         return False
 
+def cleanup_memory():
+    """
+    Release memory after processing to prevent memory leaks.
+    Especially important when running multiple document processing tasks in sequence.
+    """
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    
+    # If using MPS (Apple Silicon), clear that cache too
+    if hasattr(torch.mps, 'empty_cache'):
+        torch.mps.empty_cache()
+    
+    logger.info("Memory cleaned up", extra={"icon": "🧹"})
+
 # ------------------------------------------------------------------------------
 # Main Entry Point
 # ------------------------------------------------------------------------------
@@ -922,27 +957,31 @@ def process_document(
     """
     logger.info(f"Processing document: {document_id}", extra={"icon": "🚀"})
     
-    # Step 1: Generate chunks with context
-    chunks = process_document_with_context(document_text, document_id, similar_document_id)
-    
-    if not chunks:
-        logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})
-        return False
-    
-    # Step 2: Save chunks to database
-    if chunks:
-        success = save_chunks_to_db(chunks)
-    else:
-        # If there are no chunks to save because all were duplicates, 
-        # consider this a success (proper deduplication)
-        if duplicates_found > 0:
-            logger.info(f"All chunks ({duplicates_found}) were detected as duplicates - no new chunks to save", extra={"icon": "✅"})
-            success = True
-        else:
+    try:
+        # Step 1: Generate chunks with context
+        chunks = process_document_with_context(document_text, document_id, similar_document_id)
+        
+        if not chunks:
             logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})
-            success = False
-    
-    return success
+            return False
+        
+        # Step 2: Save chunks to database
+        if chunks:
+            success = save_chunks_to_db(chunks)
+        else:
+            # If there are no chunks to save because all were duplicates, 
+            # consider this a success (proper deduplication)
+            if duplicates_found > 0:
+                logger.info(f"All chunks ({duplicates_found}) were detected as duplicates - no new chunks to save", extra={"icon": "✅"})
+                success = True
+            else:
+                logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})
+                success = False
+        
+        return success
+    finally:
+        # Clean up memory regardless of success or failure
+        cleanup_memory()
 
 def main():
     """
