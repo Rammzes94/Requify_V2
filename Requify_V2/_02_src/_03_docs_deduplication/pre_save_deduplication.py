@@ -59,14 +59,209 @@ EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models (must match stable_s
 DUPLICATE_THRESHOLD = 0.995  # Cosine similarity threshold for duplicate pages
 # LanceDB returns distance for cosine as 1 - similarity. So, distance_threshold = 1 - SIMILARITY_THRESHOLD
 DISTANCE_THRESHOLD = 1.0 - DUPLICATE_THRESHOLD
-SIMILAR_THRESHOLD = 0.90  # Threshold for similar pages
+SIMILAR_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
 MIN_PAGES_TO_SAMPLE = 3  # Minimum number of pages to sample for comparison
 MAX_PAGES_TO_SAMPLE = 5  # Maximum number of pages to sample for comparison
-VERSION_SIMILARITY_THRESHOLD = 0.9  # Threshold to consider a document as a new version
+VERSION_SIMILARITY_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
 INDEX_INITIALIZED_DOCS = False
 INDEX_INITIALIZED_CHUNKS = False
 CHUNK_DUPLICATION_THRESHOLD = 0.995  # Threshold for considering chunks as duplicates
-CHUNK_SIMILARITY_THRESHOLD = 0.90  # Threshold for considering chunks as similar
+CHUNK_SIMILARITY_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
+
+# Set to True to enable more detailed console output for deduplication processes
+VERBOSE_DEDUPLICATION_OUTPUT = True
+
+# -------------------------------------------------------------------------------------
+# Deduplication Logging Functions
+# -------------------------------------------------------------------------------------
+def log_document_comparison(doc_id: str, comparison_doc_id: str, similarity: float):
+    """Log information about document comparison."""
+    if similarity >= DUPLICATE_THRESHOLD:
+        logger.info(
+            f"📄 Document comparison: {doc_id} is a duplicate of {comparison_doc_id} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "♻️"}
+        )
+    elif similarity >= SIMILAR_THRESHOLD:
+        logger.info(
+            f"📄 Document comparison: {doc_id} is similar to {comparison_doc_id} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"📄 Document comparison: {doc_id} is different from {comparison_doc_id} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "🆕"}
+        )
+
+def log_page_comparison(
+    doc_id: str, 
+    page_num: int, 
+    comparison_doc_id: str, 
+    comparison_page_num: int, 
+    similarity: float
+):
+    """Log information about page comparison."""
+    page_id = f"{doc_id} p{page_num}"
+    comparison_page_id = f"{comparison_doc_id} p{comparison_page_num}"
+    
+    if similarity >= DUPLICATE_THRESHOLD:
+        logger.info(
+            f"📃 Page comparison: {page_id} is a duplicate of {comparison_page_id} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "♻️"}
+        )
+    elif similarity >= SIMILAR_THRESHOLD:
+        logger.info(
+            f"📃 Page comparison: {page_id} is similar to {comparison_page_id} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"📃 Page comparison: {page_id} appears to be new "
+            f"(similarity: {similarity:.4f} with {comparison_page_id})",
+            extra={"icon": "🆕"}
+        )
+
+def log_chunk_comparison(
+    chunk_id: str, 
+    match_id: str = "", 
+    similarity: float = 0.0, 
+    is_duplicate: bool = False,
+    match_type: str = "embedding",
+    doc_id: str = "",
+    comparison_doc_id: str = ""
+):
+    """Log information about chunk comparison."""
+    doc_context = f"({doc_id})" if doc_id else ""
+    comparison_doc_context = f"({comparison_doc_id})" if comparison_doc_id else ""
+    
+    if match_type == "hash":
+        logger.info(
+            f"🧩 Chunk comparison: {chunk_id} {doc_context} is an exact hash match with "
+            f"{match_id} {comparison_doc_context}",
+            extra={"icon": "♻️"}
+        )
+    elif is_duplicate or similarity >= DUPLICATE_THRESHOLD:
+        logger.info(
+            f"🧩 Chunk comparison: {chunk_id} {doc_context} is a duplicate of "
+            f"{match_id} {comparison_doc_context} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "♻️"}
+        )
+    elif similarity >= SIMILAR_THRESHOLD:
+        logger.info(
+            f"🧩 Chunk comparison: {chunk_id} {doc_context} is similar to "
+            f"{match_id} {comparison_doc_context} "
+            f"(similarity: {similarity:.4f})",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"🧩 Chunk comparison: {chunk_id} {doc_context} appears to be new "
+            f"(top similarity: {similarity:.4f} with {match_id})",
+            extra={"icon": "🆕"}
+        )
+
+def log_document_deduplication_summary(
+    doc_id: str,
+    total_pages: int,
+    duplicate_pages: int,
+    similar_pages: int,
+    new_pages: int,
+    is_new_version: bool,
+    old_version_id: Optional[str] = None,
+    version_similarity: float = 0.0
+):
+    """Log a summary of document deduplication results."""
+    if is_new_version and old_version_id:
+        logger.info(
+            f"📊 Document deduplication summary: {doc_id} is a new version of {old_version_id} "
+            f"(similarity: {version_similarity:.4f})",
+            extra={"icon": "🔄"}
+        )
+    elif duplicate_pages == total_pages:
+        logger.info(
+            f"📊 Document deduplication summary: {doc_id} is a complete duplicate "
+            f"(all {total_pages} pages are duplicates)",
+            extra={"icon": "♻️"}
+        )
+    elif duplicate_pages > 0 or similar_pages > 0:
+        logger.info(
+            f"📊 Document deduplication summary: {doc_id} has {new_pages} new pages, "
+            f"{duplicate_pages} duplicate pages, and {similar_pages} similar pages "
+            f"(total: {total_pages} pages)",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"📊 Document deduplication summary: {doc_id} is completely new "
+            f"(all {total_pages} pages are new)",
+            extra={"icon": "🆕"}
+        )
+
+def log_chunk_deduplication_summary(
+    total_chunks: int,
+    duplicate_chunks: int,
+    similar_chunks: int,
+    new_chunks: int,
+    processing_time: float = 0.0,
+    doc_id: str = "",
+    is_document_update: bool = False,
+    updated_doc_id: Optional[str] = None
+):
+    """Log a summary of chunk deduplication results."""
+    doc_prefix = f"{doc_id}: " if doc_id else ""
+    
+    if is_document_update and updated_doc_id:
+        logger.info(
+            f"📊 Chunk deduplication summary: {doc_prefix}updating chunks from {updated_doc_id} "
+            f"({duplicate_chunks} duplicates, {similar_chunks} updates, {new_chunks} new chunks) "
+            f"in {processing_time:.2f}s",
+            extra={"icon": "🔄"}
+        )
+    elif duplicate_chunks == total_chunks:
+        logger.info(
+            f"📊 Chunk deduplication summary: {doc_prefix}only duplicate chunks "
+            f"(all {total_chunks} chunks are duplicates) "
+            f"in {processing_time:.2f}s",
+            extra={"icon": "♻️"}
+        )
+    elif duplicate_chunks > 0 or similar_chunks > 0:
+        logger.info(
+            f"📊 Chunk deduplication summary: {doc_prefix}{new_chunks} new chunks, "
+            f"{duplicate_chunks} duplicate chunks, and {similar_chunks} similar chunks "
+            f"(total: {total_chunks} chunks) "
+            f"in {processing_time:.2f}s",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"📊 Chunk deduplication summary: {doc_prefix}all new chunks "
+            f"({new_chunks} chunks) "
+            f"in {processing_time:.2f}s",
+            extra={"icon": "🆕"}
+        )
+
+def log_embedding_similarity(similarity: float, description: str = "Embedding comparison"):
+    """Log information about embedding similarity."""
+    if similarity >= DUPLICATE_THRESHOLD:
+        logger.info(
+            f"📏 {description} - Embedding similarity: {similarity:.4f} (DUPLICATE)",
+            extra={"icon": "♻️"}
+        )
+    elif similarity >= SIMILAR_THRESHOLD:
+        logger.info(
+            f"📏 {description} - Embedding similarity: {similarity:.4f} (SIMILAR)",
+            extra={"icon": "🔄"}
+        )
+    else:
+        logger.info(
+            f"📏 {description} - Embedding similarity: {similarity:.4f} (DIFFERENT)",
+            extra={"icon": "🆕"}
+        )
 
 # -------------------------------------------------------------------------------------
 # Helper Functions
@@ -106,7 +301,13 @@ def calculate_cosine_similarity(embed1: np.ndarray, embed2: np.ndarray) -> float
         )
     norm_embed1 = normalize_embedding(embed1)
     norm_embed2 = normalize_embedding(embed2)
-    return float(np.dot(norm_embed1, norm_embed2))
+    similarity = float(np.dot(norm_embed1, norm_embed2))
+    
+    # Log the embedding similarity if verbose mode is enabled
+    if VERBOSE_DEDUPLICATION_OUTPUT:
+        log_embedding_similarity(similarity)
+        
+    return similarity
 
 
 def create_chunk_hash(chunk_text: str) -> str:
@@ -175,6 +376,13 @@ def check_chunk_duplicates(
         return {}, [], {}
     
     doc_id = chunks_data[0].get('document_id', 'unknown')
+    
+    # Using enhanced visibility for deduplication process
+    if VERBOSE_DEDUPLICATION_OUTPUT:
+        print("\n" + "=" * 80)
+        print(f"CHUNK DEDUPLICATION PROCESS FOR DOCUMENT: {doc_id}")
+        print("=" * 80)
+    
     logger.info(f"Checking for duplicate chunks in document: {doc_id}", extra={"icon": "🔄"})
     
     # Connect to LanceDB
@@ -188,6 +396,8 @@ def check_chunk_duplicates(
             f"No existing chunks table found. All {len(chunks_data)} chunks are new.",
             extra={"icon": "✅"}
         )
+        if VERBOSE_DEDUPLICATION_OUTPUT:
+            print(f"✅ No existing chunks table found. All {len(chunks_data)} chunks are new.")
         return {}, list(range(len(chunks_data))), {}
     
     # Ensure index exists if we have enough chunks
@@ -196,6 +406,9 @@ def check_chunk_duplicates(
     
     # Get a dataframe of all existing chunks for hash comparison
     existing_chunks_df = chunks_table.to_pandas()
+    
+    if VERBOSE_DEDUPLICATION_OUTPUT:
+        print(f"📊 Found {len(existing_chunks_df)} existing chunks to compare against")
     
     duplicate_chunks = {}
     new_chunks = []
@@ -222,10 +435,16 @@ def check_chunk_duplicates(
                     'similarity': 1.0,  # Perfect match
                     'hash_match': True
                 }
-                logger.info(
-                    f"Chunk {chunk_id} has an exact hash match with {match_id}. Skipping.",
-                    extra={"icon": "⏩"}
+                
+                # Log the duplicate with enhanced visibility
+                log_chunk_comparison(
+                    chunk_id=chunk_id,
+                    match_id=match_id,
+                    similarity=1.0,
+                    is_duplicate=True,
+                    match_type="hash"
                 )
+                
                 continue
         else:
             logger.warning(f"No 'chunk_hash' column in existing chunks table. Skipping hash-based deduplication.", extra={"icon": "⚠️"})
@@ -240,95 +459,135 @@ def check_chunk_duplicates(
         if isinstance(embedding, list):
             embedding = np.array(embedding)
             
+        # Attempt vector similarity search with robust error handling
         try:
-            # Use ANN search if we have an index, otherwise use simple filtering
-            if len(existing_chunks_df) >= 256:
-                df = (
-                    chunks_table.search(embedding)
-                        .metric("cosine")
-                        .limit(10)
-                        .nprobes(32)
-                        .refine_factor(5)
-                        .to_df()
-                )
-            else:
-                # For small tables, use regular filtering
-                results = []
-                for _, row in existing_chunks_df.iterrows():
-                    exist_emb = row.get('embedding')
-                    if exist_emb is not None:
-                        sim = calculate_cosine_similarity(embedding, np.array(exist_emb))
-                        if sim >= CHUNK_SIMILARITY_THRESHOLD:
-                            results.append((row, sim))
+            # First check if the schema has embedding column
+            has_embedding_column = False
+            for field in chunks_table.schema:
+                if field.name == 'embedding':
+                    has_embedding_column = True
+                    break
+                    
+            if not has_embedding_column:
+                logger.warning(f"No embedding column found in chunks table. Using direct comparison.", extra={"icon": "⚠️"})
                 
-                # Sort by similarity in descending order
-                results.sort(key=lambda x: x[1], reverse=True)
-                df = pd.DataFrame([r[0] for r in results[:10]])
-                if not df.empty:
-                    # Add distance as 1 - similarity to match LanceDB format
-                    df['_distance'] = [1.0 - r[1] for r in results[:10]]
+                # Fall back to direct comparison without vector search
+                best_match = None
+                best_similarity = 0.0
+                
+                for _, row in existing_chunks_df.iterrows():
+                    existing_emb = row.get('embedding')
+                    if existing_emb is not None:
+                        if isinstance(existing_emb, list):
+                            existing_emb = np.array(existing_emb)
+                            
+                        try:
+                            similarity = calculate_cosine_similarity(embedding, existing_emb)
+                            if similarity > best_similarity:
+                                best_similarity = similarity
+                                best_match = row
+                        except Exception:
+                            continue
+                            
+                if best_match is not None and best_similarity >= SIMILAR_THRESHOLD:
+                    match_id = best_match.get('chunk_id', '')
+                    
+                    log_chunk_comparison(
+                        chunk_id=chunk_id,
+                        match_id=match_id,
+                        similarity=best_similarity,
+                        is_duplicate=best_similarity >= CHUNK_DUPLICATION_THRESHOLD
+                    )
+                    
+                    if best_similarity >= CHUNK_DUPLICATION_THRESHOLD:
+                        duplicate_chunks[idx] = {
+                            'similar_id': match_id,
+                            'similarity': best_similarity,
+                            'hash_match': False
+                        }
+                    elif best_similarity >= SIMILAR_THRESHOLD:
+                        update_chunks[idx] = {
+                            'similar_id': match_id,
+                            'similarity': best_similarity
+                        }
+                    else:
+                        new_chunks.append(idx)
+                else:
+                    new_chunks.append(idx)
+                    if VERBOSE_DEDUPLICATION_OUTPUT:
+                        print(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.")
+                continue
             
-            if df.empty:
-                logger.info(f"No similar chunks found for {chunk_id}. It's new.", extra={"icon": "✅"})
+            # Use vector search with explicit column specification
+            query_result = chunks_table.search(
+                embedding, 
+                vector_column_name="embedding"
+            ).limit(5).to_pandas()
+            
+            if query_result.empty:
+                if VERBOSE_DEDUPLICATION_OUTPUT:
+                    print(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.")
                 new_chunks.append(idx)
                 continue
                 
-            found = False
-            for _, row in df.iterrows():
-                sim = 1.0 - row.get('_distance', 0)
-                existing_id = row.get('chunk_id', '')
-                existing_doc = row.get('document_id', '')
-                
-                # Same-doc update check
-                if existing_doc == doc_id and existing_id.split('_')[-1] == chunk_id.split('_')[-1]:
-                    exist_ts = pd.to_datetime(row.get('timestamp', None))
-                    new_ts = pd.to_datetime(chunk_data.get('timestamp', None))
-                    if new_ts and exist_ts and new_ts > exist_ts:
-                        update_chunks[idx] = {'record_id': row.name, 'is_newer': True}
-                        logger.info(
-                            f"Chunk {chunk_id} is a newer version. Marked for update.",
-                            extra={"icon": "🔄"}
-                        )
-                    else:
-                        duplicate_chunks[idx] = {
-                            'similar_id': existing_id,
-                            'similarity': sim,
-                            'hash_match': False
-                        }
-                        logger.info(
-                            f"Chunk {chunk_id} is an older version. Skipping.",
-                            extra={"icon": "⏩"}
-                        )
-                    found = True
-                    break
-                    
-                # Cross-doc duplicate based on similarity
-                if sim >= CHUNK_DUPLICATION_THRESHOLD:
-                    duplicate_chunks[idx] = {
-                        'similar_id': existing_id,
-                        'similarity': sim,
-                        'hash_match': False
-                    }
-                    logger.info(
-                        f"Chunk {chunk_id} is similar to {existing_id} (sim={sim:.4f}). Skipping.",
-                        extra={"icon": "⏩"}
-                    )
-                    found = True
-                    break
-                    
-            if not found:
-                logger.info(f"Chunk {chunk_id} has no close matches. It's new.", extra={"icon": "✅"})
+            # Calculate similarity (1.0 - distance for cosine similarity)
+            best_match = query_result.iloc[0]
+            similarity = 1.0 - best_match['_distance']
+            match_id = best_match.get('chunk_id', '')
+            
+            # Log detailed chunk comparison
+            log_chunk_comparison(
+                chunk_id=chunk_id,
+                match_id=match_id,
+                similarity=similarity,
+                is_duplicate=similarity >= CHUNK_DUPLICATION_THRESHOLD
+            )
+            
+            if similarity >= CHUNK_DUPLICATION_THRESHOLD:
+                # This is a duplicate chunk
+                duplicate_chunks[idx] = {
+                    'similar_id': match_id,
+                    'similarity': similarity,
+                    'hash_match': False
+                }
+            elif similarity >= CHUNK_SIMILARITY_THRESHOLD:
+                # This might be an updated version of an existing chunk
+                update_chunks[idx] = {
+                    'similar_id': match_id,
+                    'similarity': similarity
+                }
+            else:
+                # This is a new chunk
                 new_chunks.append(idx)
                 
         except Exception as e:
-            logger.error(f"Error searching for chunk {chunk_id}: {e}", extra={"icon": "❌"})
+            logger.error(f"Error during vector search for chunk {chunk_id}: {str(e)}", extra={"icon": "❌"})
+            if VERBOSE_DEDUPLICATION_OUTPUT:
+                print(f"❌ Error during vector search: {str(e)}")
+                print(f"Marking chunk {chunk_id} as new due to search error.")
             new_chunks.append(idx)
     
-    elapsed = time.time() - start_time
-    logger.info(
-        f"Chunk deduplication completed in {elapsed:.2f}s: {len(new_chunks)} new, {len(duplicate_chunks)} duplicates, {len(update_chunks)} updates",
-        extra={"icon": "📊"}
+    # Log summary of chunk deduplication
+    processing_time = time.time() - start_time
+    log_chunk_deduplication_summary(
+        total_chunks=len(chunks_data),
+        duplicate_chunks=len(duplicate_chunks),
+        similar_chunks=len(update_chunks),
+        new_chunks=len(new_chunks),
+        processing_time=processing_time
     )
+    
+    # Print more detailed summary in verbose mode
+    if VERBOSE_DEDUPLICATION_OUTPUT:
+        print("\n" + "-" * 50)
+        print(f"CHUNK DEDUPLICATION SUMMARY:")
+        print(f"  • Total chunks processed: {len(chunks_data)}")
+        print(f"  • Exact duplicates found: {len(duplicate_chunks)}")
+        print(f"  • Similar chunks found: {len(update_chunks)}")
+        print(f"  • New unique chunks: {len(new_chunks)}")
+        print(f"  • Processing time: {processing_time:.2f} seconds")
+        print("-" * 50 + "\n")
+    
     return duplicate_chunks, new_chunks, update_chunks
 
 # -------------------------------------------------------------------------------------
@@ -530,63 +789,72 @@ def check_for_document_version_update(
 # -------------------------------------------------------------------------------------
 def check_new_document(doc_data: List[Dict]) -> Dict[str, object]:
     """
-    Main entry: deduplicate or detect version for a new document.
+    Check if a document is already in the database and return detailed information.
+    
+    Args:
+        doc_data: List of page dictionaries with document information
+        
+    Returns:
+        Dictionary with detailed duplicate/similarity information
     """
     if not doc_data:
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return {
-            'duplicate_pages': {}, 'new_pages': [], 'update_pages': {},
-            'is_new_version': False, 'old_version_id': None, 'version_similarity': 0.0
+            "is_duplicate": False,
+            "duplicate_pages": {},
+            "new_pages": [],
+            "update_pages": {},
+            "is_new_version": False,
+            "old_version_id": None,
+            "version_similarity": 0.0
         }
+    
+    # Connect to LanceDB
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
     lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
     db = connect_to_lancedb(lancedb_path)
-
-    is_new, ver_sim, old_id = check_for_document_version_update(doc_data, db)
-    if is_new and old_id:
-        logger.info(
-            f"Document is new version of {old_id}, adjusting page compare threshold.",
-            extra={"icon": "🔄"}
-        )
-        original = get_document_pages_by_id(old_id, db)
-        dup, new_pg, upd = {}, [], {}
-        for idx, p in enumerate(doc_data):
-            emb = p.get('embedding')
-            if emb is None:
-                new_pg.append(idx)
-                continue
-            emb_arr = np.array(emb) if isinstance(emb, list) else emb
-            best_sim, best_row = 0.0, None
-            for _, r in original.iterrows():
-                other = np.array(r['embedding'])
-                sim = calculate_cosine_similarity(emb_arr, other)
-                if sim > best_sim:
-                    best_sim, best_row = sim, r
-            if best_sim >= SIMILAR_THRESHOLD:
-                dup[idx] = {
-                    'similar_id': f"{old_id}_{best_row.get('page_number', 'unknown')}",
-                    'similarity': best_sim
-                }
-            else:
-                new_pg.append(idx)
-        return {
-            'duplicate_pages': dup,
-            'new_pages': new_pg,
-            'update_pages': upd,
-            'is_new_version': True,
-            'old_version_id': old_id,
-            'version_similarity': ver_sim
-        }
-
-    dup, new_pg, upd = check_document_duplicates(doc_data, db)
+    
+    # Get document ID and log the check
+    doc_id = doc_data[0].get('pdf_identifier', 'unknown')
+    logger.info(f"Checking for duplicate/similar documents: {doc_id}", extra={"icon": "🔍"})
+    
+    # Check duplicate pages first with existing document database
+    duplicate_pages, new_pages, update_pages = check_document_duplicates(doc_data, db)
+    
+    # Calculate summary counts
+    total_pages = len(doc_data)
+    duplicate_count = len(duplicate_pages)
+    update_count = len(update_pages)
+    new_count = len(new_pages)
+    
+    # Check if this is a complete duplicate (all pages are duplicates)
+    is_complete_duplicate = duplicate_count == total_pages
+    
+    # Check if this might be a new version of an existing document
+    is_new_version, version_similarity, old_version_id = check_for_document_version_update(doc_data, db)
+    
+    # Log detailed summary using enhanced logging
+    log_document_deduplication_summary(
+        doc_id=doc_id,
+        total_pages=total_pages,
+        duplicate_pages=duplicate_count,
+        similar_pages=update_count,
+        new_pages=new_count,
+        is_new_version=is_new_version,
+        old_version_id=old_version_id,
+        version_similarity=version_similarity
+    )
+    
+    # Return comprehensive results
     return {
-        'duplicate_pages': dup,
-        'new_pages': new_pg,
-        'update_pages': upd,
-        'is_new_version': is_new,
-        'old_version_id': old_id,
-        'version_similarity': ver_sim
+        "is_duplicate": is_complete_duplicate,
+        "duplicate_pages": duplicate_pages,
+        "new_pages": new_pages,
+        "update_pages": update_pages,
+        "is_new_version": is_new_version,
+        "old_version_id": old_version_id,
+        "version_similarity": version_similarity
     }
 
 if __name__ == "__main__":

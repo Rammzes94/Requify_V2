@@ -34,13 +34,13 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory()
 
-# Import deduplication module
+# Import deduplication module - directly using pre_save_deduplication
 from _03_docs_deduplication import pre_save_deduplication as dedup
 
-# Load environment variables
-load_dotenv()
-
 # Setup logging with script prefix
+logger = _00_utils.setup_logging()
+
+# Create a consistent logger with prefix for better visibility
 class ScriptLogger(logging.LoggerAdapter):
     def __init__(self, logger, prefix):
         super().__init__(logger, {})
@@ -49,14 +49,17 @@ class ScriptLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Context_Chunking] ")
+logger = ScriptLogger(logger, "[Context_Chunking] ")
+
+# Load environment variables
+load_dotenv()
 
 # Constants
 MAX_CHAR_SIZE = 900  # Maximum allowed character size
 TARGET_CHAR_SIZE = 700  # Target character size per chunk
 MAX_SECTION_SIZE = 30000  # Maximum section size for processing with LLM
 MAX_RETRIES = 2  # Maximum number of retries for LLM calls
-SIMILARITY_THRESHOLD = 0.85  # Lowered threshold for considering content similar
+SIMILARITY_THRESHOLD = 0.9  # Updated to match other modules (was 0.85)
 DUPLICATE_THRESHOLD = 0.995  # High threshold for automatic duplicates without LLM
 
 OUTPUT_DIR_BASE = "_03_output"
@@ -68,6 +71,8 @@ EMBEDDING_DEVICE = "cpu" # Force CPU usage to avoid MPS memory issues
 EMBEDDING_MAX_SEQ_LENGTH = 256 # Reduce sequence length to save memory
 EMBEDDING_BATCH_SIZE = 8 # Control batch size for memory management
 
+# Set to True to enable more detailed console output 
+VERBOSE_CHUNKING_OUTPUT = os.environ.get("VERBOSE_CHUNKING_OUTPUT", "True").lower() == "true"
 
 # Get OpenAI API key
 api_key = os.getenv("OPENAI_API_KEY")
@@ -281,181 +286,93 @@ def generate_chunk_hash(text: str) -> str:
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 def compute_chunk_similarity(chunk1: str, chunk2: str) -> float:
-    """
-    Compute similarity between two chunks using a combination of measures.
-    """
-    # Simple cosine similarity using sentence-transformers would be more accurate but slower
-    # For now, use a simpler approach with difflib for demo purposes
+    """Compute text similarity between two chunks using difflib."""
     return difflib.SequenceMatcher(None, chunk1, chunk2).ratio()
 
 def evaluate_chunk_pair(new_chunk: str, old_chunk: str) -> Dict[str, Any]:
     """
-    Use an LLM to evaluate a pair of chunks and determine which one to keep.
+    Evaluate a pair of chunks to determine if they're duplicates, similar, or different.
     
-    Args:
-        new_chunk: Text of the new chunk
-        old_chunk: Text of the existing chunk
-        
-    Returns:
-        Dictionary with decision and reasoning
+    Returns decision information with similarity score and decision.
     """
-    import difflib
-    import re
+    # First calculate simple text similarity
+    similarity = compute_chunk_similarity(new_chunk, old_chunk)
     
-    # Generate a unified diff for visualization
-    diff = list(difflib.ndiff(old_chunk.splitlines(), new_chunk.splitlines()))
-    diff_text = "\n".join(diff)
+    # Create a decision info dictionary
+    decision_info = {
+        "similarity": similarity,
+        "decision": "",
+        "reason": "",
+        "differences": []
+    }
     
-    evaluation_prompt = """
-    You are an expert document reviewer comparing two versions of technical content.
-    Your task is to determine which version should be kept in the database.
+    # Automatic decision for high similarity (duplicate)
+    if similarity >= DUPLICATE_THRESHOLD:
+        decision_info["decision"] = "keep_old"
+        decision_info["reason"] = f"Chunks are nearly identical (similarity: {similarity:.4f})"
+        return decision_info
     
-    Review the chunks carefully and choose ONE of these options:
-    
-    1. 'keep_new' - Choose this ONLY if:
-       - The new chunk contains meaningful ADDITIONAL information not present in the old chunk
-       - The new chunk adds clarity without changing specifications or requirements
-       - The old chunk has clear errors or omissions that are fixed in the new version
-       - There is NEW content like additional steps, contact info, or safety information
-       
-    2. 'keep_old' - Choose this ONLY if:
-       - The old chunk contains IMPORTANT information that is REMOVED in the new chunk
-       - The new chunk REMOVES critical requirements, specifications, or safety information
-       - The new chunk might introduce errors or ambiguities not present in the old version
-       - The new chunk has DUPLICATE sections within itself
-    
-    3. 'need_user_input' - Choose this ONLY when:
-       - Numerical specifications are CHANGED (not just reformatted)
-       - Material requirements are substantively altered in meaning
-       - Technical specifications are changed in a way that affects behavior or compliance
-    
-    IMPORTANT EVALUATION RULES:
-    - Consider these as DUPLICATES (keep_old) if only formatting changes:
-      * List format changed to table format with same data
-      * Whitespace, indentation, or bullet style changes
-      * Text reordering without content change
-      * Paragraph merging or splitting without content change
-      * Same meaning expressed with different words/synonyms
-      * Units displayed differently but with equivalent values (e.g., "10 cm" vs "100 mm")
-      * Numbers formatted differently (e.g., "1000" vs "1,000" vs "1.0 × 10³")
-    
-    - Look for NUMERICAL VALUE CHANGES specifically:
-      * Different measurements, dimensions, weights, or capacities
-      * Different tolerance ranges or thresholds
-      * Changed version numbers, model numbers, or part numbers
-      * Changed timelines, durations, or frequencies
-      * Any numbers that affect physical properties, performance, or compliance
-    
-    - ADDITION OF NEW CONTENT should usually result in 'keep_new' unless the new content is redundant or contradictory
-    
-    - ADDED ITEMS such as:
-      * New steps in a procedure
-      * Additional contact information
-      * New safety warnings
-      * Extra details about operation
-      Should always lead to 'keep_new' decision
-      
-    - Always check for REMOVED content - a critical security measure or specification 
-      that's removed should result in choosing 'keep_old', BUT if non-critical info
-      is removed while important NEW info is added, choose 'keep_new'
-      
-    - NUMERICAL CHANGES to specifications like dimensions, weights, capacities, 
-      intervals, or version numbers should almost always trigger 'need_user_input'
-      
-    - Be careful to distinguish between COSMETIC changes (keep_old) and SUBSTANTIVE 
-      changes (need_user_input)
-    
-    OLD CHUNK:
-    ```
-    {old_chunk}
-    ```
-    
-    NEW CHUNK:
-    ```
-    {new_chunk}
-    ```
-    
-    DIFF (showing changes):
-    ```
-    {diff_text}
-    ```
-    
-    Return your decision and reasoning in this exact format:
-    Decision: [keep_new/keep_old/need_user_input]
-    Reason: [clear explanation of your reasoning]
-    Differences: [list the key differences that influenced your decision]
-    """
-    
-    agent = Agent(
-        model=decision_llm,  
-        markdown=True,
-        debug_mode=False,
-        response_model=ChunkDecisionModel,
-        description=evaluation_prompt,
-        use_json_mode=True
-    )
-    
-    prompt_content = f"""
-    # OLD CHUNK:
-    ```
-    {old_chunk}
-    ```
-    
-    # NEW CHUNK:
-    ```
-    {new_chunk}
-    ```
-    
-    # DIFFERENCES (DIFF):
-    ```
-    {diff_text}
-    ```
-    
-    Based on these chunks, make your decision about which to keep.
-    Pay special attention to:
-    1. Whether content is actually DIFFERENT or just REFORMATTED
-    2. If numerical specs or values have changed (needs user input)
-    3. If IMPORTANT content was removed (keep old version) 
-    4. If VALUABLE content was added (keep new version)
-    5. If sections were just reordered (treat as duplicate)
-    6. If formatting changed but content is semantically equivalent (treat as duplicate)
-    7. If units of measurement changed but the actual values are equivalent
-    8. If there are numerical differences that affect requirements or specifications
-    """
-    
-    try:
-        response = agent.run(prompt_content)
-        _00_utils.update_token_counters(response)
+    # For medium similarity, use LLM to decide
+    if similarity >= SIMILARITY_THRESHOLD:
+        # Set up the decision prompt
+        decision_prompt = """
+        Compare these two document chunks and determine the best action:
         
-        data = response.content
+        OLD CHUNK:
+        '''
+        {old_chunk}
+        '''
         
-        if isinstance(data, ChunkDecisionModel):
-            logger.info(f"LLM decision: {data.decision} - {data.reason[:100]}...", extra={"icon": "🤔"})
-            return {
-                "decision": data.decision,
-                "reason": data.reason,
-                "differences": data.differences or []
-            }
-        elif isinstance(data, dict):
-            logger.info(f"LLM decision: {data.get('decision')} - {data.get('reason', '')[:100]}...", extra={"icon": "🤔"})
-            return data
-        else:
-            logger.error(f"Unexpected response format from LLM", extra={"icon": "❌"})
-            # Default to keeping new if we can't parse the response
-            return {
-                "decision": "keep_new",
-                "reason": "Error parsing LLM response - defaulting to keeping new content",
-                "differences": []
-            }
+        NEW CHUNK:
+        '''
+        {new_chunk}
+        '''
+        
+        Comparison rules:
+        1. If chunks contain identical content (even if formatting/wording differs slightly), keep the old chunk
+        2. If new chunk contains meaningful new information or corrections, keep the new chunk
+        3. If truly uncertain which is better, request user input
+        
+        Your objective is to maximize information quality while minimizing unnecessary redundancy.
+        """
+        
+        # Create a Pydantic model for the expected output structure
+        decision_agent = Agent(
+            model=decision_llm,
+            markdown=True,
+            debug_mode=False,
+            response_model=ChunkDecisionModel,
+            description=decision_prompt.format(old_chunk=old_chunk, new_chunk=new_chunk),
+            use_json_mode=True
+        )
+        
+        try:
+            response = decision_agent.run("")
+            _00_utils.update_token_counters(response)
             
-    except Exception as e:
-        logger.error(f"Error during chunk evaluation: {e}", extra={"icon": "❌"})
-        # Default to keeping new if there's an error
-        return {
-            "decision": "keep_new",
-            "reason": f"Error during evaluation: {str(e)} - defaulting to keeping new content",
-            "differences": []
-        }
+            data = response.content
+            decision_info["decision"] = data.decision
+            decision_info["reason"] = data.reason
+            if data.differences:
+                decision_info["differences"] = data.differences
+                
+            logger.info(
+                f"LLM determined chunks with {similarity:.4f} similarity should be: {data.decision}",
+                extra={"icon": "🧠"}
+            )
+            
+        except Exception as e:
+            logger.error(f"Error using LLM for chunk comparison: {e}", extra={"icon": "❌"})
+            # Default to keeping the new chunk if LLM fails
+            decision_info["decision"] = "keep_new"
+            decision_info["reason"] = "LLM comparison failed, defaulting to keeping new chunk"
+            
+    else:
+        # Low similarity - keep new chunk
+        decision_info["decision"] = "keep_new"
+        decision_info["reason"] = f"Chunks are significantly different (similarity: {similarity:.4f})"
+        
+    return decision_info
 
 # ------------------------------------------------------------------------------
 # User Interaction with Agno Agent
@@ -582,278 +499,273 @@ def process_document_with_context(
     document_text: str,
     document_id: str,
     similar_doc_id: Optional[str] = None
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """
-    Process a document with context-aware chunking and intelligent deduplication.
+    Process a document with context from a similar document for better chunking.
     
     Args:
-        document_text: Full text of the document
-        document_id: ID of the document being processed
-        similar_doc_id: ID of a similar document for context (if available)
+        document_text: Text content of the document
+        document_id: Identifier for the new document
+        similar_doc_id: Identifier for a similar document to use as context
         
     Returns:
-        List of processed chunk data (ready for database insertion)
+        List of processed chunks with metadata
+        Dictionary mapping new chunk IDs to replaced chunk IDs
     """
-    logger.info(f"Processing document {document_id} with context-aware chunking", extra={"icon": "🚀"})
-    
     start_time = time.time()
     
-    # Step 1: Get reference chunks if a similar document is provided
-    reference_chunks = []
+    if not document_text.strip():
+        logger.info("Empty document text. No chunks to create.", extra={"icon": "ℹ️"})
+        return [], {}
+    
+    # Initialize tracking variables
+    replaced_chunks = {}  # Maps new chunk ID -> old chunk ID for replacements
+    duplicate_count = 0
+    similar_count = 0
+    new_count = 0
+    
+    logger.info(f"Processing document: {document_id}", extra={"icon": "🔄"})
+    
+    # If a similar document is provided, retrieve its chunks for context
+    similar_chunks = []
     if similar_doc_id:
-        reference_chunks = get_similar_document_chunks(document_id, similar_doc_id)
+        logger.info(f"Using chunks from similar document {similar_doc_id} as context", extra={"icon": "🔄"})
+        similar_chunks = get_similar_document_chunks(document_id, similar_doc_id)
+        # Log that we're using context-aware chunking
+        if similar_chunks:
+            logger.info(
+                f"Performing context-aware chunking with {len(similar_chunks)} reference chunks",
+                extra={"icon": "🧩"}
+            )
     
-    # Step 2: Perform context-aware chunking
-    chunks = context_aware_chunking(document_text, document_id, reference_chunks)
-    
-    if not chunks:
-        logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})
-        return []
-    
-    # Step 3: Process each chunk and compare with existing chunks
-    from sentence_transformers import SentenceTransformer
-    import datetime
-    
-    # Initialize embedding model for comparison
-    logger.info("Loading embedding model", extra={"icon": "🧠"})
+    # If no similar document or no chunks found, fall back to regular chunking
+    chunks = []
+    if not similar_chunks:
+        # We don't have context, use standard chunking
+        logger.info("No context chunks available, using standard chunking", extra={"icon": "ℹ️"})
+        from _02_parsing.integrated_chunking import chunk_markdown
+        raw_chunks = chunk_markdown(document_text)
+    else:
+        # Use context-aware chunking
+        raw_chunks = context_aware_chunking(document_text, document_id, similar_chunks)
 
-    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME, device=EMBEDDING_DEVICE)
+    # Check if chunking succeeded
+    if not raw_chunks:
+        logger.error("Chunking failed to produce any chunks", extra={"icon": "❌"})
+        return [], {}
+        
+    logger.info(f"Created {len(raw_chunks)} initial chunks", extra={"icon": "✅"})
     
-    # Additional memory optimizations
-    embedding_model.max_seq_length = EMBEDDING_MAX_SEQ_LENGTH  # Reduce sequence length
-    
+    # Create a list to hold processed chunks with full metadata
     processed_chunks = []
-    duplicates_found = 0
-    updates_kept = 0
-    user_decisions = 0
+    current_offset = 0
     
-    # Process chunks in batches to manage memory usage
-    chunk_batches = [chunks[i:i + EMBEDDING_BATCH_SIZE] for i in range(0, len(chunks), EMBEDDING_BATCH_SIZE)]
+    # Embedding model for chunk embeddings
+    try:
+        import torch
+        from torch import Tensor
+        from transformers import AutoTokenizer, AutoModel
+        
+        # Load the embedding model and tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(EMBEDDING_MODEL_NAME)
+        model = AutoModel.from_pretrained(EMBEDDING_MODEL_NAME)
+        
+        # Force to CPU to avoid MPS memory issues
+        if EMBEDDING_DEVICE == "cpu":
+            model = model.to(EMBEDDING_DEVICE)
+        
+        logger.info(f"Loaded embedding model: {EMBEDDING_MODEL_NAME}", extra={"icon": "✅"})
+    except Exception as e:
+        logger.error(f"Failed to load embedding model: {e}", extra={"icon": "❌"})
+        return [], {}
     
-    for batch_idx, chunk_batch in enumerate(chunk_batches):
-        logger.info(f"Processing batch {batch_idx+1}/{len(chunk_batches)} ({len(chunk_batch)} chunks)", extra={"icon": "🔄"})
+    # Process each chunk
+    for i, chunk_text in enumerate(raw_chunks):
+        # Find the actual position of this chunk in the document
+        chunk_start = document_text.find(chunk_text, current_offset)
+        if chunk_start == -1:
+            # If not found from current offset, search from beginning (though this indicates an issue)
+            chunk_start = document_text.find(chunk_text)
+            if chunk_start == -1:
+                logger.warning(
+                    f"Could not find exact position for chunk {i+1}, using approximate position",
+                    extra={"icon": "⚠️"}
+                )
+                chunk_start = current_offset
         
-        # Compute embeddings for the entire batch at once
-        batch_embeddings = embedding_model.encode(chunk_batch, normalize_embeddings=True)
+        chunk_end = chunk_start + len(chunk_text)
+        current_offset = chunk_end
         
-        for i, (chunk_text, embedding) in enumerate(zip(chunk_batch, batch_embeddings)):
-            # Original chunk index in the full list
-            chunk_idx = batch_idx * EMBEDDING_BATCH_SIZE + i
-            
-            # Generate chunk metadata
-            chunk_id = f"{document_id}_chunk_{chunk_idx+1}"
-            chunk_hash = generate_chunk_hash(chunk_text)
-            # Convert embedding to list if it's a numpy array
-            if isinstance(embedding, np.ndarray):
-                embedding = embedding.tolist()
-            token_count = len(chunk_text) // 4  # Simple approximation
-            
-            # Check for similar existing chunks
-            similar_chunk = None
-            highest_similarity = 0.0
-            
-            # First pass: look for exact hash matches (most efficient)
-            if reference_chunks:
-                for ref_chunk in reference_chunks:
-                    # Check hash-based exact match first
-                    if ref_chunk.get('chunk_hash') == chunk_hash:
-                        logger.info(f"Exact hash match for chunk {chunk_idx+1}", extra={"icon": "🔍"})
-                        duplicates_found += 1
-                        # Skip this chunk entirely - it's an exact duplicate
-                        similar_chunk = None
-                        break
+        # Generate chunk hash for deduplication
+        chunk_hash = generate_chunk_hash(chunk_text)
+        
+        # Calculate token count
+        token_count = len(tokenizer.encode(chunk_text))
+        
+        # Generate unique chunk ID
+        chunk_id = f"{document_id}_chunk_{i+1:04d}"
+        
+        # Generate embedding for the chunk
+        try:
+            inputs = tokenizer(
+                chunk_text, 
+                padding=True, 
+                truncation=True, 
+                max_length=EMBEDDING_MAX_SEQ_LENGTH, 
+                return_tensors="pt"
+            )
+            with torch.no_grad():
+                embedding = model(**inputs).last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
                 
-                # If no exact match, look for similar chunks
-                if similar_chunk is None:
-                    for ref_chunk in reference_chunks:
-                        # Check embedding similarity
-                        ref_embedding = ref_chunk.get('embedding')
-                        if ref_embedding is not None and isinstance(ref_embedding, (list, np.ndarray)):
-                            # Convert to numpy arrays for dot product
-                            if isinstance(ref_embedding, list):
-                                ref_embedding = np.array(ref_embedding)
-                            current_embedding = np.array(embedding)
-                            
-                            # Calculate cosine similarity
-                            similarity = np.dot(ref_embedding, current_embedding) / (
-                                np.linalg.norm(ref_embedding) * np.linalg.norm(current_embedding)
-                            )
-                            
-                            if similarity > highest_similarity:
-                                highest_similarity = similarity
-                                similar_chunk = ref_chunk
+            # Normalize the embedding
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
+        except Exception as e:
+            logger.error(f"Error generating embedding for chunk {i+1}: {e}", extra={"icon": "❌"})
+            # Create a zero embedding as fallback
+            embedding = np.zeros(1024)
+        
+        # Check for duplicates against reference chunks
+        is_duplicate = False
+        duplicate_of = ""
+        is_updated = False
+        previous_chunk_id = ""
+        
+        # Store the chunk data
+        timestamp = _00_utils.generate_timestamp()
+        
+        # Compare against all reference chunks from the similar document
+        if similar_chunks:
+            best_similarity = 0.0
+            best_chunk = None
             
-            # Now evaluate if the similar chunk warrants keeping or replacing
-            if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD:
-                logger.info(f"Similar chunk found for chunk {chunk_idx+1} (similarity: {highest_similarity:.4f})", extra={"icon": "🔍"})
-                
-                # If it's not an exact duplicate but similar, use LLM to evaluate
-                if highest_similarity < DUPLICATE_THRESHOLD:
-                    # Have the LLM evaluate the chunks
-                    eval_result = evaluate_chunk_pair(chunk_text, similar_chunk.get('chunk_text', ''))
+            for ref_chunk in similar_chunks:
+                # Compare embeddings
+                ref_embedding = np.array(ref_chunk.get('embedding', []))
+                if len(ref_embedding) > 0:
+                    similarity = dedup.calculate_cosine_similarity(embedding, ref_embedding)
                     
-                    decision = eval_result.get('decision')
-                    if decision == "keep_old":
-                        logger.info(f"Decision: Keep old chunk {similar_chunk.get('chunk_id')} - {eval_result.get('reason', '')[:100]}...", extra={"icon": "⏩"})
-                        # Skip adding this chunk to processed_chunks - we'll keep the old one
-                        continue
-                    elif decision == "need_user_input":
-                        # This should be rare - ask the user to decide
-                        user_decisions += 1
-                        user_decision = prompt_user_for_chunk_decision(
-                            chunk_text, 
-                            similar_chunk,
-                            document_id,
-                            eval_result
-                        )
+                    # Log the comparison with enhanced logging
+                    log_chunk_comparison(
+                        chunk_id=chunk_id,
+                        doc_id=document_id,
+                        comparison_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
+                        comparison_doc_id=ref_chunk.get('document_id', 'unknown'),
+                        similarity=similarity
+                    )
+                    
+                    # Track best match
+                    if similarity > best_similarity:
+                        best_similarity = similarity
+                        best_chunk = ref_chunk
+                    
+                    # Check for duplicate or similar chunk
+                    if similarity >= DUPLICATE_THRESHOLD:
+                        # This is a duplicate chunk
+                        is_duplicate = True
+                        duplicate_of = ref_chunk.get('chunk_id', '')
+                        duplicate_count += 1
+                        break
+                    elif similarity >= SIMILARITY_THRESHOLD:
+                        # This might be an updated version of the chunk
+                        decision_info = evaluate_chunk_pair(chunk_text, ref_chunk.get('chunk_text', ''))
                         
-                        if user_decision == "keep_old":
-                            logger.info(f"User decision: Keep old chunk {similar_chunk.get('chunk_id')}", extra={"icon": "👤"})
-                            # Skip adding this chunk
-                            continue
-                        else:
-                            logger.info(f"User decision: Keep new chunk (replacing old)", extra={"icon": "👤"})
-                            updates_kept += 1
-                    else:  # keep_new by default
-                        logger.info(f"Decision: Keep new chunk - {eval_result.get('reason', '')[:100]}...", extra={"icon": "✅"})
-                        updates_kept += 1
-                else:
-                    # Very high similarity but not exact hash match - likely just formatting differences
-                    if highest_similarity > DUPLICATE_THRESHOLD:
-                        # If it's a very high match, treat as duplicate without LLM evaluation
-                        logger.info(f"Chunk {chunk_idx+1} nearly identical to existing chunk - skipping", extra={"icon": "⏩"})
-                        continue
-                        
-                    # If similarity is high but not quite duplicate threshold, check for formatting or reordering
-                    if SIMILARITY_THRESHOLD <= highest_similarity < DUPLICATE_THRESHOLD:
-                        # Extract text normalized for comparison
-                        normalized_old = ' '.join(similar_chunk.get('chunk_text', '').lower().split())
-                        normalized_new = ' '.join(chunk_text.lower().split())
-                        
-                        # Check for simple reformatting cases: same words in different format
-                        if sorted(normalized_old.split()) == sorted(normalized_new.split()):
-                            logger.info(f"Chunk {chunk_idx+1} has same content in different order - treating as duplicate", extra={"icon": "⏩"})
-                            continue
+                        if decision_info["decision"] == "keep_old":
+                            # Keep old chunk (it's a duplicate)
+                            is_duplicate = True
+                            duplicate_of = ref_chunk.get('chunk_id', '')
+                            duplicate_count += 1
+                            break
+                        elif decision_info["decision"] == "keep_new":
+                            # Keep new chunk but track relationship to old chunk
+                            is_updated = True
+                            previous_chunk_id = ref_chunk.get('chunk_id', '')
+                            similar_count += 1
                             
-                        # Check for whitespace/bullet differences - replacing bullet types and normalizing whitespace
-                        normalized_old_content = re.sub(r'[-*•◦▪▫]', '-', normalized_old).replace('\n', ' ').replace('\t', ' ')
-                        normalized_new_content = re.sub(r'[-*•◦▪▫]', '-', normalized_new).replace('\n', ' ').replace('\t', ' ')
-                        
-                        # Enhanced normalization to catch more formatting variants
-                        # Remove common punctuation and normalize spacing
-                        normalized_old_content = re.sub(r'[,.;:()[\]{}]', ' ', normalized_old_content)
-                        normalized_old_content = re.sub(r'\s+', ' ', normalized_old_content).strip()
-                        normalized_new_content = re.sub(r'[,.;:()[\]{}]', ' ', normalized_new_content)
-                        normalized_new_content = re.sub(r'\s+', ' ', normalized_new_content).strip()
-                        
-                        # Normalize number formats (1,000 to 1000, etc.)
-                        normalized_old_content = re.sub(r'(\d),(\d)', r'\1\2', normalized_old_content)
-                        normalized_new_content = re.sub(r'(\d),(\d)', r'\1\2', normalized_new_content)
-                        
-                        # Normalize units for comparison (10mm to 10 mm, etc.)
-                        normalized_old_content = re.sub(r'(\d)([a-zA-Z]+)', r'\1 \2', normalized_old_content)
-                        normalized_new_content = re.sub(r'(\d)([a-zA-Z]+)', r'\1 \2', normalized_new_content)
-                        
-                        # Check for list vs table format - if content words are mostly the same
-                        # Filter out common stopwords to focus on meaningful content words
-                        stopwords = {'a', 'an', 'the', 'and', 'or', 'but', 'if', 'then', 'else', 'when', 'at', 'from', 'by', 'for', 'with', 'about', 'to', 'in', 'on', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'of', 'this', 'that', 'these', 'those'}
-                        old_words = set(word for word in re.findall(r'\b\w+\b', normalized_old_content.lower()) if word not in stopwords and not word.isdigit())
-                        new_words = set(word for word in re.findall(r'\b\w+\b', normalized_new_content.lower()) if word not in stopwords and not word.isdigit())
-                        
-                        # Calculate word overlap ratio
-                        if old_words and new_words:
-                            # Calculate two different overlap metrics
-                            overlap_ratio = len(old_words.intersection(new_words)) / max(len(old_words), len(new_words))
-                            jaccard_similarity = len(old_words.intersection(new_words)) / len(old_words.union(new_words))
+                            # Record replacement
+                            replaced_chunks[chunk_id] = previous_chunk_id
                             
-                            # Get all numeric values from both texts for comparison
-                            old_numbers = set(re.findall(r'\b\d+\.?\d*\b', normalized_old_content))
-                            new_numbers = set(re.findall(r'\b\d+\.?\d*\b', normalized_new_content))
-                            
-                            # If the chunk has numbers, make sure they're the same
-                            numbers_match = True
-                            if old_numbers or new_numbers:
-                                if old_numbers != new_numbers:
-                                    numbers_match = False
-                            
-                            # Higher threshold than before (0.85 -> 0.90 for overlap ratio)
-                            # But also check Jaccard similarity as an additional metric
-                            if (overlap_ratio > 0.90 or jaccard_similarity > 0.80) and numbers_match:
-                                logger.info(f"Chunk {chunk_idx+1} has high word overlap ({overlap_ratio:.2f}, jaccard {jaccard_similarity:.2f}) with existing - treating as duplicate", extra={"icon": "⏩"})
-                                continue
-        
-        # Add the new chunk to our processed list
-        chunk_record = {
+                            # Log the decision
+                            logger.info(
+                                f"Chunk {chunk_id} replaces {previous_chunk_id} - Reason: {decision_info['reason']}",
+                                extra={"icon": "🔄"}
+                            )
+                            break
+            
+            # If we didn't find a duplicate or similar chunk, it's a new chunk
+            if not is_duplicate and not is_updated:
+                new_count += 1
+        else:
+            # Without reference chunks, all chunks are new
+            new_count += 1
+            
+        # Skip duplicate chunks in the output (we'll reference the original)
+        if is_duplicate:
+            logger.info(
+                f"Skipping duplicate chunk {chunk_id}, referencing {duplicate_of} instead",
+                extra={"icon": "♻️"}
+            )
+            continue
+                
+        # Create the chunk data structure
+        chunk_data = {
             "chunk_id": chunk_id,
             "document_id": document_id,
-            "chunk_index": chunk_idx,
-            "start_offset": 0,  # Simplified - would track actual positions in real system
-            "end_offset": len(chunk_text),
+            "chunk_index": i,
+            "start_offset": chunk_start,
+            "end_offset": chunk_end,
             "chunk_text": chunk_text,
             "token_count": token_count,
-            "embedding": embedding,
+            "embedding": embedding.tolist(),
             "chunk_hash": chunk_hash,
-            "is_duplicate": False,
-            "duplicate_of": "",
-            "is_updated": similar_chunk is not None and highest_similarity >= SIMILARITY_THRESHOLD,
-            "previous_chunk_id": similar_chunk.get('chunk_id', '') if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD else "",
-            "timestamp": datetime.datetime.now().isoformat(),
-            "aligned_with_chunk_id": similar_chunk.get('chunk_id', '') if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD else "",
-            "aligned_with_document_id": similar_chunk.get('document_id', '') if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD else "",
-            "is_duplicate_marker": False  # Add this field for all normal chunks
+            "is_duplicate": is_duplicate,
+            "duplicate_of": duplicate_of,
+            "is_updated": is_updated,
+            "previous_chunk_id": previous_chunk_id,
+            "timestamp": timestamp,
+            "aligned_with_chunk_id": "",
+            "aligned_with_document_id": similar_doc_id or ""
         }
-        processed_chunks.append(chunk_record)
         
-        if similar_chunk and highest_similarity >= SIMILARITY_THRESHOLD:
-            logger.info(f"Chunk {chunk_idx+1} added as update to existing chunk {similar_chunk.get('chunk_id')}", extra={"icon": "🔄"})
-        else:
-            logger.info(f"Chunk {chunk_idx+1} added as new chunk", extra={"icon": "✅"})
+        processed_chunks.append(chunk_data)
     
-    end_time = time.time()
-    logger.info(f"Document processing completed in {end_time - start_time:.2f} seconds", extra={"icon": "⏱️"})
-    logger.info(
-        f"Generated {len(processed_chunks)} chunks ({duplicates_found} duplicates skipped, {updates_kept} updates kept, {user_decisions} user decisions)",
-        extra={"icon": "📊"}
+    # Log a summary of the chunking results with enhanced logging
+    log_chunk_deduplication_summary(
+        doc_id=document_id,
+        total_chunks=len(raw_chunks),
+        duplicate_chunks=duplicate_count,
+        similar_chunks=similar_count,
+        new_chunks=new_count,
+        is_document_update=(similar_doc_id is not None),
+        updated_doc_id=similar_doc_id
     )
     
-    # Handle case where all chunks are duplicates
-    if len(chunks) > 0 and len(processed_chunks) == 0:
-        logger.info(f"All {len(chunks)} chunks from document {document_id} are exact duplicates of existing chunks", extra={"icon": "🔄"})
+    # Clean up resources
+    if 'model' in locals():
+        del model
+    if 'tokenizer' in locals():
+        del tokenizer
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
         
-        if similar_doc_id:
-            logger.info(f"Document {document_id} appears to be a duplicate of {similar_doc_id}", extra={"icon": "⏩"})
-            
-            # Create a single marker chunk to indicate this is a complete duplicate
-            # This helps with traceability while avoiding redundant storage
-            marker_chunk = {
-                "chunk_id": f"{document_id}_duplicate_marker",
-                "document_id": document_id,
-                "chunk_index": 0,
-                "start_offset": 0,
-                "end_offset": 0,
-                "chunk_text": f"This document is a complete duplicate of {similar_doc_id}",
-                "token_count": 0,
-                "embedding": np.zeros(len(embedding)).tolist(),  # Empty embedding
-                "chunk_hash": "duplicate_document_marker",
-                "is_duplicate": True,
-                "duplicate_of": similar_doc_id,
-                "is_updated": False,
-                "previous_chunk_id": "",
-                "timestamp": datetime.datetime.now().isoformat(),
-                "aligned_with_chunk_id": "",
-                "aligned_with_document_id": similar_doc_id,
-                "is_duplicate_marker": True  # Special flag to identify this as a marker chunk
-            }
-            processed_chunks.append(marker_chunk)
+    duration = time.time() - start_time
+    logger.info(
+        f"Processed {len(processed_chunks)} chunks in {duration:.2f}s "
+        f"({duplicate_count} duplicates, {similar_count} updated, {new_count} new)",
+        extra={"icon": "✅"}
+    )
     
-    return processed_chunks
+    return processed_chunks, replaced_chunks
 
-def save_chunks_to_db(chunks: List[Dict[str, Any]]) -> bool:
+def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Dict[str, str]] = None) -> bool:
     """
     Save processed chunks to the LanceDB chunks table.
     
     Args:
         chunks: List of chunk records to save
+        replaced_chunks: Dictionary mapping original chunk IDs to new chunk IDs (for marking chunks as replaced)
         
     Returns:
         True if successful, False otherwise
@@ -877,40 +789,107 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]]) -> bool:
             logger.info(f"Opened existing table: {CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
             chunks_table = db.open_table(CHUNKS_TABLE_NAME)
             
-            # Check if need to add the is_duplicate_marker column
+            # Check table schema for required columns
             table_schema = chunks_table.schema
-            has_duplicate_marker = any(field.name == 'is_duplicate_marker' for field in table_schema)
+            existing_columns = {field.name for field in table_schema}
+            required_columns = {
+                'is_duplicate_marker', 
+                'is_replaced', 
+                'replaced_by'
+            }
             
-            if not has_duplicate_marker:
-                # Create new dataframe with updated schema
-                logger.info("Adding is_duplicate_marker field to existing records", extra={"icon": "🔄"})
-                df = chunks_table.to_pandas()
-                df['is_duplicate_marker'] = False
+            missing_columns = required_columns - existing_columns
+            
+            # Get existing chunks data
+            existing_df = chunks_table.to_pandas()
+            
+            # Add missing columns if needed
+            if missing_columns:
+                logger.info(f"Adding missing columns: {missing_columns}", extra={"icon": "🔄"})
+                # Add required columns with default values
+                for col in missing_columns:
+                    if col in ['is_duplicate_marker', 'is_replaced']:
+                        existing_df[col] = False
+                    else:
+                        existing_df[col] = ""
+            
+            # Prepare replacement updates - only query for chunks that need updates
+            replacement_updates = []
+            if replaced_chunks and not existing_df.empty:
+                for old_chunk_id, new_chunk_id in replaced_chunks.items():
+                    mask = existing_df['chunk_id'] == old_chunk_id
+                    if any(mask):
+                        # Get the row indexes that need updating
+                        for idx in existing_df[mask].index:
+                            # Create a modified copy of the existing row
+                            updated_row = existing_df.loc[idx].copy()
+                            updated_row['is_replaced'] = True
+                            updated_row['replaced_by'] = new_chunk_id
+                            replacement_updates.append(updated_row)
+                        
+                        logger.info(f"Marked chunk {old_chunk_id} as replaced by {new_chunk_id}", extra={"icon": "✅"})
+                    else:
+                        logger.warning(f"Could not find chunk {old_chunk_id} to mark as replaced", extra={"icon": "⚠️"})
+            
+            # Prepare new chunks dataframe
+            if chunks:
+                new_chunks_df = pd.DataFrame(chunks)
                 
-                # Drop and recreate table
+                # Ensure required columns exist in new chunks
+                for col in required_columns:
+                    if col not in new_chunks_df.columns:
+                        if col in ['is_duplicate_marker', 'is_replaced']:
+                            new_chunks_df[col] = False
+                        else:
+                            new_chunks_df[col] = ""
+            
+            # Combine existing chunks that need updates with new chunks
+            if replacement_updates or missing_columns:
+                # Convert replacement updates to DataFrame if any exist
+                if replacement_updates:
+                    updates_df = pd.DataFrame(replacement_updates)
+                    
+                    # Remove rows that will be updated (replaced chunks)
+                    if replaced_chunks:
+                        existing_df = existing_df[~existing_df['chunk_id'].isin(replaced_chunks.keys())]
+                    
+                    # Combine existing (non-replaced) + updates + new chunks
+                    combined_data = pd.concat([existing_df, updates_df, new_chunks_df], ignore_index=True)
+                else:
+                    # No replacements, just schema updates and adding new chunks
+                    combined_data = pd.concat([existing_df, new_chunks_df], ignore_index=True)
+                
+                # Drop and recreate table with all data
                 db.drop_table(CHUNKS_TABLE_NAME)
-                chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=df)
+                chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=combined_data)
+                
+                if replacement_updates:
+                    logger.info(f"Updated {len(replacement_updates)} chunks, added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
+                else:
+                    logger.info(f"Updated schema with {len(missing_columns)} new columns, added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
+            else:
+                # No replacements or schema updates, just add new chunks
+                chunks_table.add(new_chunks_df)
+                logger.info(f"Added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
         else:
             # First chunk added - create new table
             if chunks:
                 logger.info(f"Creating new table: {CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
                 data = pd.DataFrame(chunks)
                 
-                # Ensure the is_duplicate_marker field exists
-                if 'is_duplicate_marker' not in data.columns:
-                    data['is_duplicate_marker'] = False
+                # Ensure all required columns exist
+                for col in ['is_duplicate_marker', 'is_replaced', 'replaced_by']:
+                    if col not in data.columns:
+                        if col in ['is_duplicate_marker', 'is_replaced']:
+                            data[col] = False
+                        else:
+                            data[col] = ""
                     
                 chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=data)
                 return True
             else:
                 logger.warning("No chunks to save, table not created", extra={"icon": "⚠️"})
                 return True
-        
-        # Add new chunks to the table
-        if chunks:
-            data = pd.DataFrame(chunks)
-            chunks_table.add(data)
-            logger.info(f"Added {len(chunks)} chunks to database", extra={"icon": "✅"})
         
         # Create vector index if needed
         dedup.ensure_index(db, CHUNKS_TABLE_NAME)
@@ -959,7 +938,7 @@ def process_document(
     
     try:
         # Step 1: Generate chunks with context
-        chunks = process_document_with_context(document_text, document_id, similar_document_id)
+        chunks, replaced_chunks = process_document_with_context(document_text, document_id, similar_document_id)
         
         if not chunks:
             logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})
@@ -967,12 +946,14 @@ def process_document(
         
         # Step 2: Save chunks to database
         if chunks:
-            success = save_chunks_to_db(chunks)
+            # Pass replaced_chunks along with chunks to handle both in one operation
+            success = save_chunks_to_db(chunks, replaced_chunks)
         else:
             # If there are no chunks to save because all were duplicates, 
             # consider this a success (proper deduplication)
+            duplicates_found = 0  # This would need to be passed from process_document_with_context
             if duplicates_found > 0:
-                logger.info(f"All chunks ({duplicates_found}) were detected as duplicates - no new chunks to save", extra={"icon": "✅"})
+                logger.info(f"All chunks were detected as duplicates - no new chunks to save", extra={"icon": "✅"})
                 success = True
             else:
                 logger.warning(f"No chunks were generated for document {document_id}", extra={"icon": "⚠️"})

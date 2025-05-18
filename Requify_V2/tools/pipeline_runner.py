@@ -7,7 +7,6 @@ It allows users to:
 1. Select which steps of the pipeline to run
 2. Set up the database before running the pipeline
 3. See real-time progress and results
-4. Automatically display deduplication results after processing
 
 The script is designed for ease of use while providing control over the pipeline's
 execution, making it suitable for both testing and production use.
@@ -17,19 +16,19 @@ import os
 import sys
 import argparse
 import logging
-import subprocess
 from typing import List, Optional
 
-# Add the main src directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "_02_src"))
+# Add the parent directory and src directory to Python path
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # Project root
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), "_02_src"))
 
 # Import utility functions
-from _00_utils import setup_logging
-import _00_utils
+from _02_src._00_utils import setup_logging
+import _02_src._00_utils as _00_utils
 _00_utils.setup_project_directory()
 
 # Import main pipeline controller
-from pipeline_controller import (
+from _02_src.pipeline_controller import (
     process_document,
     STEP_HASH_CHECK,
     STEP_PARSE,
@@ -51,44 +50,6 @@ STEP_DESCRIPTIONS = {
     STEP_CHUNKING: "Parse + Save to LanceDB + Chunk document",
     STEP_EXTRACT_REQS: "Complete pipeline (extract requirements)"
 }
-
-def show_deduplication_results(input_file: str) -> None:
-    """
-    Show deduplication results for the processed document.
-    
-    Args:
-        input_file: Path to the input file that was processed
-    """
-    # Extract document name from path (without extension)
-    doc_name = os.path.basename(input_file).split('.')[0]
-    
-    print("\n=== Deduplication Results ===")
-    # Set verbose output environment variable
-    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
-    
-    try:
-        # Display document info from LanceDB
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        validation_script = os.path.join(script_dir, "tools", "validation", "show_deduplication_results.py")
-        
-        if os.path.exists(validation_script):
-            cmd = [sys.executable, validation_script, "--relationships", "--text", "--doc", doc_name]
-            result = subprocess.run(cmd, capture_output=True, text=True)
-            
-            if result.stdout:
-                print(result.stdout)
-            else:
-                print(f"No deduplication results found for document: {doc_name}")
-            
-            if result.stderr:
-                print("Errors:", result.stderr)
-        else:
-            print(f"Validation script not found at: {validation_script}")
-            
-    except Exception as e:
-        print(f"Error showing deduplication results: {e}")
-    
-    print("=" * 80)
 
 def setup_database() -> bool:
     """Set up the LanceDB database tables."""
@@ -181,10 +142,6 @@ def run_pipeline_interactive() -> None:
         success = process_document(input_file, max_step=max_step, dry_run=False)
         if success:
             print("\n=== Pipeline Completed Successfully ===")
-            
-            # Show deduplication results if the chunking step was run
-            if max_step >= STEP_CHUNKING:
-                show_deduplication_results(input_file)
         else:
             print("\n=== Pipeline Failed ===")
             print("Check the logs for more information.")
@@ -200,7 +157,6 @@ def main() -> None:
                         help="Maximum pipeline step to run")
     parser.add_argument("--setup-db", action="store_true", help="Set up database before running")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
-    parser.add_argument("--show-dedup", action="store_true", help="Show deduplication results after processing")
     args = parser.parse_args()
     if args.interactive or not (args.input and args.max_step is not None):
         run_pipeline_interactive()
@@ -217,11 +173,6 @@ def main() -> None:
         success = process_document(args.input, max_step=args.max_step, dry_run=False)
         if success:
             print("Pipeline completed successfully.")
-            
-            # Show deduplication results after successful run
-            if args.show_dedup or args.max_step >= STEP_CHUNKING:
-                show_deduplication_results(args.input)
-                
         else:
             print("Pipeline failed. Check the logs for more information.")
     except Exception as e:
@@ -241,10 +192,6 @@ def test_with_hardcoded_file():
         success = process_document(test_file, max_step=max_step, dry_run=False)
         if success:
             print("\n=== Pipeline Test Completed Successfully ===")
-            
-            # Show deduplication results for test file
-            show_deduplication_results(test_file)
-            
         else:
             print("\n=== Pipeline Test Failed ===")
         return success
