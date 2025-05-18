@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 context_aware_chunking.py
 
@@ -51,6 +52,68 @@ class ScriptLogger(logging.LoggerAdapter):
 
 logger = ScriptLogger(logger, "[Context_Chunking] ")
 
+# Utility function for consistent logging
+def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float, decision: str, reason: str):
+    """
+    Log the comparison between two chunks with a detailed explanation of the decision.
+    
+    Args:
+        chunk_id: ID of the current chunk
+        similar_chunk_id: ID of the similar chunk found
+        similarity: Similarity score between the chunks
+        decision: Decision made (e.g., "keep_original", "keep_new", "both")
+        reason: Reason for the decision
+    """
+    logger.info(f"🔍 Chunk Comparison: {chunk_id} vs {similar_chunk_id}", extra={"icon": "🔍"})
+    logger.info(f"   Similarity: {similarity:.4f}", extra={"icon": "📏"})
+    logger.info(f"   Decision: {decision}", extra={"icon": "⚖️"})
+    logger.info(f"   Reason: {reason}", extra={"icon": "💬"})
+    
+    # Log a summary of the decision with an appropriate icon
+    if decision == "keep_original":
+        logger.info(f"🔄 Using existing chunk {similar_chunk_id} instead of {chunk_id}", extra={"icon": "🔄"})
+    elif decision == "keep_new":
+        logger.info(f"⬆️ Replacing {similar_chunk_id} with new chunk {chunk_id}", extra={"icon": "⬆️"})
+    elif decision == "both":
+        logger.info(f"➕ Keeping both {similar_chunk_id} and {chunk_id}", extra={"icon": "➕"})
+    else:
+        logger.info(f"❓ Undefined decision for {chunk_id} vs {similar_chunk_id}: {decision}", extra={"icon": "❓"})
+
+def log_chunk_deduplication_summary(doc_id: str, total_chunks: int, duplicate_chunks: int, similar_chunks: int, new_chunks: int, is_document_update: bool = False, updated_doc_id: Optional[str] = None):
+    """
+    Log a summary of chunk deduplication results
+    
+    Args:
+        doc_id: Document ID
+        total_chunks: Total number of chunks processed
+        duplicate_chunks: Number of exact duplicate chunks found
+        similar_chunks: Number of similar/updated chunks found
+        new_chunks: Number of new unique chunks
+        is_document_update: Whether this is an update to an existing document
+        updated_doc_id: ID of the document being updated (if applicable)
+    """
+    if is_document_update and updated_doc_id:
+        update_text = f" (update of {updated_doc_id})"
+    else:
+        update_text = ""
+        
+    logger.info(f"📊 CHUNK DEDUPLICATION SUMMARY FOR {doc_id}{update_text}:", extra={"icon": "📊"})
+    logger.info(f"  • Total chunks processed: {total_chunks}", extra={"icon": "🔢"})
+    logger.info(f"  • Exact duplicates found: {duplicate_chunks}", extra={"icon": "♻️"})
+    logger.info(f"  • Similar chunks found: {similar_chunks}", extra={"icon": "🔄"})
+    logger.info(f"  • New unique chunks: {new_chunks}", extra={"icon": "🆕"})
+    
+    if duplicate_chunks > 0 or similar_chunks > 0:
+        logger.info(f"  • Duplicate/similar chunk rate: {(duplicate_chunks + similar_chunks) / total_chunks:.1%}", extra={"icon": "📈"})
+    
+    if is_document_update:
+        if new_chunks == 0 and similar_chunks == 0:
+            logger.info(f"  • Document content is identical to {updated_doc_id}", extra={"icon": "✓"})
+        elif similar_chunks > 0 and new_chunks == 0:
+            logger.info(f"  • Document is a minor update of {updated_doc_id}", extra={"icon": "🔁"})
+        elif new_chunks > 0:
+            logger.info(f"  • Document is a major update of {updated_doc_id} with new content", extra={"icon": "⬆️"})
+
 # Load environment variables
 load_dotenv()
 
@@ -59,7 +122,7 @@ MAX_CHAR_SIZE = 900  # Maximum allowed character size
 TARGET_CHAR_SIZE = 700  # Target character size per chunk
 MAX_SECTION_SIZE = 30000  # Maximum section size for processing with LLM
 MAX_RETRIES = 2  # Maximum number of retries for LLM calls
-SIMILARITY_THRESHOLD = 0.9  # Updated to match other modules (was 0.85)
+SIMILARITY_THRESHOLD = 0.82  # Updated to match deduplication module
 DUPLICATE_THRESHOLD = 0.995  # High threshold for automatic duplicates without LLM
 
 OUTPUT_DIR_BASE = "_03_output"
@@ -399,35 +462,31 @@ def chunk_comparison_tool(
     Returns:
         User decision: 'keep_new', 'keep_old'
     """
-    print("\n" + "="*80)
-    print(f"CHUNK COMPARISON NEEDED")
-    print("="*80)
+    logger.info("\n" + "="*80, extra={"icon": "🔍"})
+    logger.info("CHUNK COMPARISON NEEDED", extra={"icon": "🔍"})
+    logger.info("="*80, extra={"icon": "🔍"})
     
-    print(f"\nREASON: {reason}")
+    logger.info(f"\nREASON: {reason}", extra={"icon": "ℹ️"})
     
-    if differences:
-        print("\nKEY DIFFERENCES:")
-        for i, diff in enumerate(differences, 1):
-            print(f"  {i}. {diff}")
+    logger.info("\nKEY DIFFERENCES:", extra={"icon": "📊"})
+    for i, diff in enumerate(differences, 1):
+        logger.info(f"  {i}. {diff}", extra={"icon": "🔄"})
     
-    print(f"\nOLD DOCUMENT: {old_doc_id}")
-    print("-" * 40)
-    print(old_chunk)
-    print("-" * 40)
+    logger.info(f"\nOLD DOCUMENT: {old_doc_id}", extra={"icon": "📜"})
+    logger.info("-" * 40, extra={"icon": "📜"})
+    logger.info(old_chunk, extra={"icon": "📜"})
+    logger.info("-" * 40, extra={"icon": "📜"})
     
-    print(f"\nNEW DOCUMENT: {new_doc_id}")
-    print("-" * 40)
-    print(new_chunk)
-    print("-" * 40)
+    logger.info(f"\nNEW DOCUMENT: {new_doc_id}", extra={"icon": "📄"})
+    logger.info("-" * 40, extra={"icon": "📄"})
+    logger.info(new_chunk, extra={"icon": "📄"})
+    logger.info("-" * 40, extra={"icon": "📄"})
     
     while True:
-        choice = input("\nWhich version would you like to keep? (1=old, 2=new): ")
-        if choice == '1':
-            return "keep_old"
-        elif choice == '2':
-            return "keep_new"
-        else:
-            print("Invalid choice. Please enter 1 or 2.")
+        choice = input("\nChoose which chunk to use (1=old, 2=new): ")
+        if choice in ('1', '2'):
+            return "keep_old" if choice == '1' else "keep_new"
+        logger.warning("Invalid choice. Please enter 1 or 2.", extra={"icon": "⚠️"})
 
 def prompt_user_for_chunk_decision(
     new_chunk: str, 
@@ -462,35 +521,31 @@ def prompt_user_for_chunk_decision(
     reason = decision_info.get('reason', 'Reason not provided')
     differences = decision_info.get('differences', [])
     
-    print("\n" + "="*80)
-    print(f"CHUNK COMPARISON NEEDED")
-    print("="*80)
+    logger.info("\n" + "="*80, extra={"icon": "🔍"})
+    logger.info("CHUNK COMPARISON NEEDED", extra={"icon": "🔍"})
+    logger.info("="*80, extra={"icon": "🔍"})
     
-    print(f"\nREASON: {reason}")
+    logger.info(f"\nREASON: {reason}", extra={"icon": "ℹ️"})
     
-    if differences:
-        print("\nKEY DIFFERENCES:")
-        for i, diff in enumerate(differences, 1):
-            print(f"  {i}. {diff}")
+    logger.info("\nKEY DIFFERENCES:", extra={"icon": "📊"})
+    for i, diff in enumerate(differences, 1):
+        logger.info(f"  {i}. {diff}", extra={"icon": "🔄"})
     
-    print(f"\nOLD DOCUMENT: {old_doc_id}")
-    print("-" * 40)
-    print(old_chunk_text)
-    print("-" * 40)
+    logger.info(f"\nOLD DOCUMENT: {old_doc_id}", extra={"icon": "📜"})
+    logger.info("-" * 40, extra={"icon": "📜"})
+    logger.info(old_chunk_text, extra={"icon": "📜"})
+    logger.info("-" * 40, extra={"icon": "📜"})
     
-    print(f"\nNEW DOCUMENT: {new_doc_id}")
-    print("-" * 40)
-    print(new_chunk)
-    print("-" * 40)
+    logger.info(f"\nNEW DOCUMENT: {new_doc_id}", extra={"icon": "📄"})
+    logger.info("-" * 40, extra={"icon": "📄"})
+    logger.info(new_chunk, extra={"icon": "📄"})
+    logger.info("-" * 40, extra={"icon": "📄"})
     
     while True:
-        choice = input("\nWhich version would you like to keep? (1=old, 2=new): ")
-        if choice == '1':
-            return "keep_old"
-        elif choice == '2':
-            return "keep_new"
-        else:
-            print("Invalid choice. Please enter 1 or 2.")
+        choice = input("\nChoose which chunk to use (1=old, 2=new): ")
+        if choice in ('1', '2'):
+            return "keep_old" if choice == '1' else "keep_new"
+        logger.warning("Invalid choice. Please enter 1 or 2.", extra={"icon": "⚠️"})
 
 # ------------------------------------------------------------------------------
 # Main Processing Logic
@@ -649,10 +704,10 @@ def process_document_with_context(
                     # Log the comparison with enhanced logging
                     log_chunk_comparison(
                         chunk_id=chunk_id,
-                        doc_id=document_id,
-                        comparison_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
-                        comparison_doc_id=ref_chunk.get('document_id', 'unknown'),
-                        similarity=similarity
+                        similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
+                        similarity=similarity,
+                        decision="evaluating",
+                        reason="Comparing chunks for similarity"
                     )
                     
                     # Track best match
@@ -1002,3 +1057,17 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main()) 
+
+def create_chunk_groups(chunk_text: str, existing_chunks: List[Dict], doc_id: str, sim_threshold: float = 0.75) -> dict:
+    """
+    Groups new chunks with similar existing chunks.
+    
+    Args:
+        chunk_text: The document text to be chunked
+        existing_chunks: List of existing chunks from a similar document
+        doc_id: Document ID for the new document
+        sim_threshold: Threshold for similarity to consider chunks as matching
+    
+    Returns:
+        Dictionary with grouped chunks
+    """ 

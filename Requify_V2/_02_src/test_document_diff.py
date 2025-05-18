@@ -1,135 +1,137 @@
+#!/usr/bin/env python3
 """
 test_document_diff.py
 
-This script extracts content from our test documents and shows the differences between them.
-This helps demonstrate what changes our context-aware chunking system should detect.
+This script compares the contents of two documents to identify differences.
+It performs the following tasks:
+1. Loads source JSON files created by the document processing pipeline
+2. Extracts text content from both documents
+3. Performs a line-by-line diff showing additions, deletions, and changes
+4. Displays a color-coded comparison in the terminal
+5. Works with document IDs or file paths for maximum flexibility
+
+Used for debugging and validating document processing to see how different
+versions of documents compare at the text level.
 """
 
 import os
 import sys
+import json
 import difflib
 import argparse
 import logging
-from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory()
 
-# Load environment variables
-load_dotenv()
-
-# Setup logging
+# Set up logging
 logger = _00_utils.setup_logging()
 
-# Test document paths
-DOC1_PATH = os.path.join("_01_input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
-DOC2_PATH = os.path.join("_01_input", "raw", "fighter_jet_rocket_launcher_spec_2_changed_values.pdf")
+# Create a consistent logger with prefix for better visibility
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
 
-def extract_text_from_pdf(pdf_path):
-    """Extract text content from a PDF file using our parsing module."""
+logger = ScriptLogger(logger, "[Document_Diff] ")
+
+def load_document_content(doc_path):
+    """Load document content from a parsed JSON file"""
     try:
-        # Import PDF parsing modules
-        from _02_parsing.stable_pdf_parsing import PDFProcessor, plain_agent, structured_agent, document_title_agent
+        with open(doc_path, 'r') as f:
+            data = json.load(f)
         
-        # Setup the processor
-        processor = PDFProcessor(plain_agent, structured_agent, document_title_agent)
+        # Extract page contents and combine them
+        content = ""
+        for page_key, page_data in data.get('pages', {}).items():
+            if 'md_content' in page_data:
+                content += page_data['md_content'] + "\n\n"
         
-        # Convert to combined JSON
-        combined_json_path = processor.pdf_to_structured_json(pdf_path)
-        
-        # Load the JSON to extract text
-        import json
-        with open(combined_json_path, 'r', encoding='utf-8') as f:
-            doc_data = json.load(f)
-        
-        # Extract document text (combine all page content)
-        document_text = ""
-        
-        # Single page with markdown content
-        if 'md_content' in doc_data:
-            document_text = doc_data.get('md_content', '')
-        # Multi-page document
-        elif 'pages' in doc_data:
-            for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
-                document_text += page_info.get('md_content', '') + "\n\n"
-        
-        return document_text
-        
+        return content
     except Exception as e:
-        logger.error(f"Error extracting text from PDF: {e}")
-        return ""
+        logger.error(f"Error loading document content: {e}", extra={"icon": "❌"})
+        return None
 
-def show_document_diff():
-    """Display differences between the two test documents."""
+def get_document_path(doc_identifier):
+    """
+    Get the full path to a document based on ID or path.
+    
+    This handles both full file paths and document IDs.
+    """
+    # If it's already a full path to a file that exists, return it
+    if os.path.isfile(doc_identifier):
+        return doc_identifier
+    
+    # Otherwise, look for it in the standard parsed output location
+    base_name = os.path.basename(doc_identifier)
+    # Remove extension if present
+    base_name = os.path.splitext(base_name)[0]
+    
+    # Check if it's in the standard output directory
+    output_dir = os.path.join("_03_output", "parsed_content", base_name)
+    if os.path.exists(output_dir):
+        # Look for combined_content.json
+        json_path = os.path.join(output_dir, "combined_content.json")
+        if os.path.exists(json_path):
+            return json_path
+    
+    # If we couldn't find it, return the original and let the caller handle errors
+    return doc_identifier
+
+def compare_documents(doc1_path, doc2_path):
+    """Compare the content of two documents and show the differences"""
     # Get full paths
-    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    doc1_full_path = os.path.join(project_root, DOC1_PATH)
-    doc2_full_path = os.path.join(project_root, DOC2_PATH)
+    doc1_path = get_document_path(doc1_path)
+    doc2_path = get_document_path(doc2_path)
     
-    # Verify documents exist
-    if not os.path.exists(doc1_full_path):
-        logger.error(f"❌ First document not found at {doc1_full_path}")
-        return False
+    # Load document content
+    content1 = load_document_content(doc1_path)
+    content2 = load_document_content(doc2_path)
     
-    if not os.path.exists(doc2_full_path):
-        logger.error(f"❌ Second document not found at {doc2_full_path}")
-        return False
+    if not content1 or not content2:
+        logger.error("Failed to load one or both documents", extra={"icon": "❌"})
+        return
     
-    # Extract text from both documents
-    logger.info(f"Extracting text from first document: {DOC1_PATH}")
-    doc1_text = extract_text_from_pdf(doc1_full_path)
+    # Split content into lines
+    lines1 = content1.splitlines()
+    lines2 = content2.splitlines()
     
-    logger.info(f"Extracting text from second document: {DOC2_PATH}")
-    doc2_text = extract_text_from_pdf(doc2_full_path)
-    
-    if not doc1_text or not doc2_text:
-        logger.error("❌ Failed to extract text from one or both documents")
-        return False
-    
-    # Generate and display differences
-    logger.info("Generating diff between documents:")
-    
-    # Split text into lines
-    doc1_lines = doc1_text.splitlines()
-    doc2_lines = doc2_text.splitlines()
-    
-    # Get line differences
+    # Generate diff
     diff = list(difflib.unified_diff(
-        doc1_lines, 
-        doc2_lines, 
-        fromfile='Original Document', 
-        tofile='Changed Values Document', 
-        lineterm='', 
-        n=3  # Context lines
+        lines1, lines2, 
+        fromfile=os.path.basename(doc1_path),
+        tofile=os.path.basename(doc2_path),
+        lineterm=''
     ))
     
-    # Output the differences
+    # Display diff with colors
     if diff:
-        print("\n========== DOCUMENT DIFFERENCES ==========\n")
+        logger.info("\n========== DOCUMENT DIFFERENCES ==========\n", extra={"icon": "📊"})
         for line in diff:
             if line.startswith('+'):
-                # Added line - green
-                print(f"\033[92m{line}\033[0m")
+                logger.info(f"\033[92m{line}\033[0m", extra={"icon": "➕"})  # Green for additions
             elif line.startswith('-'):
-                # Removed line - red
-                print(f"\033[91m{line}\033[0m")
-            elif line.startswith('@@'):
-                # Line position indicator - cyan
-                print(f"\033[96m{line}\033[0m")
+                logger.info(f"\033[91m{line}\033[0m", extra={"icon": "➖"})  # Red for deletions
+            elif line.startswith('^'):
+                logger.info(f"\033[96m{line}\033[0m", extra={"icon": "🔄"})  # Cyan for changes
             else:
-                # Unchanged context - white
-                print(line)
-        print("\n=========================================\n")
+                logger.info(line, extra={"icon": "ℹ️"})
+        logger.info("\n=========================================\n", extra={"icon": "📊"})
     else:
-        print("\nNo differences found between documents!\n")
-    
-    return True
+        logger.info("\nNo differences found between documents!\n", extra={"icon": "✅"})
 
 def main():
-    show_document_diff()
-    return True
+    parser = argparse.ArgumentParser(description="Compare the content of two documents")
+    parser.add_argument('doc1', help="First document ID or path")
+    parser.add_argument('doc2', help="Second document ID or path")
+    args = parser.parse_args()
+    
+    compare_documents(args.doc1, args.doc2)
 
 if __name__ == "__main__":
-    sys.exit(0 if main() else 1) 
+    main() 

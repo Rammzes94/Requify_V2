@@ -170,43 +170,45 @@ def find_duplicate_documents(new_doc: Dict, db_connection=None) -> Tuple[bool, O
     
     return False, None, best_similarity
 
-def prompt_duplicate_action(new_doc_id: str, duplicate_doc: Dict, similarity: float) -> str:
+def deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection=None):
     """
-    Prompt the user for action when a duplicate/similar document is found.
+    Interactive prompt for handling duplicate documents.
     
     Args:
-        new_doc_id: ID of the new document
-        duplicate_doc: Information about the duplicate document
-        similarity: Similarity score
+        new_doc_id: The identifier of the new document
+        existing_doc_id: The identifier of the existing similar document
+        similarity: The similarity score between the documents
+        db_connection: Optional LanceDB connection
         
     Returns:
-        Action choice: 'keep_old', 'keep_new', 'keep_both', or 'detailed_dedup'
+        str: The action to take ('keep_old', 'keep_new', 'keep_both', or 'detailed')
     """
-    existing_doc_id = duplicate_doc.get('document_id', 'unknown')
+    logger.info("\n=== Duplicate Document Detected ===", extra={"icon": "♻️"})
+    logger.info(f"New document: {new_doc_id}", extra={"icon": "📄"})
+    logger.info(f"Existing document: {existing_doc_id}", extra={"icon": "📜"})
+    logger.info(f"Similarity score: {similarity:.4f}", extra={"icon": "📊"})
     
-    print("\n=== Duplicate Document Detected ===")
-    print(f"New document: {new_doc_id}")
-    print(f"Existing document: {existing_doc_id}")
-    print(f"Similarity score: {similarity:.4f}")
-    
-    print("\nWhat would you like to do?")
-    print("1. Keep only the existing document (discard new)")
-    print("2. Replace with the new document (discard old)")
-    print("3. Keep both as separate documents")
-    print("4. Perform detailed deduplication (with chunk alignment)")
+    logger.info("\nWhat would you like to do?", extra={"icon": "❓"})
+    logger.info("1. Keep only the existing document (discard new)", extra={"icon": "🔢"})
+    logger.info("2. Replace with the new document (discard old)", extra={"icon": "🔢"})
+    logger.info("3. Keep both as separate documents", extra={"icon": "🔢"})
+    logger.info("4. Perform detailed deduplication (with chunk alignment)", extra={"icon": "🔢"})
     
     while True:
-        choice = input("\nEnter your choice (1-4): ")
-        if choice == '1':
-            return 'keep_old'
-        elif choice == '2':
-            return 'keep_new'
-        elif choice == '3':
-            return 'keep_both'
-        elif choice == '4':
-            return 'detailed_dedup'
-        else:
-            print("Invalid choice. Please enter 1, 2, 3, or 4.")
+        try:
+            choice = int(input("\nEnter your choice (1-4): "))
+            if choice == 1:
+                return "keep_old"
+            elif choice == 2:
+                return "keep_new"
+            elif choice == 3:
+                return "keep_both"
+            elif choice == 4:
+                return "detailed"
+            else:
+                logger.warning("Invalid choice. Please enter 1, 2, 3, or 4.", extra={"icon": "⚠️"})
+        except ValueError:
+            logger.warning("Please enter a valid number.", extra={"icon": "⚠️"})
 
 def handle_duplicate_document(new_doc: Dict, duplicate_doc: Dict, similarity: float, db_connection=None) -> Dict:
     """
@@ -225,7 +227,7 @@ def handle_duplicate_document(new_doc: Dict, duplicate_doc: Dict, similarity: fl
     existing_doc_id = duplicate_doc.get('document_id', 'existing_document')
     
     # Get user choice
-    choice = prompt_duplicate_action(new_doc_id, duplicate_doc, similarity)
+    choice = deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection)
     
     result = {
         'action': choice,
@@ -255,7 +257,7 @@ def handle_duplicate_document(new_doc: Dict, duplicate_doc: Dict, similarity: fl
         # This is handled by the calling code - we'll save both docs
         result['keep_both'] = True
         
-    elif choice == 'detailed_dedup':
+    elif choice == 'detailed':
         logger.info(f"Performing detailed deduplication between {existing_doc_id} and {new_doc_id}", 
                    extra={"icon": "🔍"})
         

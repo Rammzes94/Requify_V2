@@ -35,7 +35,7 @@ _00_utils.setup_project_directory()
 load_dotenv()
 
 # Setup logging with script prefix
-logger = _00_utils.setup_logging()
+logger = _00_utils.get_logger("Pipeline_Controller")
 
 class ScriptLogger(logging.LoggerAdapter):
     def __init__(self, logger, prefix):
@@ -47,8 +47,7 @@ class ScriptLogger(logging.LoggerAdapter):
 
 logger = ScriptLogger(_00_utils.setup_logging(), "[Pipeline_Controller] ")
 
-# Import the necessary modules from our pipeline
-from _00_utils import setup_logging
+
 
 # Import Hash-based deduplication
 sys.path.append(os.path.join(os.path.dirname(__file__), '_01_ingestion'))
@@ -113,26 +112,26 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
     start_time = time.time()
     doc_name = os.path.basename(doc_path)
 
-    logger.info(f"🚀 Starting pipeline for document: {doc_name} (max_step={max_step}, dry_run={dry_run}, skip_hash_check={skip_hash_check})")
+    logger.info(f"Starting pipeline for document: {doc_name} (max_step={max_step}, dry_run={dry_run}, skip_hash_check={skip_hash_check})", extra={"icon": "🚀"})
 
     # Step 1: Hash-based deduplication
     if not skip_hash_check:
-        logger.info(f"Step 1: Performing hash-based duplicate check for {doc_name}")
+        logger.info(f"Step 1: Performing hash-based duplicate check for {doc_name}", extra={"icon": "🔐"})
         is_duplicate, existing_file = file_hash_deduplication.check_file_duplicate(doc_path)
 
         if is_duplicate:
-            logger.info(f"❌ Document {doc_name} is an exact duplicate of {existing_file} (by hash). Aborting further processing.")
+            logger.info(f"Document {doc_name} is an exact duplicate of {existing_file} (by hash). Aborting further processing.", extra={"icon": "❌"})
             return True  # Successfully determined it's a duplicate, so pipeline "succeeded"
         
-        logger.info(f"✅ Document {doc_name} passed hash-based duplicate check")
+        logger.info(f"Document {doc_name} passed hash-based duplicate check", extra={"icon": "✅"})
     
     # If we only want to do the hash check, we're done
     if max_step == STEP_HASH_CHECK:
-        logger.info(f"🏁 Pipeline completed at step {max_step} (Hash check only) for {doc_name}")
+        logger.info(f"Pipeline completed at step {max_step} (Hash check only) for {doc_name}", extra={"icon": "🏁"})
         return True
     
     # Step 2: Parse the PDF document
-    logger.info(f"Step 2: Parsing document {doc_name}")
+    logger.info(f"Step 2: Parsing document {doc_name}", extra={"icon": "📑"})
     processor = stable_pdf_parsing.PDFProcessor(
         stable_pdf_parsing.plain_agent,
         stable_pdf_parsing.structured_agent,
@@ -142,18 +141,18 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
     combined_json_path = processor.pdf_to_structured_json(doc_path)
 
     if not combined_json_path or not os.path.exists(combined_json_path):
-        logger.error(f"❌ Document parsing failed for {doc_name} (no combined JSON output)")
+        logger.error(f"Document parsing failed for {doc_name} (no combined JSON output)", extra={"icon": "❌"})
         return False
 
-    logger.info(f"✅ Document parsing completed: {combined_json_path}")
+    logger.info(f"Document parsing completed: {combined_json_path}", extra={"icon": "✅"})
     
     # If we only want to parse, we're done
     if max_step == STEP_PARSE:
-        logger.info(f"🏁 Pipeline completed at step {max_step} (Parse only) for {doc_name}")
+        logger.info(f"Pipeline completed at step {max_step} (Parse only) for {doc_name}", extra={"icon": "🏁"})
         return True
 
     # Step 3: Check for document-level duplicates
-    logger.info(f"Step 3: Checking document for duplicates")
+    logger.info(f"Step 3: Checking document for duplicates", extra={"icon": "🔍"})
     
     # For deduplication-only mode, we need to import and call the deduplication module directly
     if max_step == STEP_DEDUP_ONLY:
@@ -188,10 +187,10 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             old_version_id = dedup_results.get('old_version_id', None)
             version_similarity = dedup_results.get('version_similarity', 0.0)
             
-            logger.info(f"✅ Deduplication check results for {doc_name}:")
-            logger.info(f"   - New pages: {len(new_pages)}")
-            logger.info(f"   - Duplicate pages: {len(duplicate_pages)}")
-            logger.info(f"   - Pages to update: {len(update_pages)}")
+            logger.info(f"Deduplication check results for {doc_name}:", extra={"icon": "✅"})
+            logger.info(f"   - New pages: {len(new_pages)}", extra={"icon": "🆕"})
+            logger.info(f"   - Duplicate pages: {len(duplicate_pages)}", extra={"icon": "♻️"})
+            logger.info(f"   - Pages to update: {len(update_pages)}", extra={"icon": "🔄"})
             
             if is_new_version and old_version_id:
                 logger.info(f"   - Document appears to be a new version of {old_version_id} (similarity: {version_similarity:.4f})", extra={"icon": "🔄"})
@@ -267,35 +266,35 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             
             logger.info(f"📊 Using page-level deduplication info: {len(duplicate_pages)} duplicates")
             
-            logger.info(f"🏁 Pipeline completed at step {max_step} (Deduplication check only) for {doc_name}")
+            logger.info(f"🏁 Pipeline completed at step {max_step} (Deduplication check only) for {doc_name}", extra={"icon": "🏁"})
             return True
         except Exception as e:
-            logger.error(f"❌ Deduplication check failed: {str(e)}")
+            logger.error(f"❌ Deduplication check failed: {str(e)}", extra={"icon": "❌"})
             return False
 
     # Step 4: Save to LanceDB with deduplication
-    logger.info(f"Step 4: Saving document to LanceDB with deduplication")
+    logger.info(f"Step 4: Saving document to LanceDB with deduplication", extra={"icon": "💾"})
     
     if dry_run:
-        logger.info(f"🔍 Dry run mode - checking document without saving to database")
-        logger.info(f"✅ Dry run check completed (would have saved to LanceDB)")
+        logger.info(f"🔍 Dry run mode - checking document without saving to database", extra={"icon": "🔍"})
+        logger.info(f"✅ Dry run check completed (would have saved to LanceDB)", extra={"icon": "✅"})
         save_success = True
     else:
         save_success = stable_save_to_lancedb.main(combined_json_path)
 
     if not save_success:
-        logger.error(f"❌ Saving to LanceDB failed for {doc_name} (deduplication or DB error)")
+        logger.error(f"❌ Saving to LanceDB failed for {doc_name} (deduplication or DB error)", extra={"icon": "❌"})
         return False
 
-    logger.info(f"✅ Document saved to LanceDB successfully")
+    logger.info(f"✅ Document saved to LanceDB successfully", extra={"icon": "✅"})
     
     # If we only want to save to LanceDB (no chunking), we're done
     if max_step == STEP_SAVE_TO_DB:
-        logger.info(f"🏁 Pipeline completed at step {max_step} (Save to LanceDB only) for {doc_name}")
+        logger.info(f"🏁 Pipeline completed at step {max_step} (Save to LanceDB only) for {doc_name}", extra={"icon": "🏁"})
         return True
 
     # Step 5: Perform content-aligned chunking with page-level deduplication
-    logger.info(f"Step 5: Chunking document and checking for duplicate chunks")
+    logger.info(f"Step 5: Chunking document and checking for duplicate chunks", extra={"icon": "🔄"})
     
     # Load document text and pages from combined JSON
     try:
@@ -468,7 +467,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                         similarity_score = 0.9
             
         except Exception as e:
-            logger.warning(f"⚠️ Error checking document similarity: {str(e)}. Will process as new document.")
+            logger.warning(f"⚠️ Error checking document similarity: {str(e)}. Will process as new document.", extra={"icon": "⚠️"})
             similar_document_detected = False
             similar_document_id = None
             similarity_score = 0.0
@@ -490,14 +489,14 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                 })
         
         if not document_text.strip():
-            logger.error(f"❌ Document has no text content to chunk")
+            logger.error(f"❌ Document has no text content to chunk", extra={"icon": "❌"})
             return False
         
-        logger.info(f"🔄 Processing document with {len(document_pages)} pages for chunking")
+        logger.info(f"🔄 Processing document with {len(document_pages)} pages for chunking", extra={"icon": "🔄"})
         
         # Process document for chunking using either context-aware or integrated chunking
         if dry_run:
-            logger.info(f"🔍 Dry run mode - checking document chunks without saving")
+            logger.info(f"🔍 Dry run mode - checking document chunks without saving", extra={"icon": "🔍"})
             # Add dry run logic if needed
             chunk_success = True
         else:
@@ -515,27 +514,27 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                 cleanup_chunking_memory()
             else:
                 # Use standard integrated chunking for new documents
-                logger.info(f"🔄 Using standard chunking for new document")
+                logger.info(f"🔄 Using standard chunking for new document", extra={"icon": "🔄"})
                 # Process document with integrated chunking, passing both text and page data
                 chunk_success = integrated_chunking.process_document(document_text, document_id, document_pages)
             
             if not chunk_success:
-                logger.error(f"❌ Chunking failed for {doc_name}")
+                logger.error(f"❌ Chunking failed for {doc_name}", extra={"icon": "❌"})
                 return False
                 
-            logger.info(f"✅ Chunking completed successfully")
+            logger.info(f"✅ Chunking completed successfully", extra={"icon": "✅"})
             
     except Exception as e:
-        logger.error(f"❌ Error during document chunking: {str(e)}")
+        logger.error(f"❌ Error during document chunking: {str(e)}", extra={"icon": "❌"})
         return False
     
     # If we only want to do chunking, we're done
     if max_step == STEP_CHUNKING:
-        logger.info(f"🏁 Pipeline completed at step {max_step} (Chunking only) for {doc_name}")
+        logger.info(f"🏁 Pipeline completed at step {max_step} (Chunking only) for {doc_name}", extra={"icon": "🏁"})
         return True
 
     # Step 6: Extract requirements from document chunks
-    logger.info(f"Step 6: Extracting requirements from document chunks")
+    logger.info(f"Step 6: Extracting requirements from document chunks", extra={"icon": "📚"})
 
     # Extract document ID from filename for requirements extraction
     doc_id = os.path.basename(doc_path)
@@ -543,17 +542,17 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
     # Process requirements
     try:
         if dry_run:
-            logger.info(f"🔍 Dry run mode - skipping requirements extraction")
-            logger.info(f"✅ Dry run requirements check completed (would have extracted requirements)")
+            logger.info(f"🔍 Dry run mode - skipping requirements extraction", extra={"icon": "🔍"})
+            logger.info(f"✅ Dry run requirements check completed (would have extracted requirements)", extra={"icon": "✅"})
         else:
             extract_requirements.process_single_document(doc_id)
-            logger.info(f"✅ Requirements extraction completed for {doc_name}")
+            logger.info(f"✅ Requirements extraction completed for {doc_name}", extra={"icon": "✅"})
     except Exception as e:
-        logger.error(f"❌ Requirements extraction failed: {str(e)}")
+        logger.error(f"❌ Requirements extraction failed: {str(e)}", extra={"icon": "❌"})
         return False
 
     end_time = time.time()
-    logger.info(f"🏁 Pipeline completed in {end_time - start_time:.2f} seconds for {doc_name}")
+    logger.info(f"🏁 Pipeline completed in {end_time - start_time:.2f} seconds for {doc_name}", extra={"icon": "🏁"})
     return True
 
 

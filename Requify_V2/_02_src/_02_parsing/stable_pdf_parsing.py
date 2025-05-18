@@ -173,14 +173,14 @@ class PDFProcessor:
     # Method: Convert PDF to Images
     # -----------------------------------------------------------------
     def pdf_to_images(self, pdf_path, dpi=PDF_TO_IMAGE_DPI, output_images_dir=None) -> List[Tuple[str, Optional[str]]]:
-        logger.info(f"Processing '{pdf_path}' to images...")
+        logger.info(f"Processing '{pdf_path}' to images...", extra={"icon": "🔄"})
         if VERBOSE_PDF_PARSING_OUTPUT:
-            print(f"\n{'-'*80}")
-            print(f"📄 Converting PDF to images: {os.path.basename(pdf_path)}")
-            print(f"{'-'*80}")
+            logger.info(f"{'-'*80}", extra={"icon": "📄"})
+            logger.info(f"Converting PDF to images: {os.path.basename(pdf_path)}", extra={"icon": "📄"})
+            logger.info(f"{'-'*80}", extra={"icon": "📄"})
             
         if not os.path.exists(pdf_path):
-            logger.error(f"PDF file '{pdf_path}' does not exist.")
+            logger.error(f"PDF file '{pdf_path}' does not exist.", extra={"icon": "❌"})
             return []
         try:
             pdf = fitz.open(pdf_path)
@@ -192,8 +192,8 @@ class PDFProcessor:
             os.makedirs(output_images_dir, exist_ok=True)
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"📄 PDF has {len(pdf)} pages")
-                
+                logger.info(f"PDF has {len(pdf)} pages", extra={"icon": "📄"})
+
             for i, page in enumerate(pdf):
                 zoom = dpi / 72  # Default PDF DPI is 72
                 mat = fitz.Matrix(zoom, zoom)
@@ -205,7 +205,7 @@ class PDFProcessor:
                     pix.save(image_path)
                     logger.info(f"Saved image for page {i+1} to {image_path}")
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"📄 Page {i+1}/{len(pdf)}: Saved to {os.path.basename(image_path)}")
+                        logger.info(f"Page {i+1}/{len(pdf)}: Saved to {os.path.basename(image_path)}", extra={"icon": "📄"})
                         
                     # Read the saved image and encode to base64
                     with open(image_path, "rb") as image_file:
@@ -216,9 +216,9 @@ class PDFProcessor:
                 
                 image_data_list.append((image_path, image_b64_string))
 
-            logger.info(f"Generated and encoded {len(image_data_list)} images from PDF")
+            logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"✅ Generated {len(image_data_list)} images from PDF")
+                logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
             return image_data_list
         except Exception as e:
             logger.error(f"Error converting PDF to images: {e}")
@@ -227,9 +227,9 @@ class PDFProcessor:
 
     def generate_document_title(self, md_contents, pdf_identifier):
         """Generate a title for the entire document based on page summaries"""
-        logger.info(f"Generating document title for {pdf_identifier} from page summaries...")
+        logger.info(f"Generating document title for {pdf_identifier} from page summaries...", extra={"icon": "🔤"})
         if VERBOSE_PDF_PARSING_OUTPUT:
-            print(f"🔤 Generating document title for {pdf_identifier}...")
+            logger.info(f"Generating document title for {pdf_identifier}...", extra={"icon": "🔤"})
             
         try:
             # First generate summaries for each page if we have content
@@ -274,7 +274,7 @@ class PDFProcessor:
             logger.info(f"Generated document title from summaries: {document_title}")
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"✅ Generated title: \"{document_title}\"")
+                logger.info(f"Generated title: \"{document_title}\"", extra={"icon": "✅"})
                 
             return document_title
         except Exception as e:
@@ -294,9 +294,9 @@ class PDFProcessor:
             os.makedirs(specific_output_dir, exist_ok=True)
 
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"\n{'-'*80}")
-                print(f"🔍 PARSING PDF: {os.path.basename(pdf_path)}")
-                print(f"{'-'*80}")
+                logger.info(f"{'-'*80}", extra={"icon": "🔍"})
+                logger.info(f"PARSING PDF: {os.path.basename(pdf_path)}", extra={"icon": "🔍"})
+                logger.info(f"{'-'*80}", extra={"icon": "🔍"})
 
             image_data_list = self.pdf_to_images(pdf_path) # pdf_to_images now uses PROCESSED_OUTPUT_BASE_DIR for its output
             if not image_data_list:
@@ -317,7 +317,7 @@ class PDFProcessor:
                     output_md_path = os.path.join(specific_output_dir, f"{base_name}.md")
                     
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"🔍 Extracting content from page {i+1}/{len(image_data_list)}")
+                        logger.info(f"Extracting content from page {i+1}/{len(image_data_list)}", extra={"icon": "🔍"})
                         
                     response = self.plain_agent.run(
                         "Extract the image contents. Do not say anything extra, such as 'Here is the content:'. "
@@ -341,14 +341,14 @@ class PDFProcessor:
                     logger.info(f"Successfully extracted markdown for {base_name}")
                     
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"✅ Extracted {len(page_md_content_extracted)} chars from page {i+1}")
+                        logger.info(f"Extracted {len(page_md_content_extracted)} chars from page {i+1}", extra={"icon": "✅"})
                         
                 except Exception as e:
                     logger.error(f"Error extracting markdown for {image_path}: {str(e)}")
                     extraction_error = True
                     
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"❌ Error extracting content from page {i+1}: {str(e)}")
+                        logger.error(f"Error extracting content from page {i+1}: {str(e)}", extra={"icon": "❌"})
                 
                 md_extraction_results.append({
                     'content': page_md_content_extracted,
@@ -366,9 +366,9 @@ class PDFProcessor:
             contents_dict = {}
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"\n{'-'*80}")
-                print(f"🔄 GENERATING PAGE METADATA")
-                print(f"{'-'*80}")
+                logger.info(f"{'-'*80}", extra={"icon": "🔄"})
+                logger.info(f"GENERATING PAGE METADATA", extra={"icon": "🔄"})
+                logger.info(f"{'-'*80}", extra={"icon": "🔄"})
                 
             for i, (image_path, image_b64_content) in enumerate(image_data_list):
                 page_number = i + 1
@@ -386,7 +386,7 @@ class PDFProcessor:
                     logger.info(f"Processing page {page_number}...")
                     
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"🔄 Processing metadata for page {page_number}/{len(image_data_list)}")
+                        logger.info(f"Processing metadata for page {page_number}/{len(image_data_list)}", extra={"icon": "🔄"})
                     
                     # Process the markdown content to get structured data
                     start_time = time.time()
@@ -443,7 +443,7 @@ class PDFProcessor:
                     if VERBOSE_PDF_PARSING_OUTPUT:
                         hashtags = meta_data.hashtags[:5] if len(meta_data.hashtags) > 5 else meta_data.hashtags
                         tags_display = ", ".join(hashtags)
-                        print(f"✅ Page {page_number}: Generated summary and hashtags: {tags_display}...")
+                        logger.info(f"Page {page_number}: Generated summary and hashtags: {tags_display}...", extra={"icon": "✅"})
                     
                 except Exception as e:
                     logger.error(f"Error processing page {page_number}: {str(e)}")
@@ -465,7 +465,7 @@ class PDFProcessor:
                     contents_dict[key] = fallback_data
                     
                     if VERBOSE_PDF_PARSING_OUTPUT:
-                        print(f"❌ Error processing metadata for page {page_number}: {str(e)}")
+                        logger.error(f"Error processing metadata for page {page_number}: {str(e)}", extra={"icon": "❌"})
                 
             combined_data = {
                 "pdf_identifier": pdf_identifier,
@@ -478,12 +478,12 @@ class PDFProcessor:
             logger.info(f"All extracted page data combined and saved to {combined_file}")
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                print(f"\n{'-'*80}")
-                print(f"✅ PARSING COMPLETED: {os.path.basename(pdf_path)}")
-                print(f"📄 Document title: {document_title}")
-                print(f"📄 Pages processed: {len(contents_dict)}")
-                print(f"📄 Output saved to: {os.path.basename(combined_file)}")
-                print(f"{'-'*80}")
+                logger.info(f"{'-'*80}", extra={"icon": "✅"})
+                logger.info(f"PARSING COMPLETED: {os.path.basename(pdf_path)}", extra={"icon": "✅"})
+                logger.info(f"Document title: {document_title}", extra={"icon": "📄"})
+                logger.info(f"Pages processed: {len(contents_dict)}", extra={"icon": "📄"})
+                logger.info(f"Output saved to: {os.path.basename(combined_file)}", extra={"icon": "📄"})
+                logger.info(f"{'-'*80}", extra={"icon": "✅"})
                 
             return combined_file
         except Exception as e:

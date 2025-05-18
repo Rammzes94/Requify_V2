@@ -59,14 +59,14 @@ EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models (must match stable_s
 DUPLICATE_THRESHOLD = 0.995  # Cosine similarity threshold for duplicate pages
 # LanceDB returns distance for cosine as 1 - similarity. So, distance_threshold = 1 - SIMILARITY_THRESHOLD
 DISTANCE_THRESHOLD = 1.0 - DUPLICATE_THRESHOLD
-SIMILAR_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
+SIMILAR_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to better detect reordered content
 MIN_PAGES_TO_SAMPLE = 3  # Minimum number of pages to sample for comparison
 MAX_PAGES_TO_SAMPLE = 5  # Maximum number of pages to sample for comparison
-VERSION_SIMILARITY_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
+VERSION_SIMILARITY_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to match SIMILAR_THRESHOLD
 INDEX_INITIALIZED_DOCS = False
 INDEX_INITIALIZED_CHUNKS = False
 CHUNK_DUPLICATION_THRESHOLD = 0.995  # Threshold for considering chunks as duplicates
-CHUNK_SIMILARITY_THRESHOLD = 0.9  # Increased from 0.85 to 0.9 per requirement
+CHUNK_SIMILARITY_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to better detect reordered content
 
 # Set to True to enable more detailed console output for deduplication processes
 VERBOSE_DEDUPLICATION_OUTPUT = True
@@ -377,11 +377,10 @@ def check_chunk_duplicates(
     
     doc_id = chunks_data[0].get('document_id', 'unknown')
     
-    # Using enhanced visibility for deduplication process
     if VERBOSE_DEDUPLICATION_OUTPUT:
-        print("\n" + "=" * 80)
-        print(f"CHUNK DEDUPLICATION PROCESS FOR DOCUMENT: {doc_id}")
-        print("=" * 80)
+        logger.info("\n" + "=" * 80, extra={"icon": "🧩"})
+        logger.info(f"CHUNK DEDUPLICATION PROCESS FOR DOCUMENT: {doc_id}", extra={"icon": "🧩"})
+        logger.info("=" * 80, extra={"icon": "🧩"})
     
     logger.info(f"Checking for duplicate chunks in document: {doc_id}", extra={"icon": "🔄"})
     
@@ -397,7 +396,7 @@ def check_chunk_duplicates(
             extra={"icon": "✅"}
         )
         if VERBOSE_DEDUPLICATION_OUTPUT:
-            print(f"✅ No existing chunks table found. All {len(chunks_data)} chunks are new.")
+            logger.info(f"✅ No existing chunks table found. All {len(chunks_data)} chunks are new.", extra={"icon": "✅"})
         return {}, list(range(len(chunks_data))), {}
     
     # Ensure index exists if we have enough chunks
@@ -407,8 +406,8 @@ def check_chunk_duplicates(
     # Get a dataframe of all existing chunks for hash comparison
     existing_chunks_df = chunks_table.to_pandas()
     
-    if VERBOSE_DEDUPLICATION_OUTPUT:
-        print(f"📊 Found {len(existing_chunks_df)} existing chunks to compare against")
+    if VERBOSE_DEDUPLICATION_OUTPUT and not existing_chunks_df.empty:
+        logger.info(f"📊 Found {len(existing_chunks_df)} existing chunks to compare against", extra={"icon": "🔍"})
     
     duplicate_chunks = {}
     new_chunks = []
@@ -515,7 +514,7 @@ def check_chunk_duplicates(
                 else:
                     new_chunks.append(idx)
                     if VERBOSE_DEDUPLICATION_OUTPUT:
-                        print(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.")
+                        logger.info(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.", extra={"icon": "🆕"})
                 continue
             
             # Use vector search with explicit column specification
@@ -526,7 +525,7 @@ def check_chunk_duplicates(
             
             if query_result.empty:
                 if VERBOSE_DEDUPLICATION_OUTPUT:
-                    print(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.")
+                    logger.info(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.", extra={"icon": "🆕"})
                 new_chunks.append(idx)
                 continue
                 
@@ -563,8 +562,8 @@ def check_chunk_duplicates(
         except Exception as e:
             logger.error(f"Error during vector search for chunk {chunk_id}: {str(e)}", extra={"icon": "❌"})
             if VERBOSE_DEDUPLICATION_OUTPUT:
-                print(f"❌ Error during vector search: {str(e)}")
-                print(f"Marking chunk {chunk_id} as new due to search error.")
+                logger.error(f"Error during vector search: {str(e)}", extra={"icon": "❌"})
+                logger.info(f"Marking chunk {chunk_id} as new due to search error.", extra={"icon": "🆕"})
             new_chunks.append(idx)
     
     # Log summary of chunk deduplication
@@ -579,14 +578,14 @@ def check_chunk_duplicates(
     
     # Print more detailed summary in verbose mode
     if VERBOSE_DEDUPLICATION_OUTPUT:
-        print("\n" + "-" * 50)
-        print(f"CHUNK DEDUPLICATION SUMMARY:")
-        print(f"  • Total chunks processed: {len(chunks_data)}")
-        print(f"  • Exact duplicates found: {len(duplicate_chunks)}")
-        print(f"  • Similar chunks found: {len(update_chunks)}")
-        print(f"  • New unique chunks: {len(new_chunks)}")
-        print(f"  • Processing time: {processing_time:.2f} seconds")
-        print("-" * 50 + "\n")
+        logger.info("\n" + "-" * 50, extra={"icon": "📊"})
+        logger.info(f"CHUNK DEDUPLICATION SUMMARY:", extra={"icon": "📊"})
+        logger.info(f"  • Total chunks processed: {len(chunks_data)}", extra={"icon": "📊"})
+        logger.info(f"  • Exact duplicates found: {len(duplicate_chunks)}", extra={"icon": "📊"})
+        logger.info(f"  • Similar chunks found: {len(update_chunks)}", extra={"icon": "📊"})
+        logger.info(f"  • New unique chunks: {len(new_chunks)}", extra={"icon": "📊"})
+        logger.info(f"  • Processing time: {processing_time:.2f} seconds", extra={"icon": "📊"})
+        logger.info("-" * 50 + "\n", extra={"icon": "📊"})
     
     return duplicate_chunks, new_chunks, update_chunks
 

@@ -2,11 +2,26 @@ import os
 import sys
 import re
 from openpyxl import load_workbook
+import logging
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory()
+
+# Set up logging
+logger = _00_utils.setup_logging()
+
+# Create a consistent logger with prefix for better visibility
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
+logger = ScriptLogger(logger, "[Excel_Parsing] ")
 
 def sanitize(cell):
     """Convert cell to string, strip whitespace, and replace special characters."""
@@ -62,4 +77,4 @@ output_file = "_02_src/_02_parsing/helpdesk_export_openpyxl.md"
 with open(output_file, "w", encoding="utf-8") as md_file:
     md_file.write(markdown_output)
 
-print(f"Markdown file '{output_file}' has been created.")
+logger.info(f"Markdown file '{output_file}' has been created.", extra={"icon": "✅"})

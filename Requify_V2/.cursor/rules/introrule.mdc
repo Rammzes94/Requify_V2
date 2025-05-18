@@ -3,6 +3,11 @@ description:
 globs: 
 alwaysApply: true
 ---
+put tools into the "tools" folder and tests into the "tests" folder. The 02_src folder can only be for the main project files that will be shipped to the customer later.
+Make smart suggestions to make code leaner (e.g. removing unused variables etc.).
+Also make suggestions on smarter file sorting into smart folder structure, if that makes sense.
+
+
 add a rough description of what the script does to any script we have, even if its there already. Use """..."""
 
 add this to any script we start from scratch:

@@ -7,6 +7,7 @@ It removes all existing tables and reinitializes them with current schema defini
 
 import os
 import sys
+import logging
 from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
@@ -18,10 +19,17 @@ _00_utils.setup_project_directory()
 load_dotenv()
 
 import lancedb
-import logging
 
-# Set up logging
-logger = _00_utils.setup_logging()
+# Set up logging with script prefix
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
+logger = ScriptLogger(_00_utils.setup_logging(), "[Reset_LanceDB] ")
 
 # Constants
 OUTPUT_DIR_BASE = "_03_output"

@@ -42,6 +42,17 @@ from pipeline_controller import (
 # Set up logging
 logger = setup_logging()
 
+# Create a consistent logger with prefix for better visibility
+class ScriptLogger(logging.LoggerAdapter):
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
+logger = ScriptLogger(logger, "[Pipeline_Runner] ")
+
 # Pipeline step descriptions
 STEP_DESCRIPTIONS = {
     STEP_HASH_CHECK: "Hash-based duplicate check only",
@@ -62,9 +73,12 @@ def show_deduplication_results(input_file: str) -> None:
     # Extract document name from path (without extension)
     doc_name = os.path.basename(input_file).split('.')[0]
     
-    print("\n=== Deduplication Results ===")
-    # Set verbose output environment variable
+    logger.info("=== Deduplication Results ===", extra={"icon": "📊"})
+    
+    # Set verbose output environment variables for all components
     os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
+    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
+    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
     
     try:
         # Display document info from LanceDB
@@ -76,41 +90,41 @@ def show_deduplication_results(input_file: str) -> None:
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.stdout:
-                print(result.stdout)
+                logger.info(result.stdout, extra={"icon": "ℹ️"})
             else:
-                print(f"No deduplication results found for document: {doc_name}")
+                logger.info(f"No deduplication results found for document: {doc_name}", extra={"icon": "⚠️"})
             
             if result.stderr:
-                print("Errors:", result.stderr)
+                logger.error(f"Errors from validation script: {result.stderr}", extra={"icon": "❌"})
         else:
-            print(f"Validation script not found at: {validation_script}")
+            logger.error(f"Validation script not found at: {validation_script}", extra={"icon": "❌"})
             
     except Exception as e:
-        print(f"Error showing deduplication results: {e}")
+        logger.error(f"Error showing deduplication results: {e}", extra={"icon": "❌"})
     
-    print("=" * 80)
+    logger.info("=" * 80, extra={"icon": "📊"})
 
 def setup_database() -> bool:
     """Set up the LanceDB database tables."""
     try:
         from _02_src._00_lancedb_admin.init_lancedb import main as setup_db_main
-        print("\n=== Database Setup ===")
-        print("Setting up database tables...")
+        logger.info("=== Database Setup ===", extra={"icon": "🔧"})
+        logger.info("Setting up database tables...", extra={"icon": "🔄"})
         setup_db_main()
-        print("Database setup completed.")
+        logger.info("Database setup completed.", extra={"icon": "✅"})
         return True
     except ImportError as e:
-        print(f"Error: Could not import database setup module: {e}")
+        logger.error(f"Could not import database setup module: {e}", extra={"icon": "❌"})
         return False
     except Exception as e:
-        print(f"Error setting up database: {e}")
+        logger.error(f"Error setting up database: {e}", extra={"icon": "❌"})
         return False
 
 def list_input_files() -> List[str]:
     """List available input files."""
     input_dir = os.path.join("_01_input", "raw")
     if not os.path.exists(input_dir):
-        print(f"Input directory not found: {input_dir}")
+        logger.error(f"Input directory not found: {input_dir}", extra={"icon": "❌"})
         return []
     files = [os.path.join(input_dir, f) for f in os.listdir(input_dir)
              if os.path.isfile(os.path.join(input_dir, f)) and f.lower().endswith(('.pdf', '.docx', '.txt'))]
@@ -118,9 +132,9 @@ def list_input_files() -> List[str]:
 
 def print_available_steps() -> None:
     """Print available pipeline steps."""
-    print("\n=== Available Pipeline Steps ===")
+    logger.info("=== Available Pipeline Steps ===", extra={"icon": "📋"})
     for step_num, description in STEP_DESCRIPTIONS.items():
-        print(f"{step_num}. {description}")
+        logger.info(f"{step_num}. {description}", extra={"icon": "ℹ️"})
 
 def select_max_step() -> int:
     """Prompt the user to select the maximum pipeline step to run."""
@@ -131,19 +145,19 @@ def select_max_step() -> int:
             if step in STEP_DESCRIPTIONS:
                 return step
             else:
-                print(f"Invalid step number. Please enter a number between {min(STEP_DESCRIPTIONS.keys())} and {max(STEP_DESCRIPTIONS.keys())}.")
+                logger.warning(f"Invalid step number. Please enter a number between {min(STEP_DESCRIPTIONS.keys())} and {max(STEP_DESCRIPTIONS.keys())}.", extra={"icon": "⚠️"})
         except ValueError:
-            print("Please enter a valid number.")
+            logger.warning("Please enter a valid number.", extra={"icon": "⚠️"})
 
 def select_input_file() -> Optional[str]:
     """Prompt the user to select an input file."""
     files = list_input_files()
     if not files:
-        print("No input files found. Please add files to the _01_input/raw directory.")
+        logger.warning("No input files found. Please add files to the _01_input/raw directory.", extra={"icon": "⚠️"})
         return None
-    print("\n=== Available Input Files ===")
+    logger.info("=== Available Input Files ===", extra={"icon": "📋"})
     for i, file_path in enumerate(files):
-        print(f"{i+1}. {os.path.basename(file_path)}")
+        logger.info(f"{i+1}. {os.path.basename(file_path)}", extra={"icon": "📄"})
     while True:
         try:
             selection = int(input("\nEnter the file number to process (or 0 to provide a custom path): "))
@@ -152,44 +166,50 @@ def select_input_file() -> Optional[str]:
                 if os.path.exists(custom_path):
                     return custom_path
                 else:
-                    print(f"File not found: {custom_path}")
+                    logger.warning(f"File not found: {custom_path}", extra={"icon": "⚠️"})
             elif 1 <= selection <= len(files):
                 return files[selection-1]
             else:
-                print(f"Invalid selection. Please enter a number between 0 and {len(files)}.")
+                logger.warning(f"Invalid selection. Please enter a number between 0 and {len(files)}.", extra={"icon": "⚠️"})
         except ValueError:
-            print("Please enter a valid number.")
+            logger.warning("Please enter a valid number.", extra={"icon": "⚠️"})
 
 def run_pipeline_interactive() -> None:
     """Run the pipeline with interactive prompts."""
-    print("\n=== Document Processing Pipeline Runner ===")
+    logger.info("=== Document Processing Pipeline Runner ===", extra={"icon": "🚀"})
+    
+    # Set verbose output environment variables for all components
+    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
+    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
+    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    
     if input("Set up database before running? (y/n): ").lower() == 'y':
         if not setup_database():
             if input("Continue anyway? (y/n): ").lower() != 'y':
-                print("Exiting.")
+                logger.info("Exiting.", extra={"icon": "🚪"})
                 return
     input_file = select_input_file()
     if not input_file:
-        print("No input file selected. Exiting.")
+        logger.warning("No input file selected. Exiting.", extra={"icon": "🚪"})
         return
     max_step = select_max_step()
-    print("\n=== Pipeline Run Settings ===")
-    print(f"Input file: {input_file}")
-    print(f"Maximum step: {max_step} - {STEP_DESCRIPTIONS[max_step]}")
-    print("\n=== Starting Pipeline ===")
+    logger.info("=== Pipeline Run Settings ===", extra={"icon": "⚙️"})
+    logger.info(f"Input file: {input_file}", extra={"icon": "📄"})
+    logger.info(f"Maximum step: {max_step} - {STEP_DESCRIPTIONS[max_step]}", extra={"icon": "🔢"})
+    logger.info("=== Starting Pipeline ===", extra={"icon": "🚀"})
     try:
         success = process_document(input_file, max_step=max_step, dry_run=False)
         if success:
-            print("\n=== Pipeline Completed Successfully ===")
+            logger.info("=== Pipeline Completed Successfully ===", extra={"icon": "✅"})
             
             # Show deduplication results if the chunking step was run
             if max_step >= STEP_CHUNKING:
                 show_deduplication_results(input_file)
         else:
-            print("\n=== Pipeline Failed ===")
-            print("Check the logs for more information.")
+            logger.error("=== Pipeline Failed ===", extra={"icon": "❌"})
+            logger.error("Check the logs for more information.", extra={"icon": "🔍"})
     except Exception as e:
-        print(f"\n=== Pipeline Error ===\n{e}")
+        logger.error(f"=== Pipeline Error ===\n{e}", extra={"icon": "💥"})
         raise
 
 def main() -> None:
@@ -201,55 +221,70 @@ def main() -> None:
     parser.add_argument("--setup-db", action="store_true", help="Set up database before running")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("--show-dedup", action="store_true", help="Show deduplication results after processing")
+    parser.add_argument("--verbose", action="store_true", default=True, 
+                       help="Enable verbose output (default: True)")
     args = parser.parse_args()
+    
+    # Set verbose output environment variables for all components
+    if args.verbose:
+        os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
+        os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
+        os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    
     if args.interactive or not (args.input and args.max_step is not None):
         run_pipeline_interactive()
         return
     if args.setup_db:
         if not setup_database():
-            print("Database setup failed. Exiting.")
+            logger.error("Database setup failed. Exiting.", extra={"icon": "❌"})
             return
     if not os.path.exists(args.input):
-        print(f"Input file not found: {args.input}")
+        logger.error(f"Input file not found: {args.input}", extra={"icon": "❌"})
         return
-    print(f"Running pipeline on {args.input} up to step {args.max_step} ({STEP_DESCRIPTIONS[args.max_step]})")
+    logger.info(f"Running pipeline on {args.input} up to step {args.max_step} ({STEP_DESCRIPTIONS[args.max_step]})", extra={"icon": "🚀"})
     try:
         success = process_document(args.input, max_step=args.max_step, dry_run=False)
         if success:
-            print("Pipeline completed successfully.")
+            logger.info("Pipeline completed successfully.", extra={"icon": "✅"})
             
             # Show deduplication results after successful run
             if args.show_dedup or args.max_step >= STEP_CHUNKING:
                 show_deduplication_results(args.input)
                 
         else:
-            print("Pipeline failed. Check the logs for more information.")
+            logger.error("Pipeline failed. Check the logs for more information.", extra={"icon": "❌"})
     except Exception as e:
-        print(f"Pipeline error: {e}")
+        logger.error(f"Pipeline error: {e}", extra={"icon": "💥"})
         raise
 
 def test_with_hardcoded_file():
     """Test the pipeline with a hardcoded file."""
-    print("\n=== Running Pipeline Test with Hardcoded File ===")
+    logger.info("=== Running Pipeline Test with Hardcoded File ===", extra={"icon": "🧪"})
+    
+    # Set verbose output environment variables for all components
+    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
+    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
+    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    
     test_file = "_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf"
     if not os.path.exists(test_file):
-        print(f"Test file not found: {test_file}")
+        logger.error(f"Test file not found: {test_file}", extra={"icon": "❌"})
         return False
-    print(f"Running pipeline on test file: {test_file}")
+    logger.info(f"Running pipeline on test file: {test_file}", extra={"icon": "🚀"})
     try:
         max_step = STEP_EXTRACT_REQS  # Run the complete pipeline
         success = process_document(test_file, max_step=max_step, dry_run=False)
         if success:
-            print("\n=== Pipeline Test Completed Successfully ===")
+            logger.info("=== Pipeline Test Completed Successfully ===", extra={"icon": "✅"})
             
             # Show deduplication results for test file
             show_deduplication_results(test_file)
             
         else:
-            print("\n=== Pipeline Test Failed ===")
+            logger.error("=== Pipeline Test Failed ===", extra={"icon": "❌"})
         return success
     except Exception as e:
-        print(f"\n=== Pipeline Test Error ===\n{e}")
+        logger.error(f"=== Pipeline Test Error ===\n{e}", extra={"icon": "💥"})
         import traceback
         traceback.print_exc()
         return False

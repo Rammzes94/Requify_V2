@@ -42,15 +42,7 @@ from _00_utils import setup_project_directory, update_token_counters, print_toke
 setup_project_directory()
 load_dotenv()
 
-# Import the deduplication module for requirements
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_05_reqs_deduplication')))
-try:
-    import pre_save_reqs_deduplication as reqs_dedup
-except ImportError:
-    print("Warning: Could not import pre_save_reqs_deduplication module. Duplicate detection will be disabled.")
-    reqs_dedup = None
-
-# Configure logging with script prefix
+# Configure logging with script prefix first
 logger = _00_utils.setup_logging()
 
 class ScriptLogger(logging.LoggerAdapter):
@@ -61,7 +53,16 @@ class ScriptLogger(logging.LoggerAdapter):
     def process(self, msg, kwargs):
         return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Extract_Requirements] ")
+logger = ScriptLogger(logger, "[Extract_Requirements] ")
+
+# Import the deduplication module for requirements
+try:
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..', '_05_reqs_deduplication'))
+    from pre_save_reqs_deduplication import check_duplicates, store_requirements_in_lancedb
+    DEDUPLICATION_AVAILABLE = True
+except ImportError as e:
+    logger.warning("Could not import pre_save_reqs_deduplication module. Duplicate detection will be disabled.", extra={"icon": "⚠️"})
+    DEDUPLICATION_AVAILABLE = False
 
 # Suppress all HTTP request logs and third-party library logs
 logging.getLogger('httpx').setLevel(logging.ERROR)
@@ -738,9 +739,9 @@ def process_single_document(doc_id: str):
                 logger.error(f"❌ Traceback: {traceback.format_exc()}")
         
         # Check for duplicate requirements if deduplication module is available
-        if reqs_dedup and all_requirements:
+        if DEDUPLICATION_AVAILABLE and all_requirements:
             logger.info(f"🔄 Checking for duplicate requirements in {len(all_requirements)} extracted requirements...")
-            unique_requirements, duplicate_info = reqs_dedup.check_requirements_duplicates(all_requirements, doc_id)
+            unique_requirements, duplicate_info = check_duplicates(all_requirements, doc_id)
             
             logger.info(f"✅ Deduplication complete: {len(unique_requirements)} unique, {len(duplicate_info)} duplicates")
             
@@ -843,12 +844,9 @@ def process_single_document(doc_id: str):
     _00_utils.print_token_usage() # Add token usage printing here
 
 if __name__ == "__main__":
-    # Simple call when run directly
-    if len(sys.argv) > 1:
-        doc_id = sys.argv[1]
-        logger.info(f"Processing document: {doc_id}")
-        process_single_document(doc_id)
-    else:
-        logger.error("Please provide a document ID as argument")
-        print("Usage: python extract_requirements.py <document_id>")
+    if len(sys.argv) < 2:
+        logger.error("Usage: python extract_requirements.py <document_id>", extra={"icon": "❌"})
         sys.exit(1)
+    
+    document_id = sys.argv[1]
+    process_single_document(document_id)
