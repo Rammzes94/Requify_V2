@@ -60,8 +60,17 @@ OUTPUT_DIR_BASE = "_03_output" # Define base output directory
 PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from _03_output
 LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within _03_output
 LANCEDB_TABLE_NAME = "documents"
-EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
-EMBEDDING_DIMENSION = 1024 # Dimension for e5-large models
+
+# Try to import config, but use default values if not available
+try:
+    from _00_utils import config
+    EMBEDDING_MODEL_NAME = config.EMBEDDING_MODEL_NAME
+    EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION
+except (ImportError, AttributeError):
+    # Default values if config import fails
+    EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
+    EMBEDDING_DIMENSION = 1024
+
 DUPLICATE_SIMILARITY_THRESHOLD = 0.99 # Similarity threshold for considering pages duplicates
 
 # -------------------------------------------------------------------------------------

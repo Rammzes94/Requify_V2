@@ -73,22 +73,25 @@ logging.getLogger('requests').setLevel(logging.ERROR)
 api_key = os.getenv("OPENAI_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
 
+# Get the model for requirement extraction from the config
+req_extraction_model_name = config.get_model_for_task("requirement_extraction")
+
 # Model Configuration
 # Initialize models for requirements extraction
-openai_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key, temperature=0)
+openai_model = OpenAIChat(id=req_extraction_model_name, api_key=api_key, temperature=0)
 
 # Uncomment to use Groq models instead
-groq_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key, temperature=0)
+groq_model = Groq(id=req_extraction_model_name, api_key=groq_api_key, temperature=0)
 
 # Select which model to use based on configuration
 MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
 
 if MODEL_PROVIDER == "openai":
     active_model = openai_model
-    logger.info("Using OpenAI models for requirements extraction", extra={"icon": "🧠"})
+    logger.info(f"Using OpenAI model for requirements extraction: {req_extraction_model_name}", extra={"icon": "🧠"})
 else:  # Default to Groq
     active_model = groq_model
-    logger.info("Using Groq models for requirements extraction", extra={"icon": "🧠"})
+    logger.info(f"Using Groq model for requirements extraction: {req_extraction_model_name}", extra={"icon": "🧠"})
 
 # LanceDB settings
 OUTPUT_DIR_BASE = config.OUTPUT_DIR_BASE  # Use from config
@@ -98,8 +101,8 @@ LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
 DOCUMENT_CHUNKS_TABLE = "document_chunks"
 DOCUMENTS_TABLE = "documents"
 REQUIREMENTS_TABLE = "requirements"
-EMBEDDING_DIMENSION = 1024  # Maintain same dimension as source table
-EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct"  # Default embedding model
+EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Use from config
+EMBEDDING_MODEL = config.EMBEDDING_MODEL_NAME  # Use from config
 
 # -------------------------------------------------------------------------------------
 # Prompt Templates
@@ -236,7 +239,7 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
         
         # Extract requirements using the agent
         response = requirements_agent.run(prompt)
-        update_token_counters(response)
+        update_token_counters(response, req_extraction_model_name)
         
         # Ensure the response is a RequirementsExtractor object
         if isinstance(response, RunResponse):
@@ -286,7 +289,7 @@ def analyze_requirement(requirement: AtomicRequirement, agent: Agent) -> Softwar
     
     try:
         response = agent.run(prompt)
-        update_token_counters(response)
+        update_token_counters(response, req_extraction_model_name)
         
         if isinstance(response, RunResponse):
             return response.content
@@ -378,7 +381,7 @@ def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Age
     try:
         # Run batch analysis
         response = agent.run(prompt)
-        update_token_counters(response)
+        update_token_counters(response, req_extraction_model_name)
         
         if isinstance(response, RunResponse):
             batch_result = response.content

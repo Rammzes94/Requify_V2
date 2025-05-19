@@ -15,19 +15,28 @@ import argparse
 from typing import Dict, List, Any, Optional, Tuple, Set
 import numpy as np
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-_00_utils.setup_project_directory()
+# Add the project root directory to the system path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.append(project_root)
+
+# Import project utilities
+from _02_src._00_utils import get_logger, setup_project_directory
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
-logger = _00_utils.get_logger("DB_Visualizer")
+logger = get_logger("DB_Visualizer")
 
 # Constants
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output")
+OUTPUT_DIR = os.path.join(project_root, "_03_output")
 LANCEDB_DIR = os.path.join(OUTPUT_DIR, "lancedb")
+TEST_LANCEDB_DIR = os.path.join(project_root, "tests", "e2e", "_03_output", "lancedb")
+VALIDATION_LANCEDB_DIR = os.path.join(project_root, "tools", "validation", "_03_output", "lancedb")
 VISUALIZATIONS_DIR = os.path.join(OUTPUT_DIR, "visualizations")
+MIN_SIMILARITY_THRESHOLD = 0.1  # Minimum similarity threshold for visualizing relationships
 
 # Ensure visualizations directory exists
 os.makedirs(VISUALIZATIONS_DIR, exist_ok=True)
@@ -41,18 +50,27 @@ except ImportError:
     logger.warning("Matplotlib and/or NetworkX not available. Visualizations will be limited to JSON output.", extra={"icon": "⚠️"})
     VISUALIZATION_AVAILABLE = False
 
-def connect_to_lancedb():
-    """Connect to LanceDB and return the database object"""
+def connect_to_lancedb(db_path=None):
+    """
+    Connect to LanceDB and return the database object
+    
+    Args:
+        db_path: Optional path to the LanceDB directory. If None, uses default path.
+    """
     try:
         import lancedb
         
+        # Use provided path or default
+        lancedb_path = db_path or LANCEDB_DIR
+        
         # Check if database directory exists
-        if not os.path.exists(LANCEDB_DIR):
-            logger.error(f"LanceDB directory not found: {LANCEDB_DIR}", extra={"icon": "❌"})
+        if not os.path.exists(lancedb_path):
+            logger.error(f"LanceDB directory not found: {lancedb_path}", extra={"icon": "❌"})
             return None
         
         # Connect to database
-        db = lancedb.connect(LANCEDB_DIR)
+        logger.info(f"Connecting to LanceDB at: {lancedb_path}", extra={"icon": "🔄"})
+        db = lancedb.connect(lancedb_path)
         return db
     except ImportError:
         logger.error("LanceDB not installed. Please install with 'pip install lancedb'", extra={"icon": "❌"})
@@ -83,7 +101,9 @@ def get_document_relationships(db) -> Dict[str, Any]:
         doc_table = db.open_table("documents")
         chunks_table = db.open_table("document_chunks")
         
+        logger.info("Loading document data from LanceDB...", extra={"icon": "🔄"})
         docs_df = doc_table.to_pandas()
+        logger.info("Loading chunk data from LanceDB...", extra={"icon": "🔄"})
         chunks_df = chunks_table.to_pandas()
         
         # Get unique document IDs
@@ -93,11 +113,13 @@ def get_document_relationships(db) -> Dict[str, Any]:
         relationships = {}
         
         # Group chunks by document
+        logger.info("Grouping chunks by document...", extra={"icon": "🔄"})
         doc_chunks = {}
         for doc_id in doc_ids:
             doc_chunks[doc_id] = chunks_df[chunks_df['document_id'] == doc_id]
         
         # For each document pair, calculate relationship metrics
+        logger.info("Analyzing document relationships...", extra={"icon": "🔄"})
         for doc_id in doc_ids:
             relationships[doc_id] = {
                 "similar_docs": [],
@@ -202,7 +224,7 @@ def create_network_graph(relationships: Dict[str, Any], output_file: str):
                 shared_chunks = similar.get('shared_chunks', 0)
                 
                 # Only add edges with significant similarity
-                if similarity >= 0.1:
+                if similarity >= MIN_SIMILARITY_THRESHOLD:
                     # Scale edge width based on similarity
                     width = similarity * 5
                     G.add_edge(doc_id, other_doc_id, weight=similarity, width=width, 
@@ -240,15 +262,95 @@ def create_network_graph(relationships: Dict[str, Any], output_file: str):
     except Exception as e:
         logger.error(f"Error creating network graph: {str(e)}", extra={"icon": "❌"})
 
+def get_available_databases():
+    """Return a list of available LanceDB databases in the project"""
+    databases = []
+    
+    # Check main database
+    if os.path.exists(LANCEDB_DIR):
+        databases.append(("main", LANCEDB_DIR))
+    
+    # Check test database
+    if os.path.exists(TEST_LANCEDB_DIR):
+        databases.append(("test", TEST_LANCEDB_DIR))
+    
+    # Check validation database
+    if os.path.exists(VALIDATION_LANCEDB_DIR):
+        databases.append(("validation", VALIDATION_LANCEDB_DIR))
+    
+    return databases
+
+def prompt_for_database():
+    """Prompt the user to select a database"""
+    databases = get_available_databases()
+    
+    if not databases:
+        logger.error("No LanceDB databases found in the project", extra={"icon": "❌"})
+        return None
+    
+    print("\nAvailable LanceDB databases:")
+    for i, (name, path) in enumerate(databases):
+        print(f"{i+1}. {name} ({path})")
+    
+    while True:
+        try:
+            choice = input("\nSelect a database (enter number or 'q' to quit): ")
+            if choice.lower() == 'q':
+                return None
+            
+            choice = int(choice)
+            if 1 <= choice <= len(databases):
+                return databases[choice-1][1]
+            else:
+                print("Invalid choice. Please try again.")
+        except ValueError:
+            print("Please enter a number or 'q'.")
+
 def main():
     """Main entry point"""
+    # Declare global variable at the beginning of the function
+    global MIN_SIMILARITY_THRESHOLD
+    
+    # Setup project directory
+    setup_project_directory()
+    
     parser = argparse.ArgumentParser(description='Visualize document and chunk relationships in LanceDB')
     parser.add_argument('--output', type=str, help='Base name for output files (without extension)')
+    parser.add_argument('--min-similarity', type=float, default=MIN_SIMILARITY_THRESHOLD, 
+                        help=f'Minimum similarity threshold for visualizing relationships (default: {MIN_SIMILARITY_THRESHOLD})')
+    parser.add_argument('--db-path', type=str, help='Path to LanceDB directory')
+    parser.add_argument('--db-type', type=str, choices=['main', 'test', 'validation'], 
+                        help='Type of database to use (main, test, or validation)')
+    parser.add_argument('--interactive', action='store_true', help='Interactive mode to select database')
     
     args = parser.parse_args()
     
+    # Update similarity threshold if provided
+    MIN_SIMILARITY_THRESHOLD = args.min_similarity
+    
+    # Determine which database to use
+    db_path = None
+    
+    if args.interactive:
+        # Interactive mode - prompt user for database selection
+        db_path = prompt_for_database()
+        if not db_path:
+            logger.info("No database selected. Exiting.", extra={"icon": "🛑"})
+            return 0
+    elif args.db_path:
+        # Use specified path
+        db_path = args.db_path
+    elif args.db_type:
+        # Use specified database type
+        if args.db_type == 'main':
+            db_path = LANCEDB_DIR
+        elif args.db_type == 'test':
+            db_path = TEST_LANCEDB_DIR
+        elif args.db_type == 'validation':
+            db_path = VALIDATION_LANCEDB_DIR
+    
     # Connect to database
-    db = connect_to_lancedb()
+    db = connect_to_lancedb(db_path)
     if not db:
         return 1
     
@@ -266,7 +368,8 @@ def main():
     else:
         import time
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        base_name = f"doc_relationships_{timestamp}"
+        db_type = args.db_type or "custom" if args.db_path else "main"
+        base_name = f"doc_relationships_{db_type}_{timestamp}"
     
     # Save relationships as JSON
     json_file = os.path.join(VISUALIZATIONS_DIR, f"{base_name}.json")

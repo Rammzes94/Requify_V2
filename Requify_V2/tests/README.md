@@ -13,10 +13,35 @@ The testing framework focuses on validating the document processing pipeline, pa
 
 ## Test Structure
 
+- `chunking/` - Tests for the document chunking implementation
+  - `test_consolidated_chunking.py` - Tests for the consolidated chunking module
+  - `test_files/` - Sample documents for chunking tests
 - `e2e/` - End-to-end tests that validate the entire pipeline
   - `test_scenarios.py` - Main script with test scenarios and execution logic
+- `utils/` - Utility scripts for testing
+  - `check_test_files.py` - Verifies test file availability
+  - `run_test_sequence.py` - Helpers for running test sequences
+  - `simple_token_test.py` - Tests for token tracking
+  - `test_token_tracking.py` - Additional token tracking tests
 
-## Test Scenarios
+## Main Test Categories
+
+### Chunking Tests
+
+The chunking tests validate the core document chunking functionality:
+
+1. Basic chunking of small documents
+2. Standard chunking of larger documents
+3. Context-aware chunking for document version detection
+4. Handling of duplicate and similar chunks
+
+To run chunking tests:
+
+```bash
+python tests/chunking/test_consolidated_chunking.py
+```
+
+### End-to-End Pipeline Tests
 
 The framework includes several predefined test scenarios:
 
@@ -78,10 +103,10 @@ Each test scenario verifies:
 
 To add a new test scenario:
 
-1. Add your test documents to `_01_input/raw/`
-2. Define a new scenario in `tests/e2e/test_scenarios.py`
-3. Update the `TEST_SCENARIOS` list with your new scenario
-4. Update the `total` variable in `tests/run_all_tests.sh` if needed
+1. Add your test documents to `_01_input/raw/` or the appropriate test files directory
+2. For pipeline tests, define a new scenario in `tests/e2e/test_scenarios.py`
+3. For chunking tests, add new cases to `tests/chunking/test_consolidated_chunking.py`
+4. Update the relevant test lists and configuration
 
 ## Verification Logic
 

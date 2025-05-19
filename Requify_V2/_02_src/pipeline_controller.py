@@ -44,9 +44,7 @@ import file_hash_deduplication
 # Import PDF parsing module
 sys.path.append(os.path.join(os.path.dirname(__file__), '_02_parsing'))
 import stable_pdf_parsing
-import integrated_chunking
-from _02_parsing.context_aware_chunking import process_document as process_with_context
-from _02_parsing.context_aware_chunking import cleanup_memory as cleanup_chunking_memory
+import consolidated_chunking
 
 # Import document deduplication modules
 sys.path.append(os.path.join(os.path.dirname(__file__), '_03_docs_deduplication'))
@@ -293,7 +291,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         # Extract document text (combine all page content)
         document_text = ""
         
-        # Prepare page data for integrated_chunking
+        # Prepare page data for consolidated chunking
         document_pages = []
         dedup_info = {}
         old_version_id = None
@@ -375,7 +373,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                         
                         # If we found a similar document with high similarity score
                         if highest_similarity >= SIMILAR_THRESHOLD and most_similar_doc_id:
-                            logger.info(f"📊 Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
+                            logger.info(f"�� Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
                             similar_document_detected = True
                             similar_document_id = most_similar_doc_id
                             similarity_score = highest_similarity
@@ -482,7 +480,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         
         logger.info(f"🔄 Processing document with {len(document_pages)} pages for chunking", extra={"icon": "🔄"})
         
-        # Process document for chunking using either context-aware or integrated chunking
+        # Process document for chunking using consolidated chunking
         if dry_run:
             logger.info(f"🔍 Dry run mode - checking document chunks without saving", extra={"icon": "🔍"})
             # Add dry run logic if needed
@@ -492,19 +490,17 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             if similar_document_detected and similar_document_id:
                 logger.info(f"🔄 Using context-aware chunking with reference document: {similar_document_id} (similarity: {similarity_score:.4f})", extra={"icon": "🔍"})
                 
-                # Process document with context-aware chunking
-                chunk_success = process_with_context(
+                # Process document with consolidated chunking using similar document ID
+                chunk_success = consolidated_chunking.process_document(
                     document_text, 
                     document_id, 
                     similar_document_id
                 )
-                # Clean up memory explicitly
-                cleanup_chunking_memory()
             else:
-                # Use standard integrated chunking for new documents
+                # Use standard chunking for new documents
                 logger.info(f"🔄 Using standard chunking for new document", extra={"icon": "🔄"})
-                # Process document with integrated chunking, passing both text and page data
-                chunk_success = integrated_chunking.process_document(document_text, document_id, document_pages)
+                # Process document with consolidated chunking, no similar document needed
+                chunk_success = consolidated_chunking.process_document(document_text, document_id)
             
             if not chunk_success:
                 logger.error(f"❌ Chunking failed for {doc_name}", extra={"icon": "❌"})

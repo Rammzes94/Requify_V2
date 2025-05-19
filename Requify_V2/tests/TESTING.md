@@ -8,6 +8,7 @@ The Requify testing framework is designed to verify the document processing pipe
 2. Version tracking and handling
 3. Content similarity detection across documents
 4. Chunking and requirement extraction processes
+5. Database relationship visualization
 
 ## Test Framework Organization
 
@@ -17,16 +18,23 @@ The testing framework has been organized into a clean, maintainable structure:
 Requify_V2/
 ├── _01_input/raw/               # Test input documents
 ├── _02_src/                     # Main product code (to be shipped)
-├── _03_output/test_results/     # Test results storage
+├── _03_output/                  # Output storage
+│   ├── test_results/            # Test results storage
+│   └── visualizations/          # Visualization outputs
 ├── tests/                       # All test-related code
+│   ├── chunking/                # Tests for chunking functionality
+│   │   └── test_files/          # Test files for chunking tests
 │   ├── e2e/                     # End-to-end tests
 │   │   └── test_scenarios.py    # Test scenario definitions and runner
+│   ├── utils/                   # Test utilities
 │   ├── README.md                # Testing documentation
 │   ├── run_all_tests.sh         # Script to run all tests
 │   └── run_tests.py             # Python test runner with CLI
 └── tools/                       # Utility tools
-    └── test_utils/              # Test utilities
-        └── results_reporter.py  # HTML report generator
+    ├── test_utils/              # Test utilities
+    │   └── results_reporter.py  # HTML report generator
+    └── visualization/           # Visualization tools
+        └── visualize_db_relationships.py  # Database relationship visualization tool
 ```
 
 ## Test Scenarios
@@ -62,12 +70,27 @@ bash tests/run_all_tests.sh
 python tests/run_tests.py subset
 ```
 
+## Database Visualization
+
+To visualize document and chunk relationships in the test database:
+
+```bash
+python tools/visualization/visualize_db_relationships.py --db-type test
+```
+
+Or to interactively select a database:
+
+```bash
+python tools/visualization/visualize_db_relationships.py --interactive
+```
+
 ## Test Results and Reporting
 
 Results are saved in:
 - JSON files in `_03_output/test_results/`
 - Human-readable summary files
 - HTML reports in `_03_output/test_results/reports/`
+- Relationship visualizations in `_03_output/visualizations/`
 
 To generate a report from the latest test run:
 
@@ -94,9 +117,20 @@ To add a new test scenario:
 3. Specify the expected behavior for each step
 4. Update the total scenario count in `run_all_tests.sh`
 
+## Multiple Database Environments
+
+The testing framework supports multiple database environments:
+
+1. **Main Database** - Production database with real documents
+2. **Test Database** - Used for automated test scenarios
+3. **Validation Database** - Used for quality assurance and benchmark testing
+
+Each environment maintains isolation to prevent test data from contaminating production data.
+
 ## Technology Used
 
 - Python for test scripting
 - Bash for automation
 - LanceDB for database operations
+- NetworkX and Matplotlib for relationship visualization
 - HTML/CSS for reporting 

@@ -1,0 +1,78 @@
+# Test Document (Updated Version)
+
+## Introduction
+This is a test document for the Requify chunking system. It should be processed and chunked properly according to semantic boundaries.
+
+## Requirements
+The chunking system must:
+- Split text into meaningful chunks
+- Preserve semantic boundaries
+- Never split in the middle of a sentence
+- Handle large documents efficiently
+- Maintain context across document versions
+- Identify duplicate and similar chunks
+- Generate appropriate embeddings
+- NEW REQUIREMENT: Support incremental updates
+
+## Technical Details
+The consolidated chunking implementation combines the strengths of:
+1. context_aware_chunking.py - For handling document versions and updates
+2. integrated_chunking.py - For efficient processing of large documents 
+3. agentic_chunking.py - For better boundary detection and chunk validation
+
+### Architecture
+The system architecture follows these basic steps:
+1. Split large documents into manageable sections
+2. Process each section to generate initial chunks
+3. Check for oversized chunks and re-process them if needed
+4. For similar documents, align chunks with existing ones
+5. Generate embeddings for chunked text
+6. Compare chunks to existing chunks to find duplicates and updates
+7. Save unique and updated chunks to the database
+8. NEW STEP: Clean up memory after processing
+
+## Conclusion
+This document should be long enough to be split into multiple chunks. The chunking system should identify semantically coherent boundaries and create appropriately sized chunks from this content.
+
+Let's add some more content to ensure we have enough material for multiple chunks. The system should be able to handle various formatting and content types, including:
+
+- Lists like this one
+- Code blocks
+- Tables (though none are included here)
+- Headers and subheaders
+- NEW ITEM: Mathematical formulas
+
+### Testing Chunk Size
+
+In order to test the system's ability to handle longer chunks and properly split them, we'll add some additional paragraphs of text.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam in metus euismod, feugiat nisl a, ultrices nisi. Duis ac tincidunt nisl. Nulla facilisi. Donec vestibulum ligula in lectus tincidunt, non ultrices justo vestibulum. 
+
+Proin aliquet metus vel magna lacinia, ut faucibus metus facilisis. THIS IS NEW TEXT THAT HAS BEEN ADDED. Suspendisse potenti. Integer sed lacus ac augue hendrerit placerat. Curabitur tempor libero in ipsum commodo, vel fringilla justo ultricies.
+
+Mauris consequat mauris eget libero dignissim lacinia. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Suspendisse potenti. Maecenas tincidunt, nunc nec faucibus vulputate, felis nunc imperdiet justo, vel bibendum risus nunc vel nisi.
+
+### Additional Requirements
+
+1. The system should handle edge cases gracefully
+2. Performance should be optimized for large documents
+3. Memory usage should be efficient and cleanup should happen after processing
+4. The API should be simple and consistent
+5. Logging should be comprehensive but not excessive
+6. Error handling should be robust
+7. NEW REQUIREMENT: Support for parallel processing
+
+#### Edge Cases
+
+Some edge cases to consider:
+- Empty documents
+- Very large documents (millions of characters)
+- Documents with unusual formatting
+- Documents with many small paragraphs
+- Documents with very long paragraphs
+- Documents with non-text elements
+- NEW CASE: Documents with mixed languages
+
+## Final Thoughts
+
+This test document should provide sufficient material to evaluate the chunking system's ability to create semantically meaningful chunks while preserving important boundaries between content sections. The updates in this version should be detected and handled properly by the context-aware chunking functionality. 

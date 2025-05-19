@@ -71,14 +71,18 @@ groq_api_key = config.GROQ_API_KEY
 # Verbose output config
 VERBOSE_PDF_PARSING_OUTPUT = config.VERBOSE_PDF_PARSING_OUTPUT
 
+# Get the models for PDF parsing from the config
+vision_model_name = config.get_model_for_task("pdf_parsing", "vision")
+text_model_name = config.get_model_for_task("pdf_parsing", "text")
+
 # Model Configuration
 # Initialize OpenAI models for vision and text processing
-openai_vision_model = OpenAIChat(id="gpt-4o", api_key=api_key)
-openai_text_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key)
+openai_vision_model = OpenAIChat(id=vision_model_name, api_key=api_key)
+openai_text_model = OpenAIChat(id=text_model_name, api_key=api_key)
 
 # Groq models
-groq_vision_model = Groq(id="meta-llama/llama-4-scout-17b-16e-instruct", api_key=groq_api_key)
-groq_text_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key)
+groq_vision_model = Groq(id=vision_model_name, api_key=groq_api_key)
+groq_text_model = Groq(id=text_model_name, api_key=groq_api_key)
 
 # Select which models to use based on configuration
 MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
@@ -86,11 +90,11 @@ MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
 if MODEL_PROVIDER == "openai":
     active_vision_model = openai_vision_model
     active_text_model = openai_text_model
-    logger.info("Using OpenAI models for processing", extra={"icon": "🧠"})
+    logger.info(f"Using OpenAI models for processing: Vision={vision_model_name}, Text={text_model_name}", extra={"icon": "🧠"})
 else:  # Default to Groq
     active_vision_model = groq_vision_model
     active_text_model = groq_text_model
-    logger.info("Using Groq models for processing", extra={"icon": "🧠"})
+    logger.info(f"Using Groq models for processing: Vision={vision_model_name}, Text={text_model_name}", extra={"icon": "🧠"})
 
 # ---------------------------------------------------------------------
 # Section 3: Pydantic Models for AI bot and for final extracted data
@@ -239,7 +243,7 @@ class PDFProcessor:
                 try:
                     prompt = f"Summarize this page content in 1-2 sentences:\n\n{content[:1000]}"  # Limit content size
                     response = self.structured_agent.run(prompt)
-                    _00_utils.update_token_counters(response) # Added token counting
+                    _00_utils.update_token_counters(response, text_model_name) # Added token counting
                     summary = response.content
                     if isinstance(summary, str):
                         page_summaries.append(summary)
@@ -266,7 +270,7 @@ class PDFProcessor:
             )
             
             response = self.document_title_agent.run(prompt)
-            _00_utils.update_token_counters(response) # Added token counting
+            _00_utils.update_token_counters(response, text_model_name) # Added token counting
             document_title = response.content.strip()
             logger.info(f"Generated document title from summaries: {document_title}")
             
@@ -326,7 +330,7 @@ class PDFProcessor:
                         "Text will be used as input for further processing, so structure it as well as possible.",
                         images=[Image(filepath=image_path)]
                     )
-                    _00_utils.update_token_counters(response) # Added token counting
+                    _00_utils.update_token_counters(response, vision_model_name) # Added token counting
 
                     tokens_metrics = response.metrics if hasattr(response, 'metrics') else {}
                     page_input_tokens = tokens_metrics.get('input_tokens', [0])[0] if tokens_metrics.get('input_tokens') else 0
@@ -395,7 +399,7 @@ class PDFProcessor:
                     )
                     
                     response_structured = self.structured_agent.run(prompt)
-                    _00_utils.update_token_counters(response_structured) # Added token counting
+                    _00_utils.update_token_counters(response_structured, text_model_name) # Added token counting
                     processing_duration = time.time() - start_time
                     
                     json_output = response_structured.content

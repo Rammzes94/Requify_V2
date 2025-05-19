@@ -13,45 +13,47 @@ import pandas as pd
 from collections import defaultdict
 import numpy as np
 
+# Import model configurations from config
+try:
+    from _00_utils.config import MODEL_PRICING, MODEL_TIERS
+except ImportError:
+    # If running from outside the project structure, try alternative import
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    try:
+        from _00_utils.config import MODEL_PRICING, MODEL_TIERS
+    except ImportError:
+        # Fallback with basic model info if config can't be imported
+        MODEL_PRICING = {
+            "gpt-4o-mini": {
+                "input": 0.15,
+                "output": 0.60,
+                "energy": 0.0008,
+                "co2": 0.0004,
+                "tier": "low"
+            },
+            "gpt-4.1": {
+                "input": 3.00,
+                "output": 12.00,
+                "energy": 0.0016,
+                "co2": 0.0009,
+                "tier": "high"
+            }
+        }
+        MODEL_TIERS = {
+            "high_tier": {
+                "limit": 250000,
+                "models": ["gpt-4.1", "gpt-4o", "o1", "o3"]
+            },
+            "low_tier": {
+                "limit": 2500000,
+                "models": ["gpt-4o-mini", "gpt-4.1-mini"]
+            }
+        }
 
 # Initialize token counters as global variables
 total_input_tokens = 0
 total_output_tokens = 0
 model_token_usage = defaultdict(lambda: {"input": 0, "output": 0})
-
-# Model pricing constants
-MODEL_PRICING = {
-    "gpt-4o": {
-        "input": 2.50,    # $2.50 per million input tokens
-        "output": 10.00,  # $10 per million output tokens
-        "energy": 0.00125, # Wh per token
-        "co2": 0.0006     # gCO₂ per token
-    },
-    "gpt-4o-mini": {
-        "input": 0.15,    # $0.15 per million input tokens
-        "output": 0.60,   # $0.60 per million output tokens
-        "energy": 0.0008, # Wh per token (smaller model = less energy)
-        "co2": 0.0004     # gCO₂ per token (smaller model = less emissions)
-    },
-    "o1": {
-        "input": 15.00,   # $15 per million input tokens
-        "output": 60.00,  # $60 per million output tokens
-        "energy": 0.0015, # Wh per token (more advanced model = more energy)
-        "co2": 0.0008     # gCO₂ per token (more advanced model = more emissions)
-    }
-}
-
-# OpenAI token usage limits (daily)
-OPENAI_TOKEN_LIMITS = {
-    "high_tier": {
-        "limit": 250000,  # 250K tokens per day
-        "models": ["gpt-4.5-preview", "gpt-4.1", "gpt-4o", "o1", "o3"]
-    },
-    "low_tier": {
-        "limit": 2500000,  # 2.5M tokens per day
-        "models": ["gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "o1-mini", "o3-mini", "o4-mini", "codex-mini-latest"]
-    }
-}
 
 # Token tracking file paths
 TOKEN_TRACKING_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output", "token_tracking")
@@ -105,12 +107,12 @@ def update_token_counters(response, model_id="gpt-4o-mini"):
         try:
             logger = logging.getLogger()
             if logger.handlers:  # Check if logger is configured
-                logger.info(f"Token counters updated: {total_input_tokens} input, {total_output_tokens} output", extra={"icon": "🔢"})
+                logger.info(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}", extra={"icon": "🔢"})
             else:
-                print(f"Token counters updated: {total_input_tokens} input, {total_output_tokens} output")
+                print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
         except Exception:
             # If there's any issue with logging, fall back to print
-            print(f"Token counters updated: {total_input_tokens} input, {total_output_tokens} output")
+            print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
         
         # Save updated token usage to file
         save_token_usage(model_id)
@@ -191,7 +193,7 @@ def print_token_usage(model_id="gpt-4o-mini"):
             logger.info(f"  - CO₂ emissions: {co2_emissions:.6f} gCO₂ ({co2_emissions/1000:.6f} kgCO₂)", extra={"icon": "🌱"})
             
             # Log limit status
-            tier = "high_tier" if model_id in OPENAI_TOKEN_LIMITS["high_tier"]["models"] else "low_tier"
+            tier = "high_tier" if model_id in MODEL_TIERS["high_tier"]["models"] else "low_tier"
             logger.info(f"  - Daily limit: {limits[tier]['usage']} / {limits[tier]['limit']} tokens ({limits[tier]['percentage']:.1f}%)", extra={"icon": "⚠️" if limits[tier]['warning'] else "✅"})
         else:
             print(f"\nToken usage for {model_id}:")
@@ -293,7 +295,6 @@ def setup_project_directory():
         # print(f"Running script from: {os.getcwd()}")
         pass
     return os.getcwd()
-
 
 # -------------------------------------------------------------------------------------
 # [Logging Setup]
@@ -766,8 +767,8 @@ def save_token_usage(model_id="gpt-4o-mini"):
         if logger.handlers:
             logger.warning(f"Failed to save model token usage: {str(e)}", extra={"icon": "⚠️"})
     
-    # Calculate cost
-    pricing = MODEL_PRICING.get(model_id, MODEL_PRICING["gpt-4o-mini"])
+    # Calculate cost based on model_id using MODEL_PRICING from config
+    pricing = MODEL_PRICING.get(model_id, MODEL_PRICING.get("gpt-4o-mini"))
     input_cost = (input_tokens / 1000000) * pricing["input"]
     output_cost = (output_tokens / 1000000) * pricing["output"]
     total_cost = input_cost + output_cost
@@ -839,10 +840,10 @@ def should_generate_report():
         bool: True if a report should be generated
     """
     today = date.today().isoformat()
-    report_file = os.path.join(REPORTS_DIR, f"token_report_{today}.pdf")
+    html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
     
     # Generate a report if we haven't generated one today
-    return not os.path.exists(report_file)
+    return not os.path.exists(html_report_file)
 
 def check_token_limits():
     """
@@ -868,18 +869,24 @@ def check_token_limits():
                         if row_date == today:
                             total_tokens = int(row[4])  # total_tokens column
                             
-                            # Check which tier this model belongs to
-                            if row_model in OPENAI_TOKEN_LIMITS["high_tier"]["models"]:
+                            # Use the MODEL_TIERS constant to determine tier
+                            if row_model in MODEL_TIERS["high_tier"]["models"]:
                                 high_tier_usage += total_tokens
-                            elif row_model in OPENAI_TOKEN_LIMITS["low_tier"]["models"]:
+                            elif row_model in MODEL_TIERS["low_tier"]["models"]:
+                                low_tier_usage += total_tokens
+                            # For unknown models, try to check if we have pricing data with tier info
+                            elif row_model in MODEL_PRICING and MODEL_PRICING[row_model].get("tier") == "high":
+                                high_tier_usage += total_tokens
+                            else:
+                                # Default to low tier for unknown models
                                 low_tier_usage += total_tokens
         except Exception as e:
             logger = logging.getLogger()
             if logger.handlers:
                 logger.warning(f"Error checking token limits: {str(e)}", extra={"icon": "⚠️"})
     
-    high_tier_limit = OPENAI_TOKEN_LIMITS["high_tier"]["limit"]
-    low_tier_limit = OPENAI_TOKEN_LIMITS["low_tier"]["limit"]
+    high_tier_limit = MODEL_TIERS["high_tier"]["limit"]
+    low_tier_limit = MODEL_TIERS["low_tier"]["limit"]
     
     high_tier_percentage = (high_tier_usage / high_tier_limit) * 100 if high_tier_limit > 0 else 0
     low_tier_percentage = (low_tier_usage / low_tier_limit) * 100 if low_tier_limit > 0 else 0
@@ -901,30 +908,19 @@ def check_token_limits():
 
 def generate_token_usage_report():
     """
-    Generate a comprehensive report of token usage, with visualizations if packages are available.
+    Generate a comprehensive report of token usage in HTML format.
     Saves the report in the reports directory.
     """
     today = date.today().isoformat()
-    report_file = os.path.join(REPORTS_DIR, f"token_report_{today}.txt")
     html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
     
     # Skip if report already exists
-    if os.path.exists(report_file):
+    if os.path.exists(html_report_file):
         return
     
     try:
         if not os.path.exists(DAILY_USAGE_FILE):
             return
-        
-        # Check if we have visualization packages available
-        viz_available = False
-        try:
-            import matplotlib.pyplot as plt
-            import pandas as pd
-            import numpy as np
-            viz_available = True
-        except ImportError:
-            pass
         
         # Load the data
         data = []
@@ -948,218 +944,225 @@ def generate_token_usage_report():
         if not data:
             return
         
-        # If visualization packages are available, create PDF report
-        if viz_available:
-            try:
-                pdf_report_file = os.path.join(REPORTS_DIR, f"token_report_{today}.pdf")
-                
-                # Convert to pandas DataFrame
-                df = pd.DataFrame(data)
-                
-                # Create visualizations
-                plt.figure(figsize=(20, 15))
-                
-                # 1. Daily token usage by model
-                plt.subplot(2, 2, 1)
-                pivot_df = df.pivot_table(
-                    index='date', 
-                    columns='model', 
-                    values='total_tokens',
-                    aggfunc='sum'
-                ).fillna(0)
-                pivot_df.plot(kind='bar', ax=plt.gca())
-                plt.title('Daily Token Usage by Model')
-                plt.xlabel('Date')
-                plt.ylabel('Tokens')
-                plt.xticks(rotation=45)
-                plt.legend(title='Model')
-                
-                # 2. Model usage distribution (pie chart)
-                plt.subplot(2, 2, 2)
-                model_totals = df.groupby('model')['total_tokens'].sum()
-                plt.pie(model_totals, labels=model_totals.index, autopct='%1.1f%%')
-                plt.title('Token Usage Distribution by Model')
-                
-                # 3. Usage trend over time
-                plt.subplot(2, 2, 3)
-                daily_totals = df.groupby('date')['total_tokens'].sum()
-                daily_totals.plot(kind='line', marker='o')
-                plt.title('Total Token Usage Trend')
-                plt.xlabel('Date')
-                plt.ylabel('Total Tokens')
-                plt.xticks(rotation=45)
-                
-                # 4. Limit status visualization
-                plt.subplot(2, 2, 4)
-                limits = check_token_limits()
-                
-                categories = ['High-Tier Models', 'Low-Tier Models']
-                usage = [limits['high_tier']['usage'], limits['low_tier']['usage']]
-                limits_values = [limits['high_tier']['limit'], limits['low_tier']['limit']]
-                
-                x = np.arange(len(categories))
-                width = 0.35
-                
-                ax = plt.gca()
-                usage_bars = ax.bar(x - width/2, usage, width, label='Usage')
-                limit_bars = ax.bar(x + width/2, limits_values, width, label='Limit', alpha=0.5)
-                
-                # Add percentage labels
-                for i, (usage_val, limit_val) in enumerate(zip(usage, limits_values)):
-                    percentage = (usage_val / limit_val) * 100 if limit_val > 0 else 0
-                    plt.text(i - width/2, usage_val + 0.05 * max(limits_values), 
-                            f"{percentage:.1f}%", ha='center', va='bottom')
-                
-                ax.set_xticks(x)
-                ax.set_xticklabels(categories)
-                ax.legend()
-                
-                plt.title('Daily Token Usage vs. Limits')
-                plt.ylabel('Tokens')
-                
-                # Add report title and date
-                plt.suptitle(f'Token Usage Report - {today}', fontsize=16)
-                plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-                
-                # Save as PDF
-                plt.savefig(pdf_report_file)
-            except Exception as e:
-                logger = logging.getLogger()
-                if logger.handlers:
-                    logger.warning(f"Failed to generate visualization report: {str(e)}", extra={"icon": "⚠️"})
+        # Get limits
+        limits = check_token_limits()
         
-        # Always create a text report
-        with open(report_file, 'w') as f:
-            f.write(f"TOKEN USAGE REPORT - {today}\n")
-            f.write("="*80 + "\n\n")
-            
-            # Get limits
-            limits = check_token_limits()
-            
-            # Summary 
-            today_data = [item for item in data if item['date'] == today]
-            today_total_tokens = sum(item['total_tokens'] for item in today_data)
-            today_total_cost = sum(item['cost'] for item in today_data)
-            
-            f.write("TODAY'S SUMMARY:\n")
-            f.write(f"  Total Tokens: {today_total_tokens:,}\n")
-            f.write(f"  Total Cost: ${today_total_cost:.4f}\n\n")
-            
-            # Model breakdown
-            f.write("MODEL BREAKDOWN:\n")
-            for model in sorted(models):
-                model_data = [item for item in today_data if item['model'] == model]
-                if model_data:
-                    model_tokens = sum(item['total_tokens'] for item in model_data)
-                    model_cost = sum(item['cost'] for item in model_data)
-                    f.write(f"  {model}:\n")
-                    f.write(f"    Tokens: {model_tokens:,}\n")
-                    f.write(f"    Cost: ${model_cost:.4f}\n")
-            f.write("\n")
-            
-            # Limits
-            f.write("TOKEN LIMITS:\n")
-            f.write("  High-Tier Models:\n")
-            f.write(f"    Usage: {limits['high_tier']['usage']:,} / {limits['high_tier']['limit']:,} tokens\n")
-            f.write(f"    Percentage: {limits['high_tier']['percentage']:.1f}%\n")
-            if limits['high_tier']['warning']:
-                f.write("    WARNING: Approaching daily limit!\n")
-            
-            f.write("  Low-Tier Models:\n")
-            f.write(f"    Usage: {limits['low_tier']['usage']:,} / {limits['low_tier']['limit']:,} tokens\n")
-            f.write(f"    Percentage: {limits['low_tier']['percentage']:.1f}%\n")
-            if limits['low_tier']['warning']:
-                f.write("    WARNING: Approaching daily limit!\n")
-            
-            f.write("\n")
-            f.write(f"Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        # Summary for today
+        today_data = [item for item in data if item['date'] == today]
+        today_total_tokens = sum(item['total_tokens'] for item in today_data)
+        today_total_cost = sum(item['cost'] for item in today_data)
         
-        # Create HTML report
+        # Create HTML report with properly formatted CSS
         with open(html_report_file, 'w') as f:
-            f.write("<html><head>")
-            f.write("<style>")
-            f.write("body { font-family: Arial, sans-serif; margin: 20px; }")
-            f.write("h1, h2 { color: #333366; }")
-            f.write("table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }")
-            f.write("th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }")
-            f.write("th { background-color: #f2f2f2; }")
-            f.write("tr:hover { background-color: #f5f5f5; }")
-            f.write(".warning { color: red; font-weight: bold; }")
-            f.write(".progress-container { width: 100%; background-color: #f1f1f1; border-radius: 5px; }")
-            f.write(".progress-bar { height: 20px; border-radius: 5px; }")
-            f.write(".progress-bar.high { background-color: #4CAF50; }")
-            f.write(".progress-bar.medium { background-color: #FFEB3B; }")
-            f.write(".progress-bar.critical { background-color: #F44336; }")
-            f.write("</style>")
-            f.write("</head><body>")
+            f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Usage Report - {0}</title>
+    <style>
+        body {{ 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            line-height: 1.6;
+        }}
+        h1, h2, h3 {{ 
+            color: #333366; 
+        }}
+        table {{ 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-bottom: 20px; 
+        }}
+        th, td {{ 
+            padding: 10px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }}
+        th {{ 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+        }}
+        tr:hover {{ 
+            background-color: #f5f5f5; 
+        }}
+        .warning {{ 
+            color: red; 
+            font-weight: bold; 
+        }}
+        .progress-container {{ 
+            width: 100%; 
+            background-color: #f1f1f1; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+        }}
+        .progress-bar {{ 
+            height: 24px; 
+            border-radius: 5px; 
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 24px;
+        }}
+        .progress-bar.high {{ 
+            background-color: #4CAF50; 
+        }}
+        .progress-bar.medium {{ 
+            background-color: #FFEB3B; 
+            color: #333;
+        }}
+        .progress-bar.critical {{ 
+            background-color: #F44336; 
+        }}
+        .report-footer {{
+            margin-top: 30px;
+            color: #666;
+            font-style: italic;
+        }}
+        .model-stats {{
+            margin-bottom: 30px;
+        }}
+    </style>
+</head>
+<body>
+    <h1>Token Usage Summary - {0}</h1>
+    
+    <h2>Today's Summary</h2>
+    <table>
+        <tr>
+            <th>Total Tokens</th>
+            <th>Total Cost</th>
+        </tr>
+        <tr>
+            <td>{1:,}</td>
+            <td>${2:.4f}</td>
+        </tr>
+    </table>
+    
+    <h2>Model Breakdown</h2>
+    <table>
+        <tr>
+            <th>Model</th>
+            <th>Input Tokens</th>
+            <th>Output Tokens</th>
+            <th>Total Tokens</th>
+            <th>Cost</th>
+        </tr>
+""".format(today, today_total_tokens, today_total_cost))
             
-            f.write(f"<h1>Token Usage Summary - {today}</h1>")
-            
-            # Today's summary
-            f.write("<h2>Today's Summary</h2>")
-            f.write("<table>")
-            f.write("<tr><th>Total Tokens</th><th>Total Cost</th></tr>")
-            f.write(f"<tr><td>{today_total_tokens:,}</td><td>${today_total_cost:.4f}</td></tr>")
-            f.write("</table>")
-            
-            # Model breakdown
-            f.write("<h2>Model Breakdown</h2>")
-            f.write("<table>")
-            f.write("<tr><th>Model</th><th>Tokens</th><th>Cost</th></tr>")
+            # Add model breakdown rows
             for model in sorted(models):
                 model_data = [item for item in today_data if item['model'] == model]
                 if model_data:
-                    model_tokens = sum(item['total_tokens'] for item in model_data)
+                    model_input_tokens = sum(item['input_tokens'] for item in model_data)
+                    model_output_tokens = sum(item['output_tokens'] for item in model_data)
+                    model_total_tokens = sum(item['total_tokens'] for item in model_data)
                     model_cost = sum(item['cost'] for item in model_data)
-                    f.write(f"<tr><td>{model}</td><td>{model_tokens:,}</td><td>${model_cost:.4f}</td></tr>")
-            f.write("</table>")
+                    f.write(f"""        <tr>
+            <td>{model}</td>
+            <td>{model_input_tokens:,}</td>
+            <td>{model_output_tokens:,}</td>
+            <td>{model_total_tokens:,}</td>
+            <td>${model_cost:.4f}</td>
+        </tr>
+""")
+            f.write("    </table>\n")
+            
+            # Historical token usage section
+            f.write("""
+    <h2>Historical Token Usage</h2>
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Model</th>
+            <th>Input Tokens</th>
+            <th>Output Tokens</th>
+            <th>Total Tokens</th>
+            <th>Cost</th>
+        </tr>
+""")
+            # Group by date and model
+            date_model_data = {}
+            for item in data:
+                date_key = item['date']
+                model_key = item['model']
+                if date_key not in date_model_data:
+                    date_model_data[date_key] = {}
+                if model_key not in date_model_data[date_key]:
+                    date_model_data[date_key][model_key] = {
+                        'input_tokens': 0,
+                        'output_tokens': 0,
+                        'total_tokens': 0,
+                        'cost': 0.0
+                    }
+                date_model_data[date_key][model_key]['input_tokens'] += item['input_tokens']
+                date_model_data[date_key][model_key]['output_tokens'] += item['output_tokens']
+                date_model_data[date_key][model_key]['total_tokens'] += item['total_tokens']
+                date_model_data[date_key][model_key]['cost'] += item['cost']
+            
+            # Sort by date (newest first)
+            for date_key in sorted(date_model_data.keys(), reverse=True):
+                for model_key in sorted(date_model_data[date_key].keys()):
+                    stats = date_model_data[date_key][model_key]
+                    f.write(f"""        <tr>
+            <td>{date_key}</td>
+            <td>{model_key}</td>
+            <td>{stats['input_tokens']:,}</td>
+            <td>{stats['output_tokens']:,}</td>
+            <td>{stats['total_tokens']:,}</td>
+            <td>${stats['cost']:.4f}</td>
+        </tr>
+""")
+            f.write("    </table>\n")
             
             # Limits
-            f.write("<h2>Token Limits</h2>")
+            f.write("""
+    <h2>Token Limits</h2>
+""")
             
             # High-tier models
             high_pct = limits['high_tier']['percentage']
             high_class = "critical" if high_pct > 80 else "medium" if high_pct > 50 else "high"
             
-            f.write("<h3>High-Tier Models (GPT-4o, GPT-4.1, O1, O3)</h3>")
-            f.write(f"<p>{limits['high_tier']['usage']:,} / {limits['high_tier']['limit']:,} tokens ({high_pct:.1f}%)</p>")
-            f.write("<div class='progress-container'>")
-            f.write(f"<div class='progress-bar {high_class}' style='width:{min(100, high_pct)}%'></div>")
-            f.write("</div>")
+            f.write(f"""    <h3>High-Tier Models (GPT-4o, GPT-4.1, O1, O3)</h3>
+    <p>{limits['high_tier']['usage']:,} / {limits['high_tier']['limit']:,} tokens ({high_pct:.1f}%)</p>
+    <div class='progress-container'>
+        <div class='progress-bar {high_class}' style='width:{min(100, high_pct)}%'>{high_pct:.1f}%</div>
+    </div>
+""")
             if limits['high_tier']['warning']:
-                f.write("<p class='warning'>WARNING: Approaching daily limit!</p>")
+                f.write("    <p class='warning'>WARNING: Approaching daily limit!</p>\n")
             
             # Low-tier models
             low_pct = limits['low_tier']['percentage']
             low_class = "critical" if low_pct > 80 else "medium" if low_pct > 50 else "high"
             
-            f.write("<h3>Low-Tier Models (GPT-4o-mini, etc.)</h3>")
-            f.write(f"<p>{limits['low_tier']['usage']:,} / {limits['low_tier']['limit']:,} tokens ({low_pct:.1f}%)</p>")
-            f.write("<div class='progress-container'>")
-            f.write(f"<div class='progress-bar {low_class}' style='width:{min(100, low_pct)}%'></div>")
-            f.write("</div>")
+            f.write(f"""    <h3>Low-Tier Models (GPT-4o-mini, etc.)</h3>
+    <p>{limits['low_tier']['usage']:,} / {limits['low_tier']['limit']:,} tokens ({low_pct:.1f}%)</p>
+    <div class='progress-container'>
+        <div class='progress-bar {low_class}' style='width:{min(100, low_pct)}%'>{low_pct:.1f}%</div>
+    </div>
+""")
             if limits['low_tier']['warning']:
-                f.write("<p class='warning'>WARNING: Approaching daily limit!</p>")
+                f.write("    <p class='warning'>WARNING: Approaching daily limit!</p>\n")
             
-            f.write(f"<p><em>Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</em></p>")
-            f.write("</body></html>")
+            # Footer
+            f.write(f"""
+    <div class="report-footer">
+        <p>Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+    </div>
+</body>
+</html>
+""")
         
         logger = logging.getLogger()
         if logger.handlers:
-            logger.info(f"Generated token usage text report: {report_file}", extra={"icon": "📊"})
-            logger.info(f"Generated token summary HTML: {html_report_file}", extra={"icon": "📊"})
-            
-            # Log warnings if approaching limits
-            if limits['high_tier']['warning']:
-                logger.warning(f"HIGH-TIER MODEL USAGE AT {limits['high_tier']['percentage']:.1f}% OF DAILY LIMIT!", extra={"icon": "⚠️"})
-            if limits['low_tier']['warning']:
-                logger.warning(f"LOW-TIER MODEL USAGE AT {limits['low_tier']['percentage']:.1f}% OF DAILY LIMIT!", extra={"icon": "⚠️"})
-    
+            logger.info(f"Generated token summary: {html_report_file}", extra={"icon": "✅"})
+        
     except Exception as e:
         logger = logging.getLogger()
         if logger.handlers:
             logger.error(f"Failed to generate token usage report: {str(e)}", extra={"icon": "❌"})
-            logger.error(f"Exception details: {repr(e)}", extra={"icon": "❌"})
 
 def display_token_usage_status():
     """
@@ -1198,7 +1201,6 @@ def display_token_usage_status():
         print("="*80)
         
         # Display today's usage
-        print("\nToday's Usage:")
         today_data = [item for item in data if item['date'] == today]
         if not today_data:
             print("  No usage recorded today")
@@ -1246,33 +1248,36 @@ def display_token_usage_status():
         
         # Reports info
         print("\nReports:")
-        report_file = os.path.join(REPORTS_DIR, f"token_report_{today}.txt")
         html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
-        pdf_report_file = os.path.join(REPORTS_DIR, f"token_report_{today}.pdf")
         
-        if os.path.exists(report_file):
-            print(f"  Text Report: {report_file}")
-        else:
-            print("  Text Report: Not generated yet")
-            
         if os.path.exists(html_report_file):
-            print(f"  HTML Summary: {html_report_file}")
+            print(f"  HTML Report: {html_report_file}")
         else:
-            print("  HTML Summary: Not generated yet")
-            
-        if os.path.exists(pdf_report_file):
-            print(f"  PDF Report: {pdf_report_file}")
-        else:
-            print("  PDF Report: Not generated yet (requires matplotlib and pandas)")
+            print("  HTML Report: Not generated yet")
+            # Ask if the user wants to generate the report now
+            generate_now = input("\nGenerate HTML report now? (y/n): ").lower().strip()
+            if generate_now == 'y' or generate_now == 'yes':
+                generate_token_usage_report()
+                if os.path.exists(html_report_file):
+                    print(f"  HTML Report generated: {html_report_file}")
         
-        print("\nTo generate a new report, call generate_token_usage_report()")
+        print("\nTo generate a new report any time, run: python tools/generate_token_report.py")
         print("="*80 + "\n")
         
     except Exception as e:
         print(f"Error displaying token usage status: {str(e)}")
 
 if __name__ == "__main__":
-    # If run as a script, display the token usage status
+    # If run as a script, display the token usage status and generate report
     setup_project_directory()
+    
+    # Check if today's report exists, generate it if it doesn't
+    today = date.today().isoformat()
+    html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
+    if not os.path.exists(html_report_file):
+        print(f"Generating today's token report...")
+        generate_token_usage_report()
+    
+    # Display token usage status
     display_token_usage_status()
 
