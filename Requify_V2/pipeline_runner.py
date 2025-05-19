@@ -18,15 +18,13 @@ import sys
 import argparse
 import logging
 import subprocess
-from typing import List, Optional
+from typing import Dict, List, Optional
 
-# Add the main src directory to Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), "_02_src"))
-
-# Import utility functions
-from _00_utils import setup_logging
+# Add the parent directory to the system path to allow importing modules from it
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '_02_src')))
 import _00_utils
-_00_utils.setup_project_directory()
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '_02_src', '_00_utils')))
+import config
 
 # Import main pipeline controller
 from pipeline_controller import (
@@ -39,46 +37,31 @@ from pipeline_controller import (
     STEP_EXTRACT_REQS,
 )
 
-# Set up logging
-logger = setup_logging()
+# Setup centralized logging with script prefix
+logger = _00_utils.get_logger("Pipeline_Runner")
 
-# Create a consistent logger with prefix for better visibility
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
+# Pipeline step constants
+STEP_EXTENSION_FILTER = 1
+STEP_DEDUPLICATION = 2
+STEP_PARSE_PDF = 3
+STEP_CHUNKING = 4
+STEP_EXTRACT_REQS = 5
 
-logger = ScriptLogger(logger, "[Pipeline_Runner] ")
-
-# Pipeline step descriptions
+# Descriptions for each pipeline step
 STEP_DESCRIPTIONS = {
-    STEP_HASH_CHECK: "Hash-based duplicate check only",
-    STEP_PARSE: "Parse document only",
-    STEP_DEDUP_ONLY: "Parse + Check for duplicates (no DB save)",
-    STEP_SAVE_TO_DB: "Parse + Save to LanceDB (no chunking)",
-    STEP_CHUNKING: "Parse + Save to LanceDB + Chunk document",
-    STEP_EXTRACT_REQS: "Complete pipeline (extract requirements)"
+    STEP_EXTENSION_FILTER: "File Extension Filtering",
+    STEP_DEDUPLICATION: "Document Duplication Check",
+    STEP_PARSE_PDF: "PDF Parsing & Content Extraction",
+    STEP_CHUNKING: "Content Chunking",
+    STEP_EXTRACT_REQS: "Requirements Extraction"
 }
 
 def show_deduplication_results(input_file: str) -> None:
-    """
-    Show deduplication results for the processed document.
-    
-    Args:
-        input_file: Path to the input file that was processed
-    """
-    # Extract document name from path (without extension)
-    doc_name = os.path.basename(input_file).split('.')[0]
-    
+    """Show deduplication results for a processed document."""
+    doc_name = os.path.basename(input_file)
     logger.info("=== Deduplication Results ===", extra={"icon": "📊"})
     
-    # Set verbose output environment variables for all components
-    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
-    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
-    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    # Config is already loaded, no need to set environment variables
     
     try:
         # Display document info from LanceDB
@@ -178,10 +161,7 @@ def run_pipeline_interactive() -> None:
     """Run the pipeline with interactive prompts."""
     logger.info("=== Document Processing Pipeline Runner ===", extra={"icon": "🚀"})
     
-    # Set verbose output environment variables for all components
-    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
-    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
-    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    # Config is already loaded, no need to set environment variables
     
     if input("Set up database before running? (y/n): ").lower() == 'y':
         if not setup_database():
@@ -225,11 +205,8 @@ def main() -> None:
                        help="Enable verbose output (default: True)")
     args = parser.parse_args()
     
-    # Set verbose output environment variables for all components
-    if args.verbose:
-        os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
-        os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
-        os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    # If verbose argument is provided, we could update the config values if needed
+    # But we'll rely on the values already loaded from config
     
     if args.interactive or not (args.input and args.max_step is not None):
         run_pipeline_interactive()
@@ -261,10 +238,7 @@ def test_with_hardcoded_file():
     """Test the pipeline with a hardcoded file."""
     logger.info("=== Running Pipeline Test with Hardcoded File ===", extra={"icon": "🧪"})
     
-    # Set verbose output environment variables for all components
-    os.environ["VERBOSE_DEDUPLICATION_OUTPUT"] = "True"
-    os.environ["VERBOSE_PDF_PARSING_OUTPUT"] = "True"
-    os.environ["VERBOSE_CHUNKING_OUTPUT"] = "True"
+    # Config is already loaded, no need to set environment variables
     
     test_file = "_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf"
     if not os.path.exists(test_file):
@@ -273,20 +247,9 @@ def test_with_hardcoded_file():
     logger.info(f"Running pipeline on test file: {test_file}", extra={"icon": "🚀"})
     try:
         max_step = STEP_EXTRACT_REQS  # Run the complete pipeline
-        success = process_document(test_file, max_step=max_step, dry_run=False)
-        if success:
-            logger.info("=== Pipeline Test Completed Successfully ===", extra={"icon": "✅"})
-            
-            # Show deduplication results for test file
-            show_deduplication_results(test_file)
-            
-        else:
-            logger.error("=== Pipeline Test Failed ===", extra={"icon": "❌"})
-        return success
+        return process_document(test_file, max_step=max_step, dry_run=False)
     except Exception as e:
-        logger.error(f"=== Pipeline Test Error ===\n{e}", extra={"icon": "💥"})
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Pipeline test error: {e}", extra={"icon": "💥"})
         return False
 
 if __name__ == "__main__":

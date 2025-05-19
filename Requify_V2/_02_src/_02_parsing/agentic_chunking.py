@@ -9,11 +9,13 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
-
+from agno.models.groq import Groq
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+import config
 _00_utils.setup_project_directory()
 
 """
@@ -38,19 +40,14 @@ MAX_CHAR_SIZE = MAX_TOKEN_SIZE * TOKEN_TO_CHAR_RATIO
 MIN_CHAR_SIZE = MIN_TOKEN_SIZE * TOKEN_TO_CHAR_RATIO
 
 # Setup logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Agentic_Chunking] ")
+
+logger = _00_utils.get_logger("Agentic_Chunking")
 
 # Load environment variables
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+api_key = config.OPENAI_API_KEY
+groq_api_key = config.GROQ_API_KEY
 
 # Define DocumentChunk class for external use
 class DocumentChunk(BaseModel):
@@ -73,6 +70,17 @@ class SplitPointsModel(BaseModel):
 
 # Initialize the OpenAI text model for chunking
 openai_text_model = OpenAIChat(id="gpt-4.1-mini", api_key=api_key)
+groq_text_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key)
+
+# Select which model to use based on configuration
+MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+
+if MODEL_PROVIDER == "openai":
+    active_text_model = openai_text_model
+    logger.info("Using OpenAI models for chunking", extra={"icon": "🧠"})
+else:  # Default to Groq
+    active_text_model = groq_text_model
+    logger.info("Using Groq models for chunking", extra={"icon": "🧠"})
 
 # Create a prompt that asks for split points rather than actual chunks
 split_points_description = (
@@ -238,7 +246,7 @@ def get_llm_split_suggestions(md_text: str) -> List[int]:
     try:
         prompt = split_points_description.replace("{length}", str(len(md_text)))
         temp_agent = Agent(
-            model=openai_text_model,
+            model=active_text_model,
             markdown=True, # The input is markdown
             debug_mode=False,
             response_model=SplitPointsModel,

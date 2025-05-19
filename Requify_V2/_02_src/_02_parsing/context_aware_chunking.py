@@ -42,15 +42,9 @@ from _03_docs_deduplication import pre_save_deduplication as dedup
 logger = _00_utils.setup_logging()
 
 # Create a consistent logger with prefix for better visibility
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(logger, "[Context_Chunking] ")
+
+logger = _00_utils.get_logger("Context_Aware_Chunking")
 
 # Utility function for consistent logging
 def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float, decision: str, reason: str):

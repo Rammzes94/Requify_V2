@@ -11,8 +11,8 @@ import logging
 from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
-import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from _02_src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -21,15 +21,7 @@ load_dotenv()
 import lancedb
 
 # Set up logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
-
-logger = ScriptLogger(_00_utils.setup_logging(), "[Reset_LanceDB] ")
+logger = _00_utils.get_logger("Reset_LanceDB")
 
 # Constants
 OUTPUT_DIR_BASE = "_03_output"
@@ -56,8 +48,8 @@ def main():
         logger.info(f"All tables dropped. Running initialization to create fresh tables.", extra={"icon": "✅"})
         
         # Import and run the initialization script
-        sys.path.append(os.path.join(os.path.dirname(__file__), '_00_lancedb_admin'))
-        import init_lancedb
+        sys.path.append(os.path.join(project_root, '_02_src', '_00_lancedb_admin'))
+        from _02_src._00_lancedb_admin import init_lancedb
         init_lancedb.main()
         
         logger.info(f"LanceDB tables reinitialized with consistent schemas.", extra={"icon": "✅"})

@@ -618,6 +618,22 @@ class IconAdapter(logging.LoggerAdapter):
         kwargs['extra'] = extra
         return msg, kwargs
 
+# Centralized ScriptLogger for all modules to use
+class ScriptLogger(logging.LoggerAdapter):
+    """
+    ScriptLogger adds a consistent prefix to all log messages.
+    This is centralized here so all modules can use the same logger format.
+    
+    Usage:
+        logger = ScriptLogger(setup_logging(), "[ModuleName] ")
+    """
+    def __init__(self, logger, prefix):
+        super().__init__(logger, {})
+        self.prefix = prefix
+        
+    def process(self, msg, kwargs):
+        return f"{self.prefix}{msg}", kwargs
+
 def setup_logging():
     """
     Configures logging for the project based on .env settings.
@@ -672,18 +688,9 @@ def get_logger(script_name):
         script_name: A short name for the script or module
         
     Returns:
-        A LoggerAdapter that adds the script name as a prefix to all messages
+        A ScriptLogger that adds the script name as a prefix to all messages
     """
     base_logger = setup_logging()
-    
-    class ScriptLogger(logging.LoggerAdapter):
-        def __init__(self, logger, prefix):
-            super().__init__(logger, {})
-            self.prefix = prefix
-            
-        def process(self, msg, kwargs):
-            return f"{self.prefix}{msg}", kwargs
-    
     return ScriptLogger(base_logger, f"[{script_name}] ")
 
 def generate_timestamp():

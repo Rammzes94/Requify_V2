@@ -37,18 +37,6 @@ load_dotenv()
 # Setup logging with script prefix
 logger = _00_utils.get_logger("Pipeline_Controller")
 
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
-
-logger = ScriptLogger(_00_utils.setup_logging(), "[Pipeline_Controller] ")
-
-
-
 # Import Hash-based deduplication
 sys.path.append(os.path.join(os.path.dirname(__file__), '_01_ingestion'))
 import file_hash_deduplication

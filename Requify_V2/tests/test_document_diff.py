@@ -1,115 +1,131 @@
+#!/usr/bin/env python3
 """
 test_document_diff.py
 
-This script compares two PDF documents to identify differences
-between them, which helps us understand what changes 
-the context-aware chunking system should detect.
+This script compares the contents of two documents to identify differences.
+It performs the following tasks:
+1. Loads source JSON files created by the document processing pipeline
+2. Extracts text content from both documents
+3. Performs a line-by-line diff showing additions, deletions, and changes
+4. Displays a color-coded comparison in the terminal
+5. Works with document IDs or file paths for maximum flexibility
+
+Used for debugging and validating document processing to see how different
+versions of documents compare at the text level.
 """
 
 import os
 import sys
 import json
 import difflib
-from dotenv import load_dotenv
+import argparse
+import logging
 
 # Add the parent directory to the system path to allow importing modules from it
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.append(project_root)
-import _02_src._00_utils as _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import _00_utils
 _00_utils.setup_project_directory()
 
-# Load environment variables
-load_dotenv()
-
-# Setup logging
+# Set up logging
 logger = _00_utils.setup_logging()
 
-# Import the PDF processor
-from _02_src._02_parsing.stable_pdf_parsing import PDFProcessor, plain_agent, structured_agent, document_title_agent
+# Create a consistent logger with prefix for better visibility
 
-def extract_document_content(pdf_path):
-    """Extract content from a PDF document"""
-    logger.info(f"📄 Extracting content from {os.path.basename(pdf_path)}")
-    processor = PDFProcessor(plain_agent, structured_agent, document_title_agent)
-    json_path = processor.pdf_to_structured_json(pdf_path)
+
+logger = _00_utils.get_logger("Test_Document_Diff")
+
+def load_document_content(doc_path):
+    """Load document content from a parsed JSON file"""
+    try:
+        with open(doc_path, 'r') as f:
+            data = json.load(f)
+        
+        # Extract page contents and combine them
+        content = ""
+        for page_key, page_data in data.get('pages', {}).items():
+            if 'md_content' in page_data:
+                content += page_data['md_content'] + "\n\n"
+        
+        return content
+    except Exception as e:
+        logger.error(f"Error loading document content: {e}", extra={"icon": "❌"})
+        return None
+
+def get_document_path(doc_identifier):
+    """
+    Get the full path to a document based on ID or path.
     
-    with open(json_path, 'r') as f:
-        doc_data = json.load(f)
+    This handles both full file paths and document IDs.
+    """
+    # If it's already a full path to a file that exists, return it
+    if os.path.isfile(doc_identifier):
+        return doc_identifier
     
-    # Extract all text content from pages
-    content = ""
-    page_count = len(doc_data.get('pages', {}))
-    logger.info(f"📑 Extracted {page_count} pages from {os.path.basename(pdf_path)}")
+    # Otherwise, look for it in the standard parsed output location
+    base_name = os.path.basename(doc_identifier)
+    # Remove extension if present
+    base_name = os.path.splitext(base_name)[0]
     
-    for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
-        content += page_info.get('md_content', '') + "\n\n"
-        logger.info(f"📃 Page {page_info.get('page_number', '?')}: {len(page_info.get('md_content', ''))} characters")
+    # Check if it's in the standard output directory
+    output_dir = os.path.join("_03_output", "parsed_content", base_name)
+    if os.path.exists(output_dir):
+        # Look for combined_content.json
+        json_path = os.path.join(output_dir, "combined_content.json")
+        if os.path.exists(json_path):
+            return json_path
     
-    return content, doc_data
+    # If we couldn't find it, return the original and let the caller handle errors
+    return doc_identifier
 
 def compare_documents(doc1_path, doc2_path):
-    """Compare two documents and display their differences"""
-    logger.info(f"🔍 Comparing documents: {os.path.basename(doc1_path)} and {os.path.basename(doc2_path)}")
+    """Compare the content of two documents and show the differences"""
+    # Get full paths
+    doc1_path = get_document_path(doc1_path)
+    doc2_path = get_document_path(doc2_path)
     
-    # Extract content from both documents
-    content1, data1 = extract_document_content(doc1_path)
-    content2, data2 = extract_document_content(doc2_path)
+    # Load document content
+    content1 = load_document_content(doc1_path)
+    content2 = load_document_content(doc2_path)
     
-    logger.info(f"📊 Document sizes: {len(content1)} chars vs {len(content2)} chars")
+    if not content1 or not content2:
+        logger.error("Failed to load one or both documents", extra={"icon": "❌"})
+        return
     
-    # Create a diff
-    logger.info(f"🔄 Generating diff between documents")
+    # Split content into lines
+    lines1 = content1.splitlines()
+    lines2 = content2.splitlines()
+    
+    # Generate diff
     diff = list(difflib.unified_diff(
-        content1.splitlines(),
-        content2.splitlines(),
+        lines1, lines2, 
         fromfile=os.path.basename(doc1_path),
         tofile=os.path.basename(doc2_path),
         lineterm=''
     ))
     
-    # Log the diff
+    # Display diff with colors
     if diff:
-        logger.info(f"📝 Differences found: {len(diff)} lines differ")
-        for line in diff[:20]:  # Log first 20 diff lines
-            if line.startswith('+') and not line.startswith('+++'):
-                logger.info(f"➕ {line}")
-            elif line.startswith('-') and not line.startswith('---'):
-                logger.info(f"➖ {line}")
-        if len(diff) > 20:
-            logger.info(f"... and {len(diff) - 20} more differences")
-    else:
-        logger.info("📋 No differences found between documents")
-    
-    # Print the diff
-    print("\n".join(diff))
-    
-    # Count changes
-    additions = [line for line in diff if line.startswith('+') and not line.startswith('+++')]
-    deletions = [line for line in diff if line.startswith('-') and not line.startswith('---')]
-    
-    logger.info(f"📊 Diff summary: {len(additions)} additions, {len(deletions)} deletions")
-    
-    # Print a summary of key changes
-    key_changes = []
-    for line in diff:
-        if (line.startswith('+') or line.startswith('-')) and not (line.startswith('+++') or line.startswith('---')):
-            if any(keyword in line.lower() for keyword in ['weight', 'dimensions', 'speed', 'capacity', 'range', 'kg', 'mm', 'cm', 'rate']):
-                key_changes.append(line)
-    
-    if key_changes:
-        logger.info(f"🔑 {len(key_changes)} key specification changes detected")
-        print("\nKey changes detected:")
-        for line in key_changes:
-            print(line)
+        logger.info("\n========== DOCUMENT DIFFERENCES ==========\n", extra={"icon": "📊"})
+        for line in diff:
             if line.startswith('+'):
-                logger.info(f"➕ Key spec added: {line[1:]}")
+                logger.info(f"\033[92m{line}\033[0m", extra={"icon": "➕"})  # Green for additions
+            elif line.startswith('-'):
+                logger.info(f"\033[91m{line}\033[0m", extra={"icon": "➖"})  # Red for deletions
+            elif line.startswith('^'):
+                logger.info(f"\033[96m{line}\033[0m", extra={"icon": "🔄"})  # Cyan for changes
             else:
-                logger.info(f"➖ Key spec removed: {line[1:]}")
+                logger.info(line, extra={"icon": "ℹ️"})
+        logger.info("\n=========================================\n", extra={"icon": "📊"})
+    else:
+        logger.info("\nNo differences found between documents!\n", extra={"icon": "✅"})
+
+def main():
+    parser = argparse.ArgumentParser(description="Compare the content of two documents")
+    parser.add_argument('doc1', help="First document ID or path")
+    parser.add_argument('doc2', help="Second document ID or path")
+    args = parser.parse_args()
+    
+    compare_documents(args.doc1, args.doc2)
 
 if __name__ == "__main__":
-    # Define the document paths
-    doc1_path = os.path.join(project_root, "_01_input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
-    doc2_path = os.path.join(project_root, "_01_input", "raw", "fighter_jet_rocket_launcher_spec_2_changed_values.pdf")
-    
-    # Compare the documents
-    compare_documents(doc1_path, doc2_path) 
+    main() 

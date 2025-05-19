@@ -63,16 +63,23 @@ import sys
 import json
 import logging
 import time
-from typing import List, Dict, Any, Optional
+import hashlib
+import uuid
+from typing import List, Dict, Any, Optional, Tuple
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from agno.agent import Agent
+from agno.agent import Agent, RunResponse
 from agno.models.openai import OpenAIChat
+from agno.models.groq import Groq
+from lancedb.embeddings import get_registry
+from lancedb.pydantic import LanceModel, Vector
+import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+import config
 
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
 _00_utils.setup_project_directory()
 
 # Import deduplication module
@@ -83,28 +90,41 @@ from _03_docs_deduplication import pre_save_deduplication as dedup
 load_dotenv()
 
 # Define constants
-MAX_CHAR_SIZE = 900  # Maximum allowed character size
-TARGET_CHAR_SIZE = 700  # Target character size per chunk
-MAX_SECTION_SIZE = 30000  # Maximum section size for processing with LLM
-MAX_RETRIES = 2  # Maximum number of retries for LLM calls
-INITIAL_RETRY_DELAY = 1  # Initial delay in seconds for retry backoff
+MAX_CHAR_SIZE = 8000  # Absolute maximum size a chunk can be
+TARGET_CHAR_SIZE = 3000  # Aim for roughly 3000 characters per chunk (~750 tokens)
+MAX_SECTION_SIZE = 32000  # Maximum size that we'll send to an LLM in one go
+MAX_RETRIES = 3  # Maximum number of retries for API calls
+INITIAL_RETRY_DELAY = 2  # Initial delay (in seconds) before retrying
+
+# LanceDB settings
+OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
+LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)  # Construct path relative to project root
+LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
+DOCUMENT_CHUNKS_TABLE = "document_chunks"  # Table to store chunk data
+DOCUMENTS_TABLE = "documents"  # Table of document metadata
+EMBEDDING_MODEL = "intfloat/multilingual-e5-large-instruct"  # Default embedding model
 
 # Setup logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
+logger = _00_utils.get_logger("Integrated_Chunking")
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Integrated_Chunking] ")
+# API keys from config
+api_key = config.OPENAI_API_KEY
+groq_api_key = config.GROQ_API_KEY
 
-# Get OpenAI API key
-api_key = os.getenv("OPENAI_API_KEY")
-
-# Initialize the OpenAI model
+# Initialize models
 openai_text_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key)
+groq_text_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key)
+
+# Select which model to use based on configuration
+MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+
+if MODEL_PROVIDER == "openai":
+    active_text_model = openai_text_model
+    logger.info("Using OpenAI models for chunking", extra={"icon": "🧠"})
+else:  # Default to Groq
+    active_text_model = groq_text_model
+    logger.info("Using Groq models for chunking", extra={"icon": "🧠"})
 
 # Pydantic model for LLM output validation
 class ChunksOutputModel(BaseModel):
@@ -114,8 +134,16 @@ class ChunksOutputModel(BaseModel):
 
 # Simplified chunking prompt
 chunking_prompt = """
-chunk the following text, preserving content that goes well together. 
-A chunk shall have no more than {max_size} and roughly {target_size} characters.
+You are an expert text chunker. Your task is to chunk the following text into meaningful sections.
+
+IMPORTANT REQUIREMENTS:
+1. Each chunk MUST be between {target_size} and {max_size} characters.
+2. Create multiple chunks whenever the text exceeds {target_size} characters.
+3. Never return just one chunk for texts longer than {target_size} characters.
+4. Preserve semantic coherence - keep related content together.
+5. Never split in the middle of a sentence.
+6. Split at paragraph boundaries when possible.
+
 Format your response as: {{"chunks": ["chunk1", "chunk2", ...]}}
 Do not add ANY extra text that is not in the original input text.
 """
@@ -176,7 +204,7 @@ def get_chunks_from_llm(md_text: str) -> List[str]:
     
     prompt = chunking_prompt.format(max_size=MAX_CHAR_SIZE, target_size=TARGET_CHAR_SIZE)
     agent = Agent(
-        model=openai_text_model,
+        model=active_text_model,
         markdown=True,
         debug_mode=False,
         response_model=ChunksOutputModel,

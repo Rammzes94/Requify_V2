@@ -29,26 +29,23 @@ from typing import List, Optional, Dict, Any, Tuple, Set
 
 # Import Agno for LLM interaction
 from agno.agent import Agent
-from agno.models.groq import Groq # Using Groq, can be changed to OpenAIChat if preferred
+from agno.models.groq import Groq
+from agno.models.openai import OpenAIChat
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+import config
 _00_utils.setup_project_directory()
 
 # Load environment variables
 load_dotenv()
 
 # Setup logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Reqs_Deduplication] ")
+
+logger = _00_utils.get_logger("Reqs_Deduplication")
 
 # -------------------------------------------------------------------------------------
 # Constants
@@ -65,7 +62,17 @@ SIM_THRESHOLD = 0.97  # Cosine similarity threshold to consider as duplicate
 TOP_K_RESULTS = 10  # Number of neighbors to compare per requirement
 
 # LLM Parameters
-LLM_MODEL_ID = "llama-3.3-70b-versatile" # Configurable LLM model
+GROQ_MODEL_ID = "llama-3.3-70b-versatile"
+OPENAI_MODEL_ID = "gpt-4o-mini"
+
+# Get API keys from config
+api_key = config.OPENAI_API_KEY
+groq_api_key = config.GROQ_API_KEY
+
+# Select which model to use based on configuration
+MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+
+logger.info(f"Model provider for requirements deduplication: {MODEL_PROVIDER}", extra={"icon": "🧠"})
 
 # -------------------------------------------------------------------------------------
 # Pydantic Models for LLM Interaction
@@ -242,11 +249,16 @@ def check_llm_duplicates(new_reqs: List[Dict], existing_reqs: pd.DataFrame, vect
     if not vector_duplicates:
         return {}
     
-    # Initialize the LLM agent
+    # Initialize the LLM agent based on environment variable
     try:
-        llm = Groq(model_id=LLM_MODEL_ID)
+        if MODEL_PROVIDER == "openai":
+            llm = OpenAIChat(id=OPENAI_MODEL_ID, api_key=api_key)
+            logger.info(f"Initialized OpenAI agent with model {OPENAI_MODEL_ID}", extra={"icon": "🤖"})
+        else:  # Default to Groq
+            llm = Groq(id=GROQ_MODEL_ID, api_key=groq_api_key)
+            logger.info(f"Initialized Groq agent with model {GROQ_MODEL_ID}", extra={"icon": "🤖"})
+        
         agent = Agent(llm)
-        logger.info(f"Initialized LLM agent with model {LLM_MODEL_ID}", extra={"icon": "🤖"})
     except Exception as e:
         logger.error(f"Error initializing LLM agent: {e}", extra={"icon": "❌"})
         # Return the vector duplicates without LLM verification

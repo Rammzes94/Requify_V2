@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Requify Pipeline Visualization</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --accent-color: #60a5fa;
+            --light-bg: #f1f5f9;
+            --dark-text: #1e293b;
+            --mid-text: #475569;
+            --light-text: #94a3b8;
+            --border-color: #cbd5e1;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --stage-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            color: var(--dark-text);
+            background-color: #f8fafc;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: var(--mid-text);
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .detail-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-right: 20px;
+        }
+
+        label {
+            font-weight: 500;
+            color: var(--mid-text);
+        }
+
+        .slider {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 8px;
+            border-radius: 5px;
+            background: var(--light-bg);
+            border: 1px solid var(--border-color);
+            outline: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color var(--transition-speed);
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        button.active {
+            background-color: var(--success-color);
+        }
+
+        .pipeline {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            background-color: white;
+            padding: 20px;
+            transition: all var(--transition-speed);
+        }
+
+        .pipeline.compact {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .stage {
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--stage-shadow);
+            background-color: var(--light-bg);
+            transition: all var(--transition-speed);
+        }
+
+        .pipeline.compact .stage {
+            flex: 0 0 300px; /* Increased from 200px */
+            min-height: 200px;
+            max-height: 300px;
+            overflow: auto;
+            margin-bottom: 0;
+        }
+
+        .stage-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .stage-icon {
+            width: 36px;
+            height: 36px;
+            min-width: 36px; /* Prevent shrinking */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--accent-color);
+            border-radius: 50%;
+            margin-right: 10px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .stage-title {
+            font-weight: bold;
+            font-size: 16px;
+            color: var(--primary-color);
+            flex-grow: 1;
+        }
+
+        .pipeline-arrow {
+            align-self: center;
+            font-size: 24px;
+            color: var(--accent-color);
+            margin: -5px 0;
+            transition: transform var(--transition-speed);
+        }
+
+        .pipeline.compact .pipeline-arrow {
+            display: none;
+        }
+
+        .stage-content {
+            transition: max-height var(--transition-speed);
+            overflow: hidden;
+            max-height: 1000px;
+        }
+
+        .stage-description {
+            margin-bottom: 10px;
+            color: var(--mid-text);
+        }
+
+        .key-features, .module-list {
+            margin-top: 10px;
+            padding-left: 25px;
+        }
+
+        .key-feature, .module-item {
+            margin-bottom: 5px;
+        }
+
+        .module-list {
+            color: var(--mid-text);
+            font-size: 14px;
+        }
+
+        /* Detail level control */
+        .stage.level-1 .key-features,
+        .stage.level-1 .module-list {
+            display: none;
+        }
+
+        .stage.level-2 .module-list {
+            display: none;
+        }
+
+        .stage.level-3 .key-features,
+        .stage.level-3 .module-list {
+            display: block;
+        }
+
+        .database-section {
+            margin-top: 40px;
+        }
+
+        .database-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .database-card {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: var(--stage-shadow);
+            background-color: #f0f9ff;
+            transition: transform var(--transition-speed);
+        }
+
+        .database-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .database-icon {
+            margin-right: 10px;
+        }
+
+        .database-title {
+            display: flex;
+            align-items: center;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .database-description {
+            color: var(--mid-text);
+            margin-bottom: 15px;
+        }
+
+        .database-fields {
+            font-size: 14px;
+            color: var(--mid-text);
+            margin-top: 10px;
+        }
+
+        .database-field {
+            margin-bottom: 4px;
+            display: flex;
+        }
+
+        .field-name {
+            font-weight: 500;
+            width: 40%;
+        }
+
+        .field-type {
+            color: var(--light-text);
+        }
+
+        .workflow-diagram {
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin: 20px 0;
+            padding: 20px;
+            background-color: white;
+            width: 100%;
+            overflow: auto;
+        }
+
+        .diagram {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            position: relative;
+            min-height: 200px;
+        }
+
+        .diagram-row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 80px;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .diagram-node {
+            border: 2px solid var(--primary-color);
+            border-radius: 8px;
+            padding: 10px;
+            min-width: 120px;
+            text-align: center;
+            position: relative;
+            background-color: white;
+            z-index: 1;
+            font-weight: 500;
+            margin: 0 10px 15px 10px;
+        }
+
+        .diagram-arrow {
+            width: 0; 
+            height: 0; 
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 15px solid var(--accent-color);
+            position: absolute;
+            z-index: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: -40px;
+        }
+
+        .diagram-connection-horizontal {
+            height: 2px;
+            background-color: var(--accent-color);
+            position: absolute;
+            z-index: 0;
+        }
+
+        .diagram-connection-vertical {
+            width: 2px;
+            background-color: var(--accent-color);
+            position: absolute;
+            z-index: 0;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+            color: var(--mid-text);
+            font-size: 14px;
+        }
+
+        /* Interactive Features */
+        .stage:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .highlight {
+            background-color: rgba(96, 165, 250, 0.2);
+            transition: background-color 0.5s;
+        }
+
+        @media (max-width: 768px) {
+            .pipeline.compact {
+                flex-direction: column;
+            }
+            
+            .pipeline.compact .stage {
+                width: 100%;
+                height: auto;
+                flex: none;
+            }
+            
+            .slider {
+                width: 150px;
+            }
+            
+            .database-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Requify Document Processing Pipeline</h1>
+            <p class="description">An end-to-end system for document parsing, chunking, and requirements extraction with multi-level deduplication</p>
+        </header>
+
+        <div class="controls">
+            <div class="detail-control">
+                <label for="detail-level">Detail Level:</label>
+                <input type="range" id="detail-level" class="slider" min="1" max="3" value="2">
+                <span id="detail-value">Medium</span>
+            </div>
+            <button id="toggle-view-btn">Toggle Compact View</button>
+            <button id="show-high-level-view-btn">Show High-Level Flow</button>
+        </div>
+
+        <div class="workflow-diagram" id="high-level-diagram" style="display: none;">
+            <h2 style="text-align: center; margin-bottom: 20px;">High-Level Data Flow</h2>
+            <div class="diagram">
+                <!-- First row -->
+                <div class="diagram-row">
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Input Documents</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Hash-based Deduplication</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">PDF Parsing</div>
+                </div>
+                
+                <!-- Second row -->
+                <div class="diagram-row">
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Document-level Deduplication</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">LanceDB Storage</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Context-Aware Chunking</div>
+                </div>
+                
+                <!-- Third row -->
+                <div class="diagram-row">
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Requirements Extraction</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Requirements Deduplication</div>
+                    <div class="diagram-node" style="background-color: #e0f2fe;">Requirements Database</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pipeline-container">
+            <div class="pipeline" id="pipeline">
+                <!-- Stage 1: File Ingestion & Hash Deduplication -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">📄</div>
+                        <div class="stage-title">Stage 1: File Ingestion & Hash Deduplication</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Performs content-based file deduplication to prevent redundant processing at the earliest pipeline stage.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Calculates MD5 and SHA256 cryptographic hashes of input files</li>
+                            <li class="key-feature">Checks if files with identical hashes already exist in the database</li>
+                            <li class="key-feature">Prevents duplicate document processing before any costly parsing</li>
+                            <li class="key-feature">Stores file hash information in the LanceDB file_hashes table</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">file_hash_deduplication.py</li>
+                                <li class="module-item">clear_tables.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 2: Document Parsing -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">🔍</div>
+                        <div class="stage-title">Stage 2: Document Parsing</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Extracts text, tables, and image descriptions from documents using vision-enabled LLMs.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Converts PDF pages to high-resolution images</li>
+                            <li class="key-feature">Uses vision models to extract text, tables, and interpret images</li>
+                            <li class="key-feature">Generates document metadata such as title, summaries, and relevant hashtags</li>
+                            <li class="key-feature">Creates a combined JSON output with all extracted information</li>
+                            <li class="key-feature">Saves page images as encoded base64 strings for later reference</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">stable_pdf_parsing.py</li>
+                                <li class="module-item">stable_excel_parsing.py</li>
+                                <li class="module-item">stable_docx_pptx_to_pdf.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 3: Document-Level Deduplication -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">🔄</div>
+                        <div class="stage-title">Stage 3: Document-Level Deduplication</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Checks for document-level duplicates and similar documents before saving to the database.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Uses vector similarity with high thresholds (0.99+) to identify duplicate pages</li>
+                            <li class="key-feature">Detects updated versions of existing documents through partial content matching</li>
+                            <li class="key-feature">Compares document metadata and embeddings to identify similarities</li>
+                            <li class="key-feature">Classifies pages as new, duplicates, or updates to existing content</li>
+                            <li class="key-feature">Provides detailed information about duplicate pages and their source documents</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">pre_save_deduplication.py</li>
+                                <li class="module-item">pipeline_interaction.py</li>
+                                <li class="module-item">user_interaction.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 4: LanceDB Storage -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">💾</div>
+                        <div class="stage-title">Stage 4: Document Storage in LanceDB</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Stores parsed document data with embeddings in LanceDB for efficient retrieval.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Takes parsed JSON content and saves it to LanceDB documents table</li>
+                            <li class="key-feature">Computes text embeddings for each page using a multilingual embedding model</li>
+                            <li class="key-feature">Prepends necessary instruction contexts for proper embedding generation</li>
+                            <li class="key-feature">Creates vector search indices for similarity-based retrieval</li>
+                            <li class="key-feature">Saves both text content and image data (as base64) to LanceDB</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">stable_save_to_lancedb.py</li>
+                                <li class="module-item">init_lancedb.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 5: Content-Aware Chunking -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">✂️</div>
+                        <div class="stage-title">Stage 5: Content-Aware Chunking</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Divides documents into semantic chunks while maintaining alignment with similar documents.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Uses existing chunks from similar documents as context for the LLM</li>
+                            <li class="key-feature">Maintains chunk alignment between document versions</li>
+                            <li class="key-feature">Intelligently identifies duplicate, updated, and new chunks</li>
+                            <li class="key-feature">Creates semantically meaningful chunks (100-200 tokens each)</li>
+                            <li class="key-feature">For new documents: Uses LLM-based intelligent chunking</li>
+                            <li class="key-feature">For document updates: Aligns with previous version's chunk boundaries</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">context_aware_chunking.py</li>
+                                <li class="module-item">integrated_chunking.py</li>
+                                <li class="module-item">agentic_chunking.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 6: Requirements Extraction -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">📋</div>
+                        <div class="stage-title">Stage 6: Requirements Extraction</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Extracts atomic requirements from document chunks and analyzes them.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Connects to LanceDB and retrieves document chunks</li>
+                            <li class="key-feature">Uses LLMs to extract atomic requirements from each chunk's content</li>
+                            <li class="key-feature">Determines if each requirement is software-related</li>
+                            <li class="key-feature">Generates embeddings for each requirement</li>
+                            <li class="key-feature">Maintains traceability between requirements and their source chunks</li>
+                            <li class="key-feature">Reuses existing requirements for duplicate chunks</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">extract_requirements.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pipeline-arrow">↓</div>
+                
+                <!-- Stage 7: Requirements Deduplication -->
+                <div class="stage level-2">
+                    <div class="stage-header">
+                        <div class="stage-icon">🔍</div>
+                        <div class="stage-title">Stage 7: Requirements Deduplication</div>
+                    </div>
+                    <div class="stage-content">
+                        <p class="stage-description">Identifies and manages duplicate requirements across documents.</p>
+                        
+                        <ul class="key-features">
+                            <li class="key-feature">Checks newly extracted requirements against existing ones in the database</li>
+                            <li class="key-feature">Uses both vector similarity and LLM-based semantic analysis</li>
+                            <li class="key-feature">Applies high-precision duplicate detection to avoid redundant requirements</li>
+                            <li class="key-feature">Uses a batch approach for efficient processing of multiple requirements</li>
+                            <li class="key-feature">Provides confidence scores and rationale for duplicate detection</li>
+                            <li class="key-feature">Maintains references between duplicates for traceability</li>
+                        </ul>
+                        
+                        <div class="module-list">
+                            <strong>Key Modules:</strong>
+                            <ul>
+                                <li class="module-item">pre_save_reqs_deduplication.py</li>
+                                <li class="module-item">chunk_review.py</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="database-section">
+            <h2>LanceDB Database Tables</h2>
+            <div class="database-grid">
+                <!-- documents table -->
+                <div class="database-card">
+                    <div class="database-title">
+                        <span class="database-icon">📄</span>
+                        <span>documents</span>
+                    </div>
+                    <div class="database-description">
+                        Document pages with content, metadata, and embeddings for page-level similarity detection.
+                    </div>
+                    <div class="database-fields">
+                        <strong>Key Fields:</strong>
+                        <div class="database-field">
+                            <span class="field-name">pdf_identifier</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">page_number</span>
+                            <span class="field-type">integer</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">document_title</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">md_content</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">embedding</span>
+                            <span class="field-type">vector(1024)</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">image_b64</span>
+                            <span class="field-type">string</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- document_chunks table -->
+                <div class="database-card">
+                    <div class="database-title">
+                        <span class="database-icon">🧩</span>
+                        <span>document_chunks</span>
+                    </div>
+                    <div class="database-description">
+                        Semantic chunks with alignment information for tracking relationships between document versions.
+                    </div>
+                    <div class="database-fields">
+                        <strong>Key Fields:</strong>
+                        <div class="database-field">
+                            <span class="field-name">chunk_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">document_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">chunk_text</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">embedding</span>
+                            <span class="field-type">vector(1024)</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">is_duplicate</span>
+                            <span class="field-type">boolean</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">aligned_with_chunk_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">is_updated</span>
+                            <span class="field-type">boolean</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- requirements table -->
+                <div class="database-card">
+                    <div class="database-title">
+                        <span class="database-icon">📋</span>
+                        <span>requirements</span>
+                    </div>
+                    <div class="database-description">
+                        Extracted requirements with analysis results and traceability to source document chunks.
+                    </div>
+                    <div class="database-fields">
+                        <strong>Key Fields:</strong>
+                        <div class="database-field">
+                            <span class="field-name">requirement_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">document_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">title</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">description</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">is_software_related</span>
+                            <span class="field-type">boolean</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">source_chunk_id</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">embedding</span>
+                            <span class="field-type">vector(1024)</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">is_duplicate</span>
+                            <span class="field-type">boolean</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- file_hashes table -->
+                <div class="database-card">
+                    <div class="database-title">
+                        <span class="database-icon">🔐</span>
+                        <span>file_hashes</span>
+                    </div>
+                    <div class="database-description">
+                        File metadata and cryptographic hashes for file-level deduplication.
+                    </div>
+                    <div class="database-fields">
+                        <strong>Key Fields:</strong>
+                        <div class="database-field">
+                            <span class="field-name">file_path</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">file_name</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">file_size</span>
+                            <span class="field-type">integer</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">md5_hash</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">sha256_hash</span>
+                            <span class="field-type">string</span>
+                        </div>
+                        <div class="database-field">
+                            <span class="field-name">timestamp</span>
+                            <span class="field-type">string</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Requify Pipeline Controller manages flow between stages and can stop at any point for testing</p>
+            <p>Controller Steps: 1) Hash Check, 2) Parse, 3) Deduplication, 4) LanceDB Storage, 5) Chunking, 6) Requirements Extraction</p>
+        </div>
+    </div>
+    
+    <script>
+        // JavaScript to make the UI interactive
+        document.addEventListener('DOMContentLoaded', function() {
+            const detailSlider = document.getElementById('detail-level');
+            const detailValue = document.getElementById('detail-value');
+            const toggleViewBtn = document.getElementById('toggle-view-btn');
+            const showHighLevelBtn = document.getElementById('show-high-level-view-btn');
+            const pipeline = document.getElementById('pipeline');
+            const stages = document.querySelectorAll('.stage');
+            const highLevelDiagram = document.getElementById('high-level-diagram');
+            
+            // Update detail level when slider changes
+            detailSlider.addEventListener('input', function() {
+                const level = parseInt(this.value);
+                
+                // Set detail value text
+                if (level === 1) detailValue.textContent = 'Low';
+                else if (level === 2) detailValue.textContent = 'Medium';
+                else detailValue.textContent = 'High';
+                
+                // Update all stages
+                stages.forEach(stage => {
+                    // Remove existing level classes
+                    stage.classList.remove('level-1', 'level-2', 'level-3');
+                    // Add the new level class
+                    stage.classList.add(`level-${level}`);
+                });
+            });
+            
+            // Toggle compact view
+            toggleViewBtn.addEventListener('click', function() {
+                pipeline.classList.toggle('compact');
+                this.textContent = pipeline.classList.contains('compact') ? 'Toggle Detailed View' : 'Toggle Compact View';
+            });
+            
+            // Show/hide high-level view
+            showHighLevelBtn.addEventListener('click', function() {
+                const isVisible = highLevelDiagram.style.display !== 'none';
+                highLevelDiagram.style.display = isVisible ? 'none' : 'block';
+                this.classList.toggle('active');
+                this.textContent = isVisible ? 'Show High-Level Flow' : 'Hide High-Level Flow';
+            });
+            
+            // Make stage headers clickable to collapse/expand
+            stages.forEach(stage => {
+                const header = stage.querySelector('.stage-header');
+                const content = stage.querySelector('.stage-content');
+                
+                header.style.cursor = 'pointer';
+                
+                header.addEventListener('click', function() {
+                    if (content.style.maxHeight === '40px') {
+                        content.style.maxHeight = '1000px';
+                    } else {
+                        content.style.maxHeight = '40px';
+                    }
+                });
+            });
+            
+            // Add hover highlighting to show related pipeline stages
+            stages.forEach((stage, index) => {
+                stage.addEventListener('mouseenter', function() {
+                    this.classList.add('highlight');
+                    
+                    // Highlight previous and next stage if they exist
+                    if (index > 0) stages[index-1].classList.add('highlight');
+                    if (index < stages.length-1) stages[index+1].classList.add('highlight');
+                });
+                
+                stage.addEventListener('mouseleave', function() {
+                    // Remove highlighting from all stages
+                    stages.forEach(s => s.classList.remove('highlight'));
+                });
+            });
+        });
+    </script>
+</body>
+</html>

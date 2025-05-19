@@ -38,22 +38,16 @@ requirements from identical chunks while processing only new or modified content
 # Setup project directory and load environment variables
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
-from _00_utils import setup_project_directory, update_token_counters, print_token_usage
-setup_project_directory()
+from _00_utils import update_token_counters, print_token_usage
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+import config
+_00_utils.setup_project_directory()
 load_dotenv()
 
 # Configure logging with script prefix first
 logger = _00_utils.setup_logging()
 
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
-
-logger = ScriptLogger(logger, "[Extract_Requirements] ")
+logger = _00_utils.get_logger("Extract_Requirements")
 
 # Import the deduplication module for requirements
 try:
@@ -86,12 +80,18 @@ openai_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key, temperature=0)
 # Uncomment to use Groq models instead
 groq_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key, temperature=0)
 
-# Select which model to use
-#active_model = openai_model
-active_model = groq_model
+# Select which model to use based on configuration
+MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+
+if MODEL_PROVIDER == "openai":
+    active_model = openai_model
+    logger.info("Using OpenAI models for requirements extraction", extra={"icon": "🧠"})
+else:  # Default to Groq
+    active_model = groq_model
+    logger.info("Using Groq models for requirements extraction", extra={"icon": "🧠"})
 
 # LanceDB settings
-OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
+OUTPUT_DIR_BASE = config.OUTPUT_DIR_BASE  # Use from config
 LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
 LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
@@ -236,7 +236,7 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
         
         # Extract requirements using the agent
         response = requirements_agent.run(prompt)
-        _00_utils.update_token_counters(response)
+        update_token_counters(response)
         
         # Ensure the response is a RequirementsExtractor object
         if isinstance(response, RunResponse):
@@ -286,7 +286,7 @@ def analyze_requirement(requirement: AtomicRequirement, agent: Agent) -> Softwar
     
     try:
         response = agent.run(prompt)
-        _00_utils.update_token_counters(response)
+        update_token_counters(response)
         
         if isinstance(response, RunResponse):
             return response.content
@@ -378,7 +378,7 @@ def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Age
     try:
         # Run batch analysis
         response = agent.run(prompt)
-        _00_utils.update_token_counters(response)
+        update_token_counters(response)
         
         if isinstance(response, RunResponse):
             batch_result = response.content
@@ -841,7 +841,7 @@ def process_single_document(doc_id: str):
     
     # Log completion
     logger.info(f"✅ Extraction complete. Successfully processed {total_requirements} requirements from document '{doc_id}'")
-    _00_utils.print_token_usage() # Add token usage printing here
+    print_token_usage() # Add token usage printing here
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

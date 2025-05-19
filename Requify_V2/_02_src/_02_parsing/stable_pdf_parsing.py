@@ -40,60 +40,57 @@ from agno.models.groq import Groq
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+import config
 _00_utils.setup_project_directory()
 
 # Setup centralized logging with script prefix
 logger = _00_utils.setup_logging()
 
 # Create a consistent logger with prefix for better visibility
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
-
-logger = ScriptLogger(logger, "[PDF_Parsing] ")
-
-# Load environment variables
-load_dotenv()
+logger = _00_utils.get_logger("PDF_Parsing")
 
 # ---------------------------------------------------------------------
 # Section 2: Configuration Constants
 # ---------------------------------------------------------------------
 
-# Default paths
-RAW_INPUT_DIR = os.path.join("_01_input", "raw")
-# Define the main output directory for this script's products
-OUTPUT_DIR_BASE = os.path.join("_03_output") 
-PROCESSED_OUTPUT_BASE_DIR = os.path.join(OUTPUT_DIR_BASE) # Changed to use OUTPUT_DIR_BASE
-FILTERED_FILES_JSON = os.path.join(OUTPUT_DIR_BASE, "filtered_files_by_extension.json") # Changed to read from OUTPUT_DIR_BASE
+# Default paths from config
+RAW_INPUT_DIR = config.RAW_INPUT_DIR
+OUTPUT_DIR_BASE = config.OUTPUT_DIR_BASE
+PROCESSED_OUTPUT_BASE_DIR = OUTPUT_DIR_BASE
+FILTERED_FILES_JSON = os.path.join(OUTPUT_DIR_BASE, "filtered_files_by_extension.json")
+
 # DPI setting for PDF to image conversion
-PDF_TO_IMAGE_DPI = 300
+PDF_TO_IMAGE_DPI = config.PDF_TO_IMAGE_DPI
 # Note: We process files sequentially to avoid pickling errors with agent objects
 
-# API keys from environment variables
-api_key = os.getenv("OPENAI_API_KEY")
-groq_api_key = os.getenv("GROQ_API_KEY")
+# API keys from config
+api_key = config.OPENAI_API_KEY
+groq_api_key = config.GROQ_API_KEY
 
-# Set to True to enable more detailed console output
-VERBOSE_PDF_PARSING_OUTPUT = os.environ.get("VERBOSE_PDF_PARSING_OUTPUT", "True").lower() == "true"
+# Verbose output config
+VERBOSE_PDF_PARSING_OUTPUT = config.VERBOSE_PDF_PARSING_OUTPUT
 
 # Model Configuration
 # Initialize OpenAI models for vision and text processing
 openai_vision_model = OpenAIChat(id="gpt-4o", api_key=api_key)
 openai_text_model = OpenAIChat(id="gpt-4o-mini", api_key=api_key)
 
-# Groq models (commented out by default)
+# Groq models
 groq_vision_model = Groq(id="meta-llama/llama-4-scout-17b-16e-instruct", api_key=groq_api_key)
 groq_text_model = Groq(id="llama-3.3-70b-versatile", api_key=groq_api_key)
 
-# Select which models to use
-#active_vision_model = openai_vision_model
-#active_text_model = openai_text_model
-active_vision_model = groq_vision_model
-active_text_model = groq_text_model
+# Select which models to use based on configuration
+MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+
+if MODEL_PROVIDER == "openai":
+    active_vision_model = openai_vision_model
+    active_text_model = openai_text_model
+    logger.info("Using OpenAI models for processing", extra={"icon": "🧠"})
+else:  # Default to Groq
+    active_vision_model = groq_vision_model
+    active_text_model = groq_text_model
+    logger.info("Using Groq models for processing", extra={"icon": "🧠"})
 
 # ---------------------------------------------------------------------
 # Section 3: Pydantic Models for AI bot and for final extracted data

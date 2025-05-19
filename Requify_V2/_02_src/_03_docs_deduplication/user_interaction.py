@@ -24,15 +24,9 @@ import _00_utils
 _00_utils.setup_project_directory()
 
 # Setup logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[User_Interaction] ")
+
+logger = _00_utils.get_logger("User_Interaction")
 
 # -------------------------------------------------------------------------------------
 # User Interaction Functions

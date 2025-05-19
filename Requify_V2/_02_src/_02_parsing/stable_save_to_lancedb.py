@@ -49,15 +49,9 @@ from _03_docs_deduplication import pipeline_interaction
 load_dotenv()
 
 # Setup logging with script prefix
-class ScriptLogger(logging.LoggerAdapter):
-    def __init__(self, logger, prefix):
-        super().__init__(logger, {})
-        self.prefix = prefix
-        
-    def process(self, msg, kwargs):
-        return f"{self.prefix}{msg}", kwargs
 
-logger = ScriptLogger(_00_utils.setup_logging(), "[Save_To_LanceDB] ")
+
+logger = _00_utils.get_logger("Save_To_LanceDB")
 
 # -------------------------------------------------------------------------------------
 # Constants
@@ -283,7 +277,7 @@ def save_document_to_lancedb(document_path):
         st_logger.addHandler(logging.StreamHandler())
         st_logger.setLevel(logging.INFO)
         # Wrap the sentence-transformers logger with our ScriptLogger
-        st_logger = ScriptLogger(st_logger, "[Save_To_LanceDB] ")
+        st_logger = _00_utils.ScriptLogger(st_logger, "[Save_To_LanceDB] ")
         
         text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
         logger.info("Model loaded successfully", extra={"icon": "✅"})
