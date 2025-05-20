@@ -16,44 +16,58 @@ execution, making it suitable for both testing and production use.
 import os
 import sys
 import argparse
-import logging
 import subprocess
 from typing import Dict, List, Optional
 
 # Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '_02_src')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 import _00_utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '_02_src', '_00_utils')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 import config
 
-# Import main pipeline controller
+# Import main pipeline controller and its step constants
+# These are the constants pipeline_controller.process_document expects.
 from pipeline_controller import (
     process_document,
-    STEP_HASH_CHECK,
-    STEP_PARSE,
-    STEP_DEDUP_ONLY,
-    STEP_SAVE_TO_DB,
-    STEP_CHUNKING,
-    STEP_EXTRACT_REQS,
+    STEP_HASH_CHECK as CTRL_STEP_HASH_CHECK,
+    STEP_PARSE as CTRL_STEP_PARSE,
+    STEP_DEDUP_ONLY as CTRL_STEP_DEDUP_ONLY,
+    STEP_SAVE_TO_DB as CTRL_STEP_SAVE_TO_DB,
+    STEP_CHUNKING as CTRL_STEP_CHUNKING,
+    STEP_EXTRACT_REQS as CTRL_STEP_EXTRACT_REQS,
 )
 
 # Setup centralized logging with script prefix
 logger = _00_utils.get_logger("Pipeline_Runner")
 
-# Pipeline step constants
-STEP_EXTENSION_FILTER = 1
-STEP_DEDUPLICATION = 2
-STEP_PARSE_PDF = 3
-STEP_CHUNKING = 4
-STEP_EXTRACT_REQS = 5
+# UI step constants for pipeline_runner.py interface
+# These are distinct from the controller's step constants to avoid conflicts.
+UI_STEP_EXTENSION_FILTER = 1
+UI_STEP_DEDUPLICATION = 2
+UI_STEP_PARSE_PDF = 3
+UI_STEP_CHUNKING = 4
+UI_STEP_EXTRACT_REQS = 5
 
-# Descriptions for each pipeline step
+# Descriptions for each UI pipeline step
 STEP_DESCRIPTIONS = {
-    STEP_EXTENSION_FILTER: "File Extension Filtering",
-    STEP_DEDUPLICATION: "Document Duplication Check",
-    STEP_PARSE_PDF: "PDF Parsing & Content Extraction",
-    STEP_CHUNKING: "Content Chunking",
-    STEP_EXTRACT_REQS: "Requirements Extraction"
+    UI_STEP_EXTENSION_FILTER: "File Extension Filtering",
+    UI_STEP_DEDUPLICATION: "Document Duplication Check",
+    UI_STEP_PARSE_PDF: "PDF Parsing & Content Extraction",
+    UI_STEP_CHUNKING: "Content Chunking",
+    UI_STEP_EXTRACT_REQS: "Requirements Extraction"
+}
+
+# Mapping from UI step numbers to the actual controller step constants
+# This ensures that process_document receives the constants it expects.
+UI_TO_CONTROLLER_STEP_MAP = {
+    UI_STEP_EXTENSION_FILTER: CTRL_STEP_HASH_CHECK,  # Assuming extension filter implies running up to hash check at least
+                                                  # Or this could be a very early specific step if controller supports it.
+                                                  # If extension filtering is done *before* process_document, this might map to None
+                                                  # or the first relevant controller step. For now, mapping to HASH_CHECK.
+    UI_STEP_DEDUPLICATION: CTRL_STEP_DEDUP_ONLY,    # Or CTRL_STEP_SAVE_TO_DB depending on controller's logic
+    UI_STEP_PARSE_PDF: CTRL_STEP_PARSE,
+    UI_STEP_CHUNKING: CTRL_STEP_CHUNKING,
+    UI_STEP_EXTRACT_REQS: CTRL_STEP_EXTRACT_REQS
 }
 
 def show_deduplication_results(input_file: str) -> None:
@@ -90,7 +104,7 @@ def show_deduplication_results(input_file: str) -> None:
 def setup_database() -> bool:
     """Set up the LanceDB database tables."""
     try:
-        from _02_src._00_lancedb_admin.init_lancedb import main as setup_db_main
+        from src._00_lancedb_admin.init_lancedb import main as setup_db_main
         logger.info("=== Database Setup ===", extra={"icon": "🔧"})
         logger.info("Setting up database tables...", extra={"icon": "🔄"})
         setup_db_main()
@@ -125,7 +139,7 @@ def select_max_step() -> int:
     while True:
         try:
             step = int(input("\nEnter the step number to run up to: "))
-            if step in STEP_DESCRIPTIONS:
+            if step in STEP_DESCRIPTIONS: # Check against keys of STEP_DESCRIPTIONS (UI_STEP_... constants)
                 return step
             else:
                 logger.warning(f"Invalid step number. Please enter a number between {min(STEP_DESCRIPTIONS.keys())} and {max(STEP_DESCRIPTIONS.keys())}.", extra={"icon": "⚠️"})
@@ -172,18 +186,26 @@ def run_pipeline_interactive() -> None:
     if not input_file:
         logger.warning("No input file selected. Exiting.", extra={"icon": "🚪"})
         return
-    max_step = select_max_step()
+    max_step_ui = select_max_step()
+    
+    # Map the UI-selected step to the actual controller step constant
+    controller_max_step = UI_TO_CONTROLLER_STEP_MAP.get(max_step_ui)
+
+    if controller_max_step is None:
+        logger.error(f"Could not map UI step {max_step_ui} ('{STEP_DESCRIPTIONS.get(max_step_ui)}') to a valid controller step. Exiting.", extra={"icon": "❌"})
+        return
+
     logger.info("=== Pipeline Run Settings ===", extra={"icon": "⚙️"})
     logger.info(f"Input file: {input_file}", extra={"icon": "📄"})
-    logger.info(f"Maximum step: {max_step} - {STEP_DESCRIPTIONS[max_step]}", extra={"icon": "🔢"})
+    logger.info(f"Maximum UI step: {max_step_ui} - {STEP_DESCRIPTIONS[max_step_ui]} (Controller step: {controller_max_step})", extra={"icon": "🔢"})
     logger.info("=== Starting Pipeline ===", extra={"icon": "🚀"})
     try:
-        success = process_document(input_file, max_step=max_step, dry_run=False)
+        success = process_document(input_file, max_step=controller_max_step, dry_run=False)
         if success:
             logger.info("=== Pipeline Completed Successfully ===", extra={"icon": "✅"})
             
-            # Show deduplication results if the chunking step was run
-            if max_step >= STEP_CHUNKING:
+            # Show deduplication results if the chunking step (UI perspective) was run or surpassed
+            if max_step_ui >= UI_STEP_CHUNKING:
                 show_deduplication_results(input_file)
         else:
             logger.error("=== Pipeline Failed ===", extra={"icon": "❌"})
@@ -197,7 +219,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Document Processing Pipeline Runner")
     parser.add_argument("--input", type=str, help="Path to the input file")
     parser.add_argument("--max-step", type=int, choices=list(STEP_DESCRIPTIONS.keys()),
-                        help="Maximum pipeline step to run")
+                        help="Maximum pipeline step to run (selects UI step number)")
     parser.add_argument("--setup-db", action="store_true", help="Set up database before running")
     parser.add_argument("--interactive", action="store_true", help="Run in interactive mode")
     parser.add_argument("--show-dedup", action="store_true", help="Show deduplication results after processing")
@@ -218,14 +240,23 @@ def main() -> None:
     if not os.path.exists(args.input):
         logger.error(f"Input file not found: {args.input}", extra={"icon": "❌"})
         return
-    logger.info(f"Running pipeline on {args.input} up to step {args.max_step} ({STEP_DESCRIPTIONS[args.max_step]})", extra={"icon": "🚀"})
+    max_step_ui = args.max_step # This is a UI step number (1-5)
+    
+    # Map the UI-selected step from CLI to the actual controller step constant
+    controller_max_step = UI_TO_CONTROLLER_STEP_MAP.get(max_step_ui)
+
+    if controller_max_step is None:
+        logger.error(f"Could not map UI step {max_step_ui} ('{STEP_DESCRIPTIONS.get(max_step_ui)}') to a valid controller step. Exiting.", extra={"icon": "❌"})
+        return
+
+    logger.info(f"Running pipeline on {args.input} up to UI step {max_step_ui} ({STEP_DESCRIPTIONS[max_step_ui]}), mapped to controller step {controller_max_step}", extra={"icon": "🚀"})
     try:
-        success = process_document(args.input, max_step=args.max_step, dry_run=False)
+        success = process_document(args.input, max_step=controller_max_step, dry_run=False)
         if success:
             logger.info("Pipeline completed successfully.", extra={"icon": "✅"})
             
             # Show deduplication results after successful run
-            if args.show_dedup or args.max_step >= STEP_CHUNKING:
+            if args.show_dedup or max_step_ui >= UI_STEP_CHUNKING:
                 show_deduplication_results(args.input)
                 
         else:
@@ -246,8 +277,10 @@ def test_with_hardcoded_file():
         return False
     logger.info(f"Running pipeline on test file: {test_file}", extra={"icon": "🚀"})
     try:
-        max_step = STEP_EXTRACT_REQS  # Run the complete pipeline
-        return process_document(test_file, max_step=max_step, dry_run=False)
+        # For the test, we run the complete pipeline, so we use the controller's STEP_EXTRACT_REQS directly.
+        controller_max_step_for_test = CTRL_STEP_EXTRACT_REQS
+        logger.info(f"Test will run up to controller step: {controller_max_step_for_test} (Requirements Extraction)")
+        return process_document(test_file, max_step=controller_max_step_for_test, dry_run=False)
     except Exception as e:
         logger.error(f"Pipeline test error: {e}", extra={"icon": "💥"})
         return False

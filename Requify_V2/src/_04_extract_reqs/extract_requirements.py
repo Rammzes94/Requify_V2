@@ -39,7 +39,6 @@ requirements from identical chunks while processing only new or modified content
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 from _00_utils import update_token_counters, print_token_usage
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
 import config
 _00_utils.setup_project_directory()
 load_dotenv()
@@ -51,8 +50,7 @@ logger = _00_utils.get_logger("Extract_Requirements")
 
 # Import the deduplication module for requirements
 try:
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', '_05_reqs_deduplication'))
-    from pre_save_reqs_deduplication import check_duplicates, store_requirements_in_lancedb
+    from _05_reqs_deduplication.pre_save_reqs_deduplication import check_requirements_duplicates
     DEDUPLICATION_AVAILABLE = True
 except ImportError as e:
     logger.warning("Could not import pre_save_reqs_deduplication module. Duplicate detection will be disabled.", extra={"icon": "⚠️"})
@@ -528,8 +526,16 @@ def get_document_info(db, document_id: str):
                 return None
             
             return results.iloc[0]
+        except KeyError as ke:
+            logger.error(f"❌ KeyError accessing column in documents table: {ke}")
+            if 'all_docs' in locals() and hasattr(all_docs, 'columns'):
+                logger.error(f"ℹ️ Available columns in documents table: {list(all_docs.columns)}")
+            else:
+                logger.error("ℹ️ Could not retrieve column list from documents table.")
+            return None
         except Exception as e:
             logger.error(f"❌ Error querying document info: {e}")
+            logger.error(f"Traceback: {traceback.format_exc() if hasattr(traceback, 'format_exc') else 'N/A'}")
             return None
     
     except Exception as e:
@@ -744,7 +750,7 @@ def process_single_document(doc_id: str):
         # Check for duplicate requirements if deduplication module is available
         if DEDUPLICATION_AVAILABLE and all_requirements:
             logger.info(f"🔄 Checking for duplicate requirements in {len(all_requirements)} extracted requirements...")
-            unique_requirements, duplicate_info = check_duplicates(all_requirements, doc_id)
+            unique_requirements, duplicate_info = check_requirements_duplicates(all_requirements, doc_id)
             
             logger.info(f"✅ Deduplication complete: {len(unique_requirements)} unique, {len(duplicate_info)} duplicates")
             

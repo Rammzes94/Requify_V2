@@ -32,6 +32,7 @@ from datetime import timedelta
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
+import config  # Import config from src
 _00_utils.setup_project_directory()
 
 # Setup logging with script prefix
@@ -49,7 +50,7 @@ OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
 LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
 LANCEDB_TABLE_NAME = "documents"
 CHUNKS_TABLE_NAME = "document_chunks"
-EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
+EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
 DUPLICATE_THRESHOLD = 0.995  # Cosine similarity threshold for duplicate pages
 # LanceDB returns distance for cosine as 1 - similarity. So, distance_threshold = 1 - SIMILARITY_THRESHOLD
 DISTANCE_THRESHOLD = 1.0 - DUPLICATE_THRESHOLD

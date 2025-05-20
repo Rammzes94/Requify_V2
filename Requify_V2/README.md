@@ -102,7 +102,7 @@ Output visualizations are saved in `_03_output/visualizations/`.
 
 - `_01_input/`: Input documents
   - `raw/`: Raw input documents
-- `_02_src/`: Source code
+- `src/`: Source code
   - `_00_lancedb_admin/`: LanceDB administration utilities
   - `_00_utils/`: Utility functions and configuration
   - `_01_ingestion/`: Document ingestion modules

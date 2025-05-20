@@ -17,7 +17,7 @@ The testing framework has been organized into a clean, maintainable structure:
 ```
 Requify_V2/
 ├── _01_input/raw/               # Test input documents
-├── _02_src/                     # Main product code (to be shipped)
+├── src/                     # Main product code (to be shipped)
 ├── _03_output/                  # Output storage
 │   ├── test_results/            # Test results storage
 │   └── visualizations/          # Visualization outputs

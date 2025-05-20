@@ -4,14 +4,22 @@ check_test_files.py
 
 This script verifies that all test files needed for the E2E test scenarios 
 are present in the _01_input/raw directory.
+
+It ensures that all required files for the defined test scenarios exist, logs missing or extra files, and provides file size information. This helps maintain test coverage and input hygiene for E2E tests.
 """
 
 import os
 import sys
 import logging
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# --- IMPORTANT PATH SETUP ---
+# Add the project root and src to the system path so that _00_utils can be imported regardless of where the script is run from.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_DIR = os.path.join(PROJECT_ROOT, 'src')
+sys.path.insert(0, PROJECT_ROOT)
+sys.path.insert(0, SRC_DIR)
+# --- END PATH SETUP ---
+
 import _00_utils
 _00_utils.setup_project_directory()
 

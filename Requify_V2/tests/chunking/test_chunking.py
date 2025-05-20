@@ -41,7 +41,7 @@ from dotenv import load_dotenv
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # Import utilities
-from _02_src._00_utils import setup_project_directory, get_logger
+from src._00_utils import setup_project_directory, get_logger
 
 # Set up the project directory
 setup_project_directory()
@@ -50,7 +50,7 @@ setup_project_directory()
 load_dotenv()
 
 # Import the consolidated chunking module
-from _02_src._02_parsing import consolidated_chunking
+from src._02_parsing import consolidated_chunking
 
 # Setup logging with script prefix
 logger = get_logger("Test_Chunking")

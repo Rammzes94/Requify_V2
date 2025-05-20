@@ -35,8 +35,8 @@ from agno.models.openai import OpenAIChat
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
-import config
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
+import config  # Import config from src
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -55,7 +55,7 @@ LANCEDB_SUBDIR_NAME = "lancedb"
 # Construct path relative to project root
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
 REQUIREMENTS_TABLE_NAME = "requirements"
-EMBEDDING_DIMENSION = 1024  # As defined in extract_requirements.py
+EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Use from config
 
 # Deduplication parameters
 SIM_THRESHOLD = 0.97  # Cosine similarity threshold to consider as duplicate

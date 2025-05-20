@@ -40,7 +40,7 @@ from agno.models.groq import Groq
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils')))
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
 import config
 _00_utils.setup_project_directory()
 
@@ -304,7 +304,7 @@ class PDFProcessor:
                 logger.error("No images were created or encoded from the PDF. Process failed.")
                 return None
             logger.info(f"Successfully converted PDF to {len(image_data_list)} images and encoded them.")
-            pdf_identifier = os.path.basename(pdf_path)
+            pdf_identifier = os.path.basename(pdf_path)  # Always keep .pdf
             
             # First, extract markdown content from each page and capture token usage
             md_extraction_results = []
@@ -428,7 +428,7 @@ class PDFProcessor:
                     
                     page_data = PageExtractedData(
                         **meta_data.model_dump(),
-                        pdf_identifier=pdf_identifier,
+                        pdf_identifier=pdf_identifier,  # Always with .pdf
                         page_number=page_number,
                         md_content=page_md_content,
                         image_b64=current_image_b64,

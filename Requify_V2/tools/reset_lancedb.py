@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from _02_src import _00_utils
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -48,8 +48,8 @@ def main():
         logger.info(f"All tables dropped. Running initialization to create fresh tables.", extra={"icon": "✅"})
         
         # Import and run the initialization script
-        sys.path.append(os.path.join(project_root, '_02_src', '_00_lancedb_admin'))
-        from _02_src._00_lancedb_admin import init_lancedb
+        sys.path.append(os.path.join(project_root, 'src', '_00_lancedb_admin'))
+        from src._00_lancedb_admin import init_lancedb
         init_lancedb.main()
         
         logger.info(f"LanceDB tables reinitialized with consistent schemas.", extra={"icon": "✅"})
@@ -59,4 +59,4 @@ def main():
         return False
 
 if __name__ == "__main__":
-    main() 
+    main()

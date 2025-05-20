@@ -3,6 +3,6 @@ __pycache__/
 *.pyc
 .env
 _01_input
-_02_src/parsing/output_images/
-_02_src/parsing/parsed_content/
+src/parsing/output_images/
+src/parsing/parsed_content/
 _03_output/

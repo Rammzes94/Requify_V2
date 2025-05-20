@@ -15,8 +15,9 @@ from lancedb.pydantic import LanceModel, Vector
 from typing import Optional, List
 from pydantic import Field
 from dotenv import load_dotenv
+import config # Import the config module
 
-# Add the parent directory (_02_src) to the system path to allow importing _00_utils
+# Add the parent directory (src) to the system path to allow importing _00_utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 _00_utils.setup_project_directory() # Ensures working directory is project root
@@ -38,7 +39,7 @@ DOCUMENTS_TABLE_NAME = "documents"
 DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
 REQUIREMENTS_TABLE_NAME = "requirements"
 FILE_HASHES_TABLE_NAME = "file_hashes"
-EMBEDDING_DIMENSION = 1024  # This must be consistent with the embedding model used
+EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # This must be consistent with the embedding model used
 
 # --- LanceDB Schema Definition for the 'documents' table ---
 class PDFPage(LanceModel):
@@ -77,7 +78,7 @@ class DocumentChunk(LanceModel):
 
 # --- LanceDB Schema Definition for the 'requirements' table ---
 class Requirement(LanceModel):
-    # Fields based on _02_src/_04_extract_reqs/extract_requirements.py
+    # Fields based on src/_04_extract_reqs/extract_requirements.py
     requirement_id: str = Field(..., description="Unique identifier for this requirement")
     document_id: str = Field(..., description="ID of the source document")
     page_number: Optional[int] = Field(default=None, description="Page number in the source document, if applicable")

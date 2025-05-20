@@ -15,7 +15,7 @@ import logging
 
 # Add the parent directory to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from _02_src import _00_utils
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables

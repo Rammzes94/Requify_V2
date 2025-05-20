@@ -1,3 +1,14 @@
+"""
+_00_utils.py
+
+This script provides utility functions and common configurations for the Requify_V2 project.
+It includes:
+- Logging setup with custom icon formatting.
+- Token usage tracking and cost estimation for LLM calls.
+- Project directory setup for consistent execution paths.
+- Timestamp generation.
+- Functions for saving and loading token tracking data and generating reports.
+"""
 import os
 import sys
 import pathlib
@@ -14,41 +25,27 @@ from collections import defaultdict
 import numpy as np
 
 # Import model configurations from config
-try:
-    from _00_utils.config import MODEL_PRICING, MODEL_TIERS
-except ImportError:
-    # If running from outside the project structure, try alternative import
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Conditional import for config based on execution context
+if __name__ == "__main__" and not __package__:
+    # If running _00_utils.py directly or in a way that src is not seen as a package
+    # This typically happens when the script's directory is added to sys.path
+    # and _00_utils.py is the entry point.
     try:
-        from _00_utils.config import MODEL_PRICING, MODEL_TIERS
-    except ImportError:
-        # Fallback with basic model info if config can't be imported
-        MODEL_PRICING = {
-            "gpt-4o-mini": {
-                "input": 0.15,
-                "output": 0.60,
-                "energy": 0.0008,
-                "co2": 0.0004,
-                "tier": "low"
-            },
-            "gpt-4.1": {
-                "input": 3.00,
-                "output": 12.00,
-                "energy": 0.0016,
-                "co2": 0.0009,
-                "tier": "high"
-            }
-        }
-        MODEL_TIERS = {
-            "high_tier": {
-                "limit": 250000,
-                "models": ["gpt-4.1", "gpt-4o", "o1", "o3"]
-            },
-            "low_tier": {
-                "limit": 2500000,
-                "models": ["gpt-4o-mini", "gpt-4.1-mini"]
-            }
-        }
+        import config
+    except ModuleNotFoundError:
+        print("ModuleNotFoundError: config.py not found")
+        pass
+else:
+    # If imported as part of the src package (e.g., from project root)
+    from src import config
+
+MODEL_PRICING = config.MODEL_PRICING
+MODEL_TIERS = config.MODEL_TIERS
+
+# Fallback definitions and complex try-except logic for config import have been removed
+# as per user request for simplification. If config.py is missing or
+# MODEL_PRICING/MODEL_TIERS are not defined within it,
+# an ImportError or AttributeError will be raised.
 
 # Initialize token counters as global variables
 total_input_tokens = 0
@@ -642,7 +639,7 @@ def setup_logging():
     """
     log_level = os.getenv("LOG_LEVEL", "INFO").upper()
     # Make icons more prominent in log format by placing them at the start
-    log_format = os.getenv("LOG_FORMAT", '%(asctime)s [%(levelname)s] %(icon)s (%(module)s:%(lineno)d) - %(message)s')
+    log_format = os.getenv("LOG_FORMAT", '%(asctime)s [%(levelname)s] %(icon)s - %(message)s')
     log_date_format = os.getenv("LOG_DATE_FORMAT", '%Y-%m-%d %H:%M:%S')
     log_to_console = os.getenv("LOG_TO_CONSOLE", "True").lower() == "true"
     log_to_file = os.getenv("LOG_TO_FILE", "False").lower() == "true"

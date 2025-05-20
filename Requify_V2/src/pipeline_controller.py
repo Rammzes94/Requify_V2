@@ -26,10 +26,11 @@ from typing import Optional, Dict, List, Tuple, Any
 from dotenv import load_dotenv
 import numpy as np
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import _00_utils
-_00_utils.setup_project_directory()
+# _00_utils will be imported using an absolute path assuming project root is in sys.path
+# The setup_project_directory call should ideally be done once at the entry point (e.g. test_scenarios.py or main script)
+# For now, we keep it, but use absolute import for _00_utils.
+from src import _00_utils
+_00_utils.setup_project_directory() # This might still be problematic if it assumes CWD.
 
 # Load environment variables
 load_dotenv()
@@ -38,25 +39,21 @@ load_dotenv()
 logger = _00_utils.get_logger("Pipeline_Controller")
 
 # Import Hash-based deduplication
-sys.path.append(os.path.join(os.path.dirname(__file__), '_01_ingestion'))
-import file_hash_deduplication
+from src._01_ingestion import file_hash_deduplication
 
 # Import PDF parsing module
-sys.path.append(os.path.join(os.path.dirname(__file__), '_02_parsing'))
-import stable_pdf_parsing
-import consolidated_chunking
+from src._02_parsing import stable_pdf_parsing
+from src._02_parsing import consolidated_chunking # Assuming this is also in _02_parsing
 
 # Import document deduplication modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '_03_docs_deduplication'))
-import pre_save_deduplication
-import user_interaction
+from src._03_docs_deduplication import pre_save_deduplication
+from src._03_docs_deduplication import user_interaction
 
 # Import LanceDB saving module
-import stable_save_to_lancedb
+from src._02_parsing import stable_save_to_lancedb
 
 # Import requirements extraction module
-sys.path.append(os.path.join(os.path.dirname(__file__), '_04_extract_reqs'))
-import extract_requirements
+from src._04_extract_reqs import extract_requirements
 
 # Constants
 DEFAULT_DOC_PATH = os.path.join("_01_input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
@@ -189,11 +186,11 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             # First check if documents have similar content based on embedding similarity
             # Calculate similarity between document and all other documents
             if not is_new_version and not old_version_id:
-                from _03_docs_deduplication.pre_save_deduplication import calculate_cosine_similarity
-                from _03_docs_deduplication.pre_save_deduplication import SIMILAR_THRESHOLD
+                from src._03_docs_deduplication.pre_save_deduplication import calculate_cosine_similarity
+                from src._03_docs_deduplication.pre_save_deduplication import SIMILAR_THRESHOLD
                 
                 # Connect to database
-                from _03_docs_deduplication.pre_save_deduplication import connect_to_lancedb
+                from src._03_docs_deduplication.pre_save_deduplication import connect_to_lancedb
                 script_dir = os.path.dirname(os.path.abspath(__file__))
                 project_root = os.path.abspath(os.path.join(script_dir, '..'))
                 lancedb_path = os.path.join(project_root, DEFAULT_OUTPUT_DIR, LANCEDB_SUBDIR_NAME)
@@ -301,8 +298,8 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         # We do this explicitly before chunking to decide on context-aware chunking
         try:
             # Import necessary functions from deduplication module
-            from _03_docs_deduplication import pre_save_deduplication as dedup
-            from _03_docs_deduplication.pre_save_deduplication import (
+            from src._03_docs_deduplication import pre_save_deduplication as dedup
+            from src._03_docs_deduplication.pre_save_deduplication import (
                 calculate_cosine_similarity, SIMILAR_THRESHOLD, connect_to_lancedb
             )
             import numpy as np
@@ -373,7 +370,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                         
                         # If we found a similar document with high similarity score
                         if highest_similarity >= SIMILAR_THRESHOLD and most_similar_doc_id:
-                            logger.info(f"�� Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
+                            logger.info(f"📊 Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
                             similar_document_detected = True
                             similar_document_id = most_similar_doc_id
                             similarity_score = highest_similarity

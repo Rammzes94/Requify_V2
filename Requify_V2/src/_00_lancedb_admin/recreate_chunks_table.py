@@ -12,6 +12,7 @@ import lancedb
 import logging
 from lancedb.pydantic import LanceModel, Vector
 from dotenv import load_dotenv
+import config # Import the config module
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -31,7 +32,7 @@ OUTPUT_DIR_BASE = "_03_output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
 DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
-EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models
+EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Use from config
 
 # Define the schema that matches what integrated_chunking.py is trying to use
 class DocumentChunk(LanceModel):

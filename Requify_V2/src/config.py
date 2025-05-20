@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Model Provider Configuration
-MODEL_PROVIDER = "openai"  # Options: "openai", "groq"
+MODEL_PROVIDER = "groq"  # Options: "openai", "groq"
 
 # Embedding Model Configuration
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
@@ -25,13 +25,13 @@ EMBEDDING_BATCH_SIZE = 8  # Control batch size for memory management
 MODELS = {
     "openai": {
         "pdf_parsing": {
-            "vision": "gpt-4.1",
-            "text": "gpt-4.1"
+            "vision": "gpt-4.1-mini",
+            "text": "gpt-4.1-mini"
         },
-        "chunking": "gpt-4.1",
-        "requirement_extraction": "gpt-4.1",
-        "deduplication": "gpt-4.1",
-        "default": "gpt-4.1"
+        "chunking": "gpt-4.1-mini",
+        "requirement_extraction": "gpt-4.1-mini",
+        "deduplication": "gpt-4.1-mini",
+        "default": "gpt-4.1-mini"
     },
     "groq": {
         "pdf_parsing": {

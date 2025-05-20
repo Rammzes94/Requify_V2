@@ -21,11 +21,11 @@ init()
 # Add the parent directory to the system path to allow importing modules from it
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
-import _02_src._00_utils as _00_utils
+import src._00_utils as _00_utils
 _00_utils.setup_project_directory()
 
 # Import constants directly from pre_save_deduplication
-from _02_src._03_docs_deduplication.pre_save_deduplication import (
+from src._03_docs_deduplication.pre_save_deduplication import (
     DUPLICATE_THRESHOLD, 
     SIMILAR_THRESHOLD,
     connect_to_lancedb,

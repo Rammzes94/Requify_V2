@@ -10,7 +10,7 @@ echo
 
 # Clean the database before running tests
 echo "Cleaning database..."
-python _02_src/_00_lancedb_admin/reset_lancedb.py
+python src/_00_lancedb_admin/reset_lancedb.py
 
 # Keep track of passed/failed scenarios
 passed=0

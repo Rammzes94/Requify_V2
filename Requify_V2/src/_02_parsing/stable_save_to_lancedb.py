@@ -63,11 +63,12 @@ LANCEDB_TABLE_NAME = "documents"
 
 # Try to import config, but use default values if not available
 try:
-    from _00_utils import config
+    import config # Import the config module directly
     EMBEDDING_MODEL_NAME = config.EMBEDDING_MODEL_NAME
     EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION
 except (ImportError, AttributeError):
     # Default values if config import fails
+    logger.warning("Could not import config.py. Using default embedding model settings.", extra={"icon": "⚠️"})
     EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
     EMBEDDING_DIMENSION = 1024
 
@@ -96,7 +97,7 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
         with open(document_path, 'r', encoding='utf-8') as f:
             document = json.load(f)
             
-        doc_identifier = os.path.splitext(os.path.basename(document_path))[0]
+        doc_identifier = document.get('pdf_identifier')  # Always use the original PDF filename from the JSON
         timestamp = datetime.now().isoformat()
         
         # Validate document structure - be more flexible about expected structure

@@ -16,7 +16,7 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import utilities if needed (commenting out as we don't appear to use it directly in this file)
-# from _02_src import _00_utils
+# from src import _00_utils
 
 # Constants
 TEST_FILES_DIR = os.path.join("_01_input", "raw")
