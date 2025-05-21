@@ -188,6 +188,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             if not is_new_version and not old_version_id:
                 from src._03_docs_deduplication.pre_save_deduplication import calculate_cosine_similarity
                 from src._03_docs_deduplication.pre_save_deduplication import SIMILAR_THRESHOLD
+                import numpy as np  # Add numpy import here to ensure it's available in this scope
                 
                 # Connect to database
                 from src._03_docs_deduplication.pre_save_deduplication import connect_to_lancedb

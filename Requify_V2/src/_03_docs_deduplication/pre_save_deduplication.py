@@ -590,6 +590,8 @@ def check_document_duplicates(
     """
     Check if a newly parsed document has duplicate pages in the existing database
     **and log the closest match (ID, page, cosine similarity) for every page**.
+    
+    Handles both cases where embeddings exist and where they don't exist.
 
     Returns
     -------
@@ -622,8 +624,36 @@ def check_document_duplicates(
         )
         return {}, list(range(len(new_doc_data))), {}
 
-    ensure_index(db)
+    # Check if table has content
     table = db.open_table(LANCEDB_TABLE_NAME)
+    existing_docs = table.to_pandas()
+    if existing_docs.empty:
+        logger.info(
+            f"Empty documents table; all {len(new_doc_data)} pages are new.",
+            extra={"icon": "✅"}
+        )
+        return {}, list(range(len(new_doc_data))), {}
+
+    # Check if the new documents have valid embeddings
+    has_valid_embeddings = True
+    for idx, page_data in enumerate(new_doc_data):
+        embedding = page_data.get("embedding")
+        if embedding is None or (isinstance(embedding, list) and (not embedding or all(v == 0 for v in embedding))):
+            has_valid_embeddings = False
+            break
+        if isinstance(embedding, np.ndarray) and (np.all(embedding == 0) or np.isnan(embedding).any()):
+            has_valid_embeddings = False
+            break
+    
+    if not has_valid_embeddings:
+        logger.warning(
+            f"Documents don't have valid embeddings yet. Deduplication is limited to metadata matching.",
+            extra={"icon": "⚠️"}
+        )
+        # Return all pages as new since we can't do embedding-based deduplication yet
+        return {}, list(range(len(new_doc_data))), {}
+
+    ensure_index(db)
 
     # ── result containers ───────────────────────────────────────────────────────
     duplicate_pages: Dict[int, Dict[str, object]] = {}
@@ -632,15 +662,41 @@ def check_document_duplicates(
 
     # ── main loop over pages ────────────────────────────────────────────────────
     for idx, page_data in enumerate(new_doc_data):
-        page_num   = page_data.get("page_number", idx + 1)
-        embedding  = page_data.get("embedding")
+        page_num = page_data.get("page_number", idx + 1)
+        embedding = page_data.get("embedding")
 
-        if embedding is None:
-            logger.warning(f"Page {page_num} has no embedding → new", extra={"icon": "⚠️"})
+        # Enhanced embedding validation
+        if embedding is None or not embedding:
+            logger.warning(f"Page {page_num} has no embedding or empty embedding → new", extra={"icon": "⚠️"})
             new_pages.append(idx)
             continue
+            
         if isinstance(embedding, list):
+            if not embedding:  # Check again if it's an empty list
+                logger.warning(f"Page {page_num} has empty list embedding → new", extra={"icon": "⚠️"})
+                new_pages.append(idx)
+                continue
             embedding = np.array(embedding)
+            
+        # Check for all zeros or NaNs in the embedding
+        if np.all(embedding == 0) or np.isnan(embedding).any():
+            logger.warning(f"Page {page_num} has invalid embedding (all zeros or NaNs) → new", extra={"icon": "⚠️"})
+            new_pages.append(idx)
+            continue
+
+        # Log the query embedding for debugging
+        if VERBOSE_DEDUPLICATION_OUTPUT:
+            # Check if embedding is all zeros or contains NaNs
+            is_all_zeros = np.all(embedding == 0)
+            has_nans = np.isnan(embedding).any()
+            # More robust logging that handles potential index errors
+            first_values = embedding[:min(5, len(embedding))].tolist() if len(embedding) > 0 else []
+            last_values = embedding[-min(5, len(embedding)):].tolist() if len(embedding) > 0 else []
+            logger.info(f"Querying with embedding for page {page_num} " 
+                       f"(first {len(first_values)}: {first_values}, "
+                       f"last {len(last_values)}: {last_values}). "
+                       f"All zeros: {is_all_zeros}, Has NaNs: {has_nans}", 
+                       extra={"icon": "🧬"})
 
         try:
             df = (
@@ -652,14 +708,49 @@ def check_document_duplicates(
             if df.empty:
                 logger.info(f"No matches for page {page_num} → new", extra={"icon": "✅"})
                 new_pages.append(idx)
+                # ── closest-match for empty result ──────────────────────────────
+                logger.info(
+                    f"🔍 No similar content found for page {page_num} in the database",
+                    extra={"icon": "🔍"}
+                )
                 continue
 
             # Compute cosine similarity column once
             df["_sim"] = 1.0 - df["_distance"]
-            best_row   = df.iloc[df["_sim"].idxmax()]
-            best_sim   = float(best_row["_sim"])
-            best_id    = best_row["pdf_identifier"]
-            best_page  = best_row.get("page_number", "unknown")
+
+            # Handle cases where all similarities might be NaN.
+            # This could happen if all _distance values from the search result are NaN.
+            if df["_sim"].isna().all():
+                logger.warning(
+                    f"Page {page_num}: All similarity scores are NaN. No valid match found. Treating as new.",
+                    extra={"icon": "⚠️"}
+                )
+                # Optionally log the problematic df for debugging if VERBOSE_DEDUPLICATION_OUTPUT is True
+                if VERBOSE_DEDUPLICATION_OUTPUT:
+                    try:
+                        # Attempt to log the DataFrame; use to_string() for better readability if it's large
+                        logger.info(f"DataFrame for page {page_num} with all NaN similarities ({len(df)} rows):\n{df.to_string()}", extra={"icon": "🐛"})
+                    except Exception as log_df_error:
+                        logger.info(f"DataFrame for page {page_num} with all NaN similarities ({len(df)} rows). Error during df logging: {log_df_error}", extra={"icon": "🐛"})
+                
+                new_pages.append(idx)
+                # ── closest-match for NaN result ──────────────────────────────
+                logger.info(
+                    f"🔍 No valid similarity scores for page {page_num}",
+                    extra={"icon": "🔍"}
+                )
+                continue
+            
+            # At this point, df["_sim"] has at least one non-NaN value.
+            # idxmax() will skip NaNs and return the index LABEL of the maximum value.
+            best_idx_label = df["_sim"].idxmax()
+            
+            # Use .loc to access the row using the index label, which is safer.
+            best_row = df.loc[best_idx_label]
+            
+            best_sim = float(best_row["_sim"])
+            best_id = best_row["pdf_identifier"]
+            best_page = best_row.get("page_number", "unknown")
 
             # ── classification ────────────────────────────────────────────────
             found = False
@@ -711,6 +802,11 @@ def check_document_duplicates(
         except Exception as e:
             logger.error(f"Search error on page {page_num}: {e}", extra={"icon": "❌"})
             new_pages.append(idx)
+            # ── closest-match for error case ──────────────────────────────
+            logger.info(
+                f"🔍 Error finding match for page {page_num}: {str(e)}",
+                extra={"icon": "🔍"}
+            )
 
     # ── summary ────────────────────────────────────────────────────────────────
     elapsed = time.time() - start_time
@@ -720,7 +816,6 @@ def check_document_duplicates(
         extra={"icon": "📊"}
     )
     return duplicate_pages, new_pages, update_pages
-
 
 
 def get_document_pages_by_id(doc_id: str, db_connection=None) -> pd.DataFrame:
@@ -754,6 +849,8 @@ def check_for_document_version_update(
 ) -> Tuple[bool, float, Optional[str]]:
     """
     Check if a document is a new version of an existing document via ANN.
+    Always returns the closest document match (if any), regardless of threshold.
+    Handles cases where input documents don't have valid embeddings yet.
     """
     if not new_doc_data:
         return False, 0.0, None
@@ -763,42 +860,203 @@ def check_for_document_version_update(
     lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
     db = db_connection or connect_to_lancedb(lancedb_path)
     if not db or LANCEDB_TABLE_NAME not in db.table_names():
+        logger.info(f"No existing documents to compare with {doc_id}", extra={"icon": "ℹ️"})
         return False, 0.0, None
-    ensure_index(db)
+    
+    # Check if table has content
     table = db.open_table(LANCEDB_TABLE_NAME)
+    existing_docs = table.to_pandas()
+    if existing_docs.empty:
+        logger.info(f"Empty documents table; nothing to compare with {doc_id}", extra={"icon": "ℹ️"})
+        return False, 0.0, None
+
+    # Check if the new documents have valid embeddings
+    has_valid_embeddings = True
+    for page_data in new_doc_data:
+        embedding = page_data.get("embedding")
+        if embedding is None or (isinstance(embedding, list) and (not embedding or all(v == 0 for v in embedding))):
+            has_valid_embeddings = False
+            break
+        if isinstance(embedding, np.ndarray) and (np.all(embedding == 0) or np.isnan(embedding).any()):
+            has_valid_embeddings = False
+            break
+    
+    if not has_valid_embeddings:
+        logger.warning(
+            f"Document {doc_id} doesn't have valid embeddings yet. Document version detection is limited.",
+            extra={"icon": "⚠️"}
+        )
+        # Do basic check using document title or keywords
+        document_title = new_doc_data[0].get('document_title', '')
+        
+        # Get unique document IDs from database
+        all_doc_ids = existing_docs['pdf_identifier'].unique().tolist()
+        if doc_id in all_doc_ids:
+            all_doc_ids.remove(doc_id)
+        
+        if document_title and all_doc_ids:
+            logger.info(f"Attempting metadata-based matching for {doc_id}", extra={"icon": "🔍"})
+            best_match = None
+            best_score = 0
+            
+            # Get all document titles from database for matching
+            for other_id in all_doc_ids:
+                other_docs = existing_docs[existing_docs['pdf_identifier'] == other_id]
+                other_title = other_docs.iloc[0].get('document_title', '') if not other_docs.empty else ''
+                
+                if other_title and document_title:
+                    # Very simple text matching based on common words
+                    words1 = set(document_title.lower().split())
+                    words2 = set(other_title.lower().split())
+                    common_words = words1.intersection(words2)
+                    score = len(common_words) / max(len(words1), len(words2))
+                    
+                    if score > best_score:
+                        best_score = score
+                        best_match = other_id
+                        
+            if best_match:
+                # Apply same thresholds but with text-based score
+                is_new = VERSION_SIMILARITY_THRESHOLD <= best_score < DUPLICATE_THRESHOLD
+                
+                # Log the match
+                if best_score >= DUPLICATE_THRESHOLD:
+                    logger.info(
+                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is a DUPLICATE of {best_match} (title similarity: {best_score:.4f})",
+                        extra={"icon": "♻️"}
+                    )
+                elif best_score >= VERSION_SIMILARITY_THRESHOLD:
+                    logger.info(
+                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is a NEW VERSION of {best_match} (title similarity: {best_score:.4f})",
+                        extra={"icon": "🔄"}
+                    )
+                else:
+                    logger.info(
+                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is DIFFERENT from closest document {best_match} (title similarity: {best_score:.4f})",
+                        extra={"icon": "🆕"}
+                    )
+                
+                return is_new, best_score, best_match
+            else:
+                logger.info(f"No metadata match found for {doc_id}", extra={"icon": "ℹ️"})
+                return False, 0.0, None
+        else:
+            logger.info(f"Insufficient metadata for matching document {doc_id}", extra={"icon": "ℹ️"})
+            return False, 0.0, None
+
+    ensure_index(db)
+
+    # Get list of unique document IDs (excluding current doc)
+    try:
+        all_doc_ids = existing_docs['pdf_identifier'].unique().tolist()
+        if doc_id in all_doc_ids:
+            all_doc_ids.remove(doc_id)
+        
+        if not all_doc_ids:
+            logger.info(f"No other documents to compare with {doc_id}", extra={"icon": "ℹ️"})
+            return False, 0.0, None
+            
+        logger.info(f"Comparing {doc_id} with {len(all_doc_ids)} existing documents", extra={"icon": "🔍"})
+    except Exception as e:
+        logger.error(f"Error retrieving document IDs: {e}", extra={"icon": "❌"})
+        return False, 0.0, None
 
     sim_map: Dict[str, List[float]] = {}
     samples = new_doc_data[:min(MAX_PAGES_TO_SAMPLE, len(new_doc_data))]
-    embeddings = [np.array(p['embedding']) for p in samples if p.get('embedding')]
-    for emb in embeddings:
+    
+    # More robust embedding extraction
+    embeddings = []
+    for p in samples:
+        emb = p.get('embedding')
+        if emb is not None:
+            if isinstance(emb, list) and emb:  # Ensure it's not an empty list
+                emb_array = np.array(emb)
+                if not np.all(emb_array == 0) and not np.isnan(emb_array).any():
+                    embeddings.append(emb_array)
+            elif isinstance(emb, np.ndarray) and not np.all(emb == 0) and not np.isnan(emb).any():
+                embeddings.append(emb)
+    
+    if not embeddings:
+        logger.warning(f"Document {doc_id} has no valid embeddings for comparison", extra={"icon": "⚠️"})
+        return False, 0.0, None
+        
+    # Log number of sample pages being used
+    logger.info(f"Using {len(embeddings)} page embeddings from {doc_id} for document comparison", extra={"icon": "📊"})
+    
+    # Process each embedding
+    for i, emb in enumerate(embeddings):
         try:
+            # Verify the embedding is valid for search
+            if np.all(emb == 0) or np.isnan(emb).any():
+                logger.warning(f"Skipping invalid embedding for page {i+1}: all zeros or contains NaNs", extra={"icon": "⚠️"})
+                continue
+                
             df = (
                 table.search(emb)
                      .metric("cosine")
                      .limit(MAX_PAGES_TO_SAMPLE)
-                     .nprobes(32)
-                     .refine_factor(5)
                      .to_df()
             )
-            for _, row in df.iterrows():
-                pid = row['pdf_identifier']
-                if pid == doc_id:
-                    continue
-                sim = 1.0 - row['_distance']
-                sim_map.setdefault(pid, []).append(sim)
+            
+            # Skip if no results or all distances are NaN
+            if df.empty or df['_distance'].isna().all():
+                logger.info(f"No valid matches found for page {i+1} embedding", extra={"icon": "ℹ️"})
+                continue
+                
+            # Calculate similarities (1.0 - distance)
+            df['_sim'] = 1.0 - df['_distance']
+            
+            # Find closest matches for each document ID
+            for pid in all_doc_ids:
+                doc_matches = df[df['pdf_identifier'] == pid]
+                if not doc_matches.empty:
+                    best_sim = doc_matches['_sim'].max()
+                    if not pd.isna(best_sim):  # Ensure it's not NaN
+                        sim_map.setdefault(pid, []).append(best_sim)
+                        
         except Exception as e:
-            logger.error(f"Error during version search: {e}", extra={"icon": "❌"})
+            logger.error(f"Error during version search for page {i+1}: {e}", extra={"icon": "❌"})
 
     if not sim_map:
+        logger.info(f"No similarity data found between {doc_id} and existing documents", extra={"icon": "ℹ️"})
         return False, 0.0, None
-    avg_sims = {pid: sum(v)/len(v) for pid, v in sim_map.items()}
+        
+    # Calculate average similarity for each document
+    avg_sims = {pid: sum(v)/len(v) for pid, v in sim_map.items() if v}
+    
+    # Log all document similarities for debugging
+    if VERBOSE_DEDUPLICATION_OUTPUT:
+        for pid, sim in sorted(avg_sims.items(), key=lambda x: x[1], reverse=True):
+            logger.info(f"Document similarity: {doc_id} ↔ {pid}: {sim:.4f}", extra={"icon": "📏"})
+    
+    if not avg_sims:
+        logger.info(f"No valid average similarities found for {doc_id}", extra={"icon": "ℹ️"})
+        return False, 0.0, None
+        
+    # Get best match
     best_id, best_sim = max(avg_sims.items(), key=lambda x: x[1])
-    is_new = VERSION_SIMILARITY_THRESHOLD <= best_sim < DUPLICATE_THRESHOLD
-    if is_new:
+    
+    # Always log the closest document match
+    if best_sim >= DUPLICATE_THRESHOLD:
         logger.info(
-            f"Document {doc_id} appears to be new version of {best_id} (sim={best_sim:.4f})",
+            f"📚 DOCUMENT MATCH: {doc_id} is a DUPLICATE of {best_id} (similarity: {best_sim:.4f})",
+            extra={"icon": "♻️"}
+        )
+    elif best_sim >= VERSION_SIMILARITY_THRESHOLD:
+        logger.info(
+            f"📚 DOCUMENT MATCH: {doc_id} is a NEW VERSION of {best_id} (similarity: {best_sim:.4f})",
             extra={"icon": "🔄"}
         )
+    else:
+        logger.info(
+            f"📚 DOCUMENT MATCH: {doc_id} is DIFFERENT from closest document {best_id} (similarity: {best_sim:.4f})",
+            extra={"icon": "🆕"}
+        )
+    
+    # Determine if it's a new version (above threshold but below duplicate)
+    is_new = VERSION_SIMILARITY_THRESHOLD <= best_sim < DUPLICATE_THRESHOLD
+    
+    # Always return the best match, even if below threshold
     return is_new, best_sim, best_id
 
 # -------------------------------------------------------------------------------------
