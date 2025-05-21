@@ -390,7 +390,7 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         for i in oversized_chunks:
             chunk = chunks[i]
             logger.info(f"⚠️ Oversized chunk #{i+1}: {len(chunk)} chars (limit: {MAX_CHAR_SIZE})", extra={"icon": "⚠️"})
-            # Log the first 100 characters to help identify the chunk
+            # Log the first characters to help identify the chunk
             logger.debug(f"Chunk start: {chunk[:100]}...", extra={"icon": "🔍"})
             
         new_chunks = []

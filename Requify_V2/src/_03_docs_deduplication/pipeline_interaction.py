@@ -47,7 +47,7 @@ FILE_HASHES_TABLE_NAME = "file_hashes"
 
 # Threshold constants
 EXACT_DUPLICATE_THRESHOLD = 0.995  # For considering as exact duplicate
-SIMILAR_DOCUMENT_THRESHOLD = 0.90  # For considering as a similar document
+SIMILAR_DOCUMENT_THRESHOLD = 0.82  # For considering as a similar document (lowered to match pre_save_deduplication.py)
 
 def connect_to_lancedb():
     """Connect to LanceDB and return the connection."""
@@ -177,32 +177,86 @@ def deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection=
     Returns:
         str: The action to take ('keep_old', 'keep_new', 'keep_both', or 'detailed')
     """
-    logger.info("\n=== Duplicate Document Detected ===", extra={"icon": "♻️"})
-    logger.info(f"New document: {new_doc_id}", extra={"icon": "📄"})
-    logger.info(f"Existing document: {existing_doc_id}", extra={"icon": "📜"})
-    logger.info(f"Similarity score: {similarity:.4f}", extra={"icon": "📊"})
+    print("\n" + "="*60)
+    print("🔍 DOCUMENT SIMILARITY DETECTED")
+    print("="*60)
+    print(f"📄 New document: {new_doc_id}")
+    print(f"📜 Existing document: {existing_doc_id}")
+    print(f"📊 Similarity score: {similarity:.4f}")
+    print("="*60)
     
-    logger.info("\nWhat would you like to do?", extra={"icon": "❓"})
-    logger.info("1. Keep only the existing document (discard new)", extra={"icon": "🔢"})
-    logger.info("2. Replace with the new document (discard old)", extra={"icon": "🔢"})
-    logger.info("3. Keep both as separate documents", extra={"icon": "🔢"})
-    logger.info("4. Perform detailed deduplication (with chunk alignment)", extra={"icon": "🔢"})
+    print("\nWhat would you like to do?")
+    print("1. Keep only the existing document (discard new)")
+    print("2. Replace with the new document (discard old)")
+    print("3. Keep both as separate documents")
+    print("4. Perform detailed chunk-level analysis")
     
     while True:
         try:
-            choice = int(input("\nEnter your choice (1-4): "))
-            if choice == 1:
+            choice = input("\nEnter your choice (1-4): ").strip()
+            if choice == '1':
                 return "keep_old"
-            elif choice == 2:
-                return "keep_new"
-            elif choice == 3:
+            elif choice == '2':
+                return "keep_new" 
+            elif choice == '3':
                 return "keep_both"
-            elif choice == 4:
+            elif choice == '4':
                 return "detailed"
             else:
-                logger.warning("Invalid choice. Please enter 1, 2, 3, or 4.", extra={"icon": "⚠️"})
-        except ValueError:
-            logger.warning("Please enter a valid number.", extra={"icon": "⚠️"})
+                print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")
+        except (EOFError, KeyboardInterrupt):
+            print("\n❌ Operation cancelled by user.")
+            return "keep_old"  # Default to safe option
+        except Exception as e:
+            print(f"❌ Error reading input: {e}")
+            return "keep_old"  # Default to safe option
+
+def handle_document_similarity(new_doc_records: List[Dict], dedup_results: Dict) -> Tuple[bool, str]:
+    """
+    Handle document similarity detection by prompting the user for action.
+    
+    Args:
+        new_doc_records: List of records for the new document
+        dedup_results: Results from the deduplication check
+        
+    Returns:
+        Tuple of (should_continue, action) where:
+        - should_continue: Whether to proceed with saving
+        - action: What action to take ('replace_old', 'keep_both', 'detailed', etc.)
+    """
+    if not new_doc_records:
+        logger.error("No document records provided", extra={"icon": "❌"})
+        return False, "skip"
+    
+    # Get document information
+    new_doc_id = new_doc_records[0].get('pdf_identifier', 'unknown')
+    old_doc_id = dedup_results.get('old_version_id', 'unknown')
+    similarity = dedup_results.get('version_similarity', 0.0)
+    
+    logger.info(f"Detected new version: {old_doc_id} (similarity: {similarity:.4f}). Prompting user for action.", extra={"icon": "🔄"})
+    
+    # Prompt user for decision
+    action = deduplication_prompt(new_doc_id, old_doc_id, similarity)
+    
+    if action == "keep_old":
+        logger.info(f"User chose to keep existing document {old_doc_id}", extra={"icon": "✅"})
+        return False, "skip"
+        
+    elif action == "keep_new":
+        logger.info(f"User chose to replace {old_doc_id} with {new_doc_id}", extra={"icon": "🔄"})
+        return True, "replace_old"
+        
+    elif action == "keep_both":
+        logger.info(f"User chose to keep both documents", extra={"icon": "📋"})
+        return True, "keep_both"
+        
+    elif action == "detailed":
+        logger.info(f"User chose detailed chunk-level analysis", extra={"icon": "🔍"})
+        return True, "detailed"
+        
+    else:
+        logger.warning(f"Unknown action: {action}. Defaulting to skip.", extra={"icon": "⚠️"})
+        return False, "skip"
 
 def handle_duplicate_document(new_doc: Dict, duplicate_doc: Dict, similarity: float, db_connection=None) -> Dict:
     """
@@ -343,4 +397,4 @@ if __name__ == "__main__":
         main(doc_path)
     else:
         logger.error("No document path provided for testing", extra={"icon": "❌"})
-        print("Usage: python pipeline_interaction.py <document_path>") 
+        print("Usage: python pipeline_interaction.py <document_path>")

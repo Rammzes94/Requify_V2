@@ -112,6 +112,10 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
         if "pages" in document and isinstance(document["pages"], list):
             # Standard structure with pages list
             pages = document["pages"]
+        elif "pages" in document and isinstance(document["pages"], dict):
+            # Convert pages from dict to list format
+            logger.info(f"Detected 'pages' as dict, converting to list.", extra={"icon": "🔄"})
+            pages = list(document["pages"].values())
         elif isinstance(document, dict) and all(isinstance(k, str) and isinstance(v, dict) for k, v in document.items()):
             # Structure where each key is a page ID and value is page content
             pages = list(document.values())
@@ -150,7 +154,11 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
             
             # Create embedding
             if text_embedder and page_content:
-                embedding = text_embedder.encode(page_content, normalize_embeddings=True).tolist()
+                logger.info(f"Generating embedding for page {page_num} (content length: {len(page_content)})", extra={"icon": "🧬"})
+                embedding = text_embedder.encode(page_content, normalize_embeddings=True)
+                logger.info(f"Embedding type: {type(embedding)}, shape: {embedding.shape}", extra={"icon": "🧬"})
+                logger.info(f"First 5 values: {embedding[:5].tolist()}", extra={"icon": "🧬"})
+                embedding = embedding.tolist()
             else:
                 embedding = [0.0] * EMBEDDING_DIMENSION  # Placeholder for testing
             
@@ -182,7 +190,7 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
         logger.info(f"Checking for document duplicates", extra={"icon": "🔄"})
         dedup_results = dedup.check_new_document(all_records)
         
-        # Handle document-level similarity detection
+        # Handle document-level similarity detection - ALWAYS PROMPT USER
         if dedup_results.get('is_new_version'):
             logger.info(f"Document similarity detected!", extra={"icon": "⚠️"})
             should_continue, action = pipeline_interaction.handle_document_similarity(
@@ -202,6 +210,19 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
                 # Mark all pages as updates to the old document's pages
                 # This will trigger replacement in the save function
                 return all_records, [], all_records
+            elif action == "keep_both":
+                # User wants to keep both documents separately
+                logger.info(f"Keeping both documents as separate entries", extra={"icon": "📋"})
+                # Treat as a completely new document
+                return all_records, all_records, []
+            elif action == "detailed":
+                # User wants detailed chunk-level analysis
+                logger.info(f"Performing detailed chunk-level deduplication", extra={"icon": "🔍"})
+                # Fall through to normal deduplication process
+            else:
+                # Unknown action, default to detailed analysis
+                logger.warning(f"Unknown action {action}, defaulting to detailed analysis", extra={"icon": "⚠️"})
+                # Fall through to normal deduplication process
         
         # Proceed with normal deduplication if no document-level action taken
         # or if user chose detailed deduplication
@@ -365,6 +386,8 @@ def save_document_to_lancedb(document_path):
             logger.info("Creating vector search index", extra={"icon": "🔍"})
             table.create_index(vector_column_name="embedding", replace=True)
             logger.info("Index created successfully", extra={"icon": "✅"})
+        else:
+            logger.info(f"Not creating index: {LANCEDB_TABLE_NAME} has only {record_count} rows, minimum 100 required", extra={"icon": "⚠️"})
     except Exception as e:
         logger.error(f"Error creating index: {e}", extra={"icon": "❌"})
         # Index failure is not critical, continue
@@ -414,5 +437,3 @@ if __name__ == "__main__":
         logger.info("Document processing and saving completed successfully", extra={"icon": "✅"})
     else:
         logger.error("Document processing and saving failed", extra={"icon": "❌"})
-
-

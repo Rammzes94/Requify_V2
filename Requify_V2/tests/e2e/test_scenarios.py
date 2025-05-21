@@ -259,19 +259,37 @@ class PipelineResult:
             self.is_hash_duplicate = True
 
         # --- Document Level Duplicate (Embedding based) ---
-        # Example: "Document deduplication summary for fighter_jet_rocket_launcher_spec.pdf: Document is completely new."
-        # Example: "Document deduplication summary for fighter_jet_rocket_launcher_spec.pdf: Document is a duplicate of document X."
-        doc_dedup_summary_match = re.search(r"Document deduplication summary for .*?: Document (.*)", log_content, re.IGNORECASE)
-        if doc_dedup_summary_match:
-            summary_text = doc_dedup_summary_match.group(1).lower()
-            if "is completely new" in summary_text:
+        # New log format: "📊 Document deduplication summary: my_doc.pdf is completely new ..."
+        # Or: "📊 Document deduplication summary: my_doc.pdf is a complete duplicate ..."
+        # Or: "📊 Document deduplication summary: my_doc.pdf is a new version of old_doc.pdf ..."
+        doc_dedup_summary_match_new = re.search(r"📊 Document deduplication summary: .*? is (completely new|a complete duplicate|a new version of.*)", log_content, re.IGNORECASE)
+
+        if doc_dedup_summary_match_new:
+            summary_text = doc_dedup_summary_match_new.group(1).lower()
+            if "completely new" in summary_text:
                 self.is_duplicate = False
-            elif "is a duplicate of document" in summary_text:
+            elif "a complete duplicate" in summary_text:
                 self.is_duplicate = True
-        elif "'is completely new" in log_content: # Fallback for older log format
-            self.is_duplicate = False
-        elif "is a duplicate of" in log_content and "chunks" not in log_content: # trying to distinguish from chunk duplication
-             self.is_duplicate = True
+            elif "a new version of" in summary_text:
+                # For "new version", it's not strictly a "duplicate" in the sense of Scenario 1,
+                # but it's also not "completely new". The test expectations for scenarios
+                # like S2S2 (value change) handle this via `updated_chunks: True`.
+                # We need to ensure `is_duplicate` remains False if it's just a new version.
+                self.is_duplicate = False # Or, decide if this should be True based on specific scenario needs.
+                                        # For now, setting to False as "new version" isn't "duplicate".
+        else:
+            # Fallback to old regex if new one doesn't match (for backward compatibility or other log variations)
+            doc_dedup_summary_match_old = re.search(r"Document deduplication summary for .*?: Document (.*)", log_content, re.IGNORECASE)
+            if doc_dedup_summary_match_old:
+                summary_text = doc_dedup_summary_match_old.group(1).lower()
+                if "is completely new" in summary_text:
+                    self.is_duplicate = False
+                elif "is a duplicate of document" in summary_text:
+                    self.is_duplicate = True
+            elif "'is completely new" in log_content: # Further fallback
+                self.is_duplicate = False
+            elif "is a duplicate of" in log_content and "chunks" not in log_content: # Further fallback
+                 self.is_duplicate = True
 
 
         # --- Chunk Statuses ---
