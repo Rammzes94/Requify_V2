@@ -1062,12 +1062,13 @@ def check_for_document_version_update(
 # -------------------------------------------------------------------------------------
 # Main Function
 # -------------------------------------------------------------------------------------
-def check_new_document(doc_data: List[Dict]) -> Dict[str, object]:
+def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, object]:
     """
     Check if a document is already in the database and return detailed information.
     
     Args:
         doc_data: List of page dictionaries with document information
+        db_connection: Optional LanceDB connection to reuse
         
     Returns:
         Dictionary with detailed duplicate/similarity information
@@ -1088,7 +1089,7 @@ def check_new_document(doc_data: List[Dict]) -> Dict[str, object]:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
     lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
-    db = connect_to_lancedb(lancedb_path)
+    db = db_connection or connect_to_lancedb(lancedb_path)
     
     # Get document ID and log the check
     doc_id = doc_data[0].get('pdf_identifier', 'unknown')
