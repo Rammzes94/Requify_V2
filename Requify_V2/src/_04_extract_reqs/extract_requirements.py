@@ -12,6 +12,11 @@ import sentence_transformers
 from lancedb.pydantic import LanceModel, Vector
 from dotenv import load_dotenv
 import traceback
+from src import config
+from src import _00_utils
+from _00_utils import update_token_counters, print_token_usage
+_00_utils.setup_project_directory()
+load_dotenv()
 
 """
 extract_requirements.py
@@ -34,14 +39,6 @@ requirements from identical chunks while processing only new or modified content
 # -------------------------------------------------------------------------------------
 # Setup and Configuration
 # -------------------------------------------------------------------------------------
-
-# Setup project directory and load environment variables
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-from _00_utils import update_token_counters, print_token_usage
-import config
-_00_utils.setup_project_directory()
-load_dotenv()
 
 # Configure logging with script prefix first
 logger = _00_utils.setup_logging()
@@ -93,7 +90,7 @@ else:  # Default to Groq
 
 # LanceDB settings
 OUTPUT_DIR_BASE = config.OUTPUT_DIR_BASE  # Use from config
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within output
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
 LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
 DOCUMENT_CHUNKS_TABLE = "document_chunks"

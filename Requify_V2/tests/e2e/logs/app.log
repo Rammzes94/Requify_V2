@@ -8,7 +8,7 @@
 2025-05-19 00:07:32 [INFO] 🚀 (test_scenarios:470) - [E2E_Tests] Starting Scenario 2: Value Change Variant
 2025-05-19 00:07:32 [INFO] 🧹 (test_scenarios:473) - [E2E_Tests] Clearing LanceDB database...
 2025-05-19 00:07:32 [INFO] 🧹 (test_scenarios:374) - [E2E_Tests] Clearing LanceDB database...
-2025-05-19 00:07:32 [INFO] 🔄 (reset_lancedb:38) - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:07:32 [INFO] 🔄 (reset_lancedb:38) - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:07:32 [INFO] ✅ (reset_lancedb:40) - [Reset_LanceDB] Connected to LanceDB. Current tables: ['document_chunks', 'documents', 'file_hashes', 'requirements']
 2025-05-19 00:07:32 [INFO] 🗑️ (reset_lancedb:45) - [Reset_LanceDB] Dropping table: document_chunks
 2025-05-19 00:07:32 [INFO] 🗑️ (reset_lancedb:45) - [Reset_LanceDB] Dropping table: documents
@@ -16,8 +16,8 @@
 2025-05-19 00:07:32 [INFO] 🗑️ (reset_lancedb:45) - [Reset_LanceDB] Dropping table: requirements
 2025-05-19 00:07:32 [INFO] ✅ (reset_lancedb:48) - [Reset_LanceDB] All tables dropped. Running initialization to create fresh tables.
 2025-05-19 00:07:32 [INFO] 📋 (init_lancedb:160) - [LanceDB_Admin] 🔄 Script started: Initializing LanceDB tables...
-2025-05-19 00:07:32 [INFO] 🛢️ (init_lancedb:169) - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/_03_output/lancedb
-2025-05-19 00:07:32 [INFO] 🔌 (init_lancedb:174) - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/_03_output/lancedb
+2025-05-19 00:07:32 [INFO] 🛢️ (init_lancedb:169) - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/output/lancedb
+2025-05-19 00:07:32 [INFO] 🔌 (init_lancedb:174) - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/output/lancedb
 2025-05-19 00:07:32 [INFO] 🔌 (init_lancedb:177) - [LanceDB_Admin] ✅ Successfully connected to LanceDB. Current tables: []
 2025-05-19 00:07:32 [INFO] 📝 (init_lancedb:147) - [LanceDB_Admin] Table 'documents' does not exist. Attempting to create it now...
 2025-05-19 00:07:32 [INFO] 📝 (init_lancedb:150) - [LanceDB_Admin] ✅ Successfully created table 'documents'.
@@ -40,22 +40,22 @@
 2025-05-19 00:07:32 [INFO] 🚀 (test_scenarios:398) - [E2E_Tests] Running pipeline for fighter_jet_rocket_launcher_spec_2.pdf...
 2025-05-19 00:07:32 [INFO] 🚀 (pipeline_controller:103) - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2.pdf (max_step=6, dry_run=False, skip_hash_check=False)
 2025-05-19 00:07:32 [INFO] 🔐 (pipeline_controller:107) - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2.pdf
-2025-05-19 00:07:32 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-19 00:07:32 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:07:32 [INFO] 🔢 (file_hash_deduplication:220) - [Hash_Deduplication] Calculated hashes: MD5=ef3e394175eb34bcc1a081face8c7bda, SHA256=43f6165ea7a177ef9d0e3b4c831a9810844537887e74a5fd455373aed015fa93
-2025-05-19 00:07:32 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:07:32 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:07:32 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:07:32 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:07:32 [ERROR] ❌ (file_hash_deduplication:225) - [Hash_Deduplication] Failed to connect to LanceDB database
 2025-05-19 00:07:32 [INFO] ✅ (pipeline_controller:114) - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2.pdf passed hash-based duplicate check
 2025-05-19 00:07:32 [INFO] 📑 (pipeline_controller:122) - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:07:32 [INFO] 🔍 (stable_pdf_parsing:298) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:07:32 [INFO] 🔍 (stable_pdf_parsing:299) - [Stable_Pdf_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:07:32 [INFO] 🔍 (stable_pdf_parsing:300) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:07:32 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf' to images...
+2025-05-19 00:07:32 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2.pdf' to images...
 2025-05-19 00:07:32 [INFO] 📄 (stable_pdf_parsing:179) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:07:32 [INFO] 📄 (stable_pdf_parsing:180) - [Stable_Pdf_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:07:32 [INFO] 📄 (stable_pdf_parsing:181) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:07:32 [INFO] 📄 (stable_pdf_parsing:196) - [Stable_Pdf_Parsing] PDF has 1 pages
-2025-05-19 00:07:32 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to _03_output/pdf_images/fighter_jet_rocket_launcher_spec_2/page_001.png
+2025-05-19 00:07:32 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2/page_001.png
 2025-05-19 00:07:32 [INFO] 📄 (stable_pdf_parsing:209) - [Stable_Pdf_Parsing] Page 1/1: Saved to page_001.png
 2025-05-19 00:07:32 [INFO] 📑 (stable_pdf_parsing:214) - [Stable_Pdf_Parsing] Encoded image for page 1 to base64.
 2025-05-19 00:07:32 [INFO] ✅ (stable_pdf_parsing:220) - [Stable_Pdf_Parsing] Generated 1 images from PDF
@@ -64,8 +64,8 @@
 2025-05-19 00:07:32 [INFO] 🔍 (stable_pdf_parsing:321) - [Stable_Pdf_Parsing] Extracting content from page 1/1
 2025-05-19 00:07:43 [INFO] 📊 (_00_utils:724) - Loaded token usage data for 3 models
 2025-05-19 00:07:43 [INFO] 🔢 (_00_utils:108) - Token counters updated: 1335 input, 360 output
-2025-05-19 00:07:43 [INFO] 📊 (_00_utils:1149) - Generated token usage text report: /Users/fabio/Agentic_AI/Requify_V2/_03_output/token_tracking/reports/token_report_2025-05-19.txt
-2025-05-19 00:07:43 [INFO] 📊 (_00_utils:1150) - Generated token summary HTML: /Users/fabio/Agentic_AI/Requify_V2/_03_output/token_tracking/reports/token_summary_2025-05-19.html
+2025-05-19 00:07:43 [INFO] 📊 (_00_utils:1149) - Generated token usage text report: /Users/fabio/Agentic_AI/Requify_V2/output/token_tracking/reports/token_report_2025-05-19.txt
+2025-05-19 00:07:43 [INFO] 📊 (_00_utils:1150) - Generated token summary HTML: /Users/fabio/Agentic_AI/Requify_V2/output/token_tracking/reports/token_summary_2025-05-19.html
 2025-05-19 00:07:43 [INFO] ✅ (stable_pdf_parsing:342) - [Stable_Pdf_Parsing] Successfully extracted markdown for page_001
 2025-05-19 00:07:43 [INFO] ✅ (stable_pdf_parsing:345) - [Stable_Pdf_Parsing] Extracted 1664 chars from page 1
 2025-05-19 00:07:43 [INFO] 🔤 (stable_pdf_parsing:231) - [Stable_Pdf_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2.pdf from page summaries...
@@ -83,37 +83,37 @@
 2025-05-19 00:09:48 [INFO] 🔢 (_00_utils:108) - Token counters updated: 2863 input, 615 output
 2025-05-19 00:09:48 [INFO] ⚙️ (stable_pdf_parsing:442) - [Stable_Pdf_Parsing] Successfully processed page 1
 2025-05-19 00:09:48 [INFO] ✅ (stable_pdf_parsing:447) - [Stable_Pdf_Parsing] Page 1: Generated summary and hashtags: rocket_launcher, fighter_jet, specifications, performance_metrics, operational_features...
-2025-05-19 00:09:48 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:09:48 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:09:48 [INFO] ✅ (stable_pdf_parsing:482) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:09:48 [INFO] ✅ (stable_pdf_parsing:483) - [Stable_Pdf_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:09:48 [INFO] 📄 (stable_pdf_parsing:484) - [Stable_Pdf_Parsing] Document title: Advanced Fighter Jet Rocket Launcher Specifications
 2025-05-19 00:09:48 [INFO] 📄 (stable_pdf_parsing:485) - [Stable_Pdf_Parsing] Pages processed: 1
 2025-05-19 00:09:48 [INFO] 📄 (stable_pdf_parsing:486) - [Stable_Pdf_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:09:48 [INFO] ✅ (stable_pdf_parsing:487) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:09:48 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:09:48 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:09:48 [INFO] 🔍 (pipeline_controller:143) - [Pipeline_Controller] Step 3: Checking document for duplicates
 2025-05-19 00:09:48 [INFO] 💾 (pipeline_controller:264) - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
-2025-05-19 00:09:48 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:09:48 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:09:48 [INFO] 🧠 (stable_save_to_lancedb:271) - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:09:48 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
 2025-05-19 00:09:48 [INFO] ℹ️ (SentenceTransformer:219) - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:09:54 [INFO] ✅ (stable_save_to_lancedb:283) - [Save_To_LanceDB] Model loaded successfully
-2025-05-19 00:09:54 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:09:54 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:09:54 [WARNING] ⚠️ (stable_save_to_lancedb:112) - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
 2025-05-19 00:09:54 [INFO] ✅ (stable_save_to_lancedb:169) - [Save_To_LanceDB] Successfully extracted 1 pages from document
 2025-05-19 00:09:54 [INFO] 🔄 (stable_save_to_lancedb:172) - [Save_To_LanceDB] Checking for document duplicates
-2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:09:54 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:09:54 [INFO] 🔍 (pre_save_deduplication:813) - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_combined
 2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:606) - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_combined
-2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:09:54 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:09:54 [INFO] ✅ (pre_save_deduplication:614) - [Docs_Deduplication] No existing database or table found. All 1 pages are new.
-2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:09:54 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:09:54 [INFO] 🆕 (pre_save_deduplication:193) - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_combined is completely new (all 1 pages are new)
 2025-05-19 00:09:54 [INFO] 📊 (stable_save_to_lancedb:210) - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
-2025-05-19 00:09:54 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:09:54 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:09:54 [INFO] ✅ (stable_save_to_lancedb:305) - [Save_To_LanceDB] Connected to LanceDB
 2025-05-19 00:09:54 [INFO] 🆕 (stable_save_to_lancedb:252) - [Save_To_LanceDB] Creating new table: documents
 2025-05-19 00:09:54 [INFO] ➕ (stable_save_to_lancedb:316) - [Save_To_LanceDB] Adding 1 new pages to LanceDB
@@ -121,7 +121,7 @@
 2025-05-19 00:09:54 [INFO] ⏱️ (stable_save_to_lancedb:385) - [Save_To_LanceDB] Processing completed in 5.89 seconds
 2025-05-19 00:09:54 [INFO] ✅ (pipeline_controller:277) - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
 2025-05-19 00:09:54 [INFO] 🔄 (pipeline_controller:285) - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
-2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:09:54 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:09:54 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:09:54 [INFO] 🔄 (pipeline_controller:483) - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
 2025-05-19 00:09:54 [INFO] 🔄 (pipeline_controller:505) - [Pipeline_Controller] 🔄 Using standard chunking for new document
@@ -135,7 +135,7 @@
 2025-05-19 00:10:05 [INFO] 🧩 (integrated_chunking:352) - [Integrated_Chunking] 📊 Generated 1 chunks
 2025-05-19 00:10:05 [INFO] 🧩 (integrated_chunking:353) - [Integrated_Chunking]    Min/Max/Avg chars: 1664/1664/1664.0
 2025-05-19 00:10:05 [INFO] 🧩 (integrated_chunking:354) - [Integrated_Chunking]    Min/Max/Avg tokens: 416/416/416.0
-2025-05-19 00:10:05 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at _03_output/lancedb
+2025-05-19 00:10:05 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at output/lancedb
 2025-05-19 00:10:05 [INFO] 🧩 (integrated_chunking:393) - [Integrated_Chunking] ✅ Opened existing document_chunks table
 2025-05-19 00:10:05 [INFO] 🧮 (integrated_chunking:402) - [Integrated_Chunking] 🔄 Loading embedding model
 2025-05-19 00:10:05 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
@@ -167,8 +167,8 @@
 2025-05-19 00:10:11 [INFO] ✅ (pipeline_controller:513) - [Pipeline_Controller] ✅ Chunking completed successfully
 2025-05-19 00:10:11 [INFO] 📚 (pipeline_controller:525) - [Pipeline_Controller] Step 6: Extracting requirements from document chunks
 2025-05-19 00:10:11 [INFO] ✈️ (extract_requirements:586) - [Extract_Requirements] 🔄 Processing document: fighter_jet_rocket_launcher_spec_2.pdf
-2025-05-19 00:10:11 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:10:11 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:11 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:10:11 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:11 [WARNING] ✈️ (extract_requirements:523) - [Extract_Requirements] ⚠️ No document info found for 'fighter_jet_rocket_launcher_spec_2.pdf'
 2025-05-19 00:10:11 [ERROR] ✈️ (extract_requirements:597) - [Extract_Requirements] ❌ Document fighter_jet_rocket_launcher_spec_2.pdf not found in database
 2025-05-19 00:10:11 [INFO] ✅ (pipeline_controller:537) - [Pipeline_Controller] ✅ Requirements extraction completed for fighter_jet_rocket_launcher_spec_2.pdf
@@ -181,25 +181,25 @@
 2025-05-19 00:10:11 [INFO] 🚀 (test_scenarios:398) - [E2E_Tests] Running pipeline for fighter_jet_rocket_launcher_spec_2_changed_values.pdf...
 2025-05-19 00:10:11 [INFO] 🚀 (pipeline_controller:103) - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf (max_step=6, dry_run=False, skip_hash_check=False)
 2025-05-19 00:10:11 [INFO] 🔐 (pipeline_controller:107) - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
-2025-05-19 00:10:11 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-19 00:10:11 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:11 [INFO] 🔢 (file_hash_deduplication:220) - [Hash_Deduplication] Calculated hashes: MD5=18dc4d423a774bd216a0a7e2a0ab3018, SHA256=6689b49c25c69cfc03b167422fad04b602b064be5abc00e1e749d7ac3142879b
-2025-05-19 00:10:11 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:10:11 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:11 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:10:11 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:11 [INFO] ℹ️ (file_hash_deduplication:109) - [Hash_Deduplication] File hashes table file_hashes does not exist yet
 2025-05-19 00:10:11 [INFO] 🆕 (file_hash_deduplication:161) - [Hash_Deduplication] Creating new file hashes table: file_hashes
-2025-05-19 00:10:11 [INFO] ✅ (file_hash_deduplication:190) - [Hash_Deduplication] Successfully saved file hash information for /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-19 00:10:11 [INFO] ✅ (file_hash_deduplication:190) - [Hash_Deduplication] Successfully saved file hash information for /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:11 [INFO] ✅ (file_hash_deduplication:239) - [Hash_Deduplication] File hash check completed in 0.02 seconds. File is unique.
 2025-05-19 00:10:11 [INFO] ✅ (pipeline_controller:114) - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf passed hash-based duplicate check
 2025-05-19 00:10:11 [INFO] 📑 (pipeline_controller:122) - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:11 [INFO] 🔍 (stable_pdf_parsing:298) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:10:11 [INFO] 🔍 (stable_pdf_parsing:299) - [Stable_Pdf_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:11 [INFO] 🔍 (stable_pdf_parsing:300) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:10:11 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
+2025-05-19 00:10:11 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
 2025-05-19 00:10:11 [INFO] 📄 (stable_pdf_parsing:179) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:10:11 [INFO] 📄 (stable_pdf_parsing:180) - [Stable_Pdf_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:11 [INFO] 📄 (stable_pdf_parsing:181) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:10:11 [INFO] 📄 (stable_pdf_parsing:196) - [Stable_Pdf_Parsing] PDF has 1 pages
-2025-05-19 00:10:11 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to _03_output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
+2025-05-19 00:10:11 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
 2025-05-19 00:10:11 [INFO] 📄 (stable_pdf_parsing:209) - [Stable_Pdf_Parsing] Page 1/1: Saved to page_001.png
 2025-05-19 00:10:11 [INFO] 📑 (stable_pdf_parsing:214) - [Stable_Pdf_Parsing] Encoded image for page 1 to base64.
 2025-05-19 00:10:11 [INFO] ✅ (stable_pdf_parsing:220) - [Stable_Pdf_Parsing] Generated 1 images from PDF
@@ -224,26 +224,26 @@
 2025-05-19 00:10:31 [INFO] 🔢 (_00_utils:108) - Token counters updated: 6263 input, 1652 output
 2025-05-19 00:10:31 [INFO] ⚙️ (stable_pdf_parsing:442) - [Stable_Pdf_Parsing] Successfully processed page 1
 2025-05-19 00:10:31 [INFO] ✅ (stable_pdf_parsing:447) - [Stable_Pdf_Parsing] Page 1: Generated summary and hashtags: rocket_launcher, fighter_jet, technical_specifications, performance_metrics, guidance_system...
-2025-05-19 00:10:31 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:10:31 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:10:31 [INFO] ✅ (stable_pdf_parsing:482) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:10:31 [INFO] ✅ (stable_pdf_parsing:483) - [Stable_Pdf_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:10:31 [INFO] 📄 (stable_pdf_parsing:484) - [Stable_Pdf_Parsing] Document title: RLX-5000 Fighter Jet Rocket Launcher Specifications
 2025-05-19 00:10:31 [INFO] 📄 (stable_pdf_parsing:485) - [Stable_Pdf_Parsing] Pages processed: 1
 2025-05-19 00:10:31 [INFO] 📄 (stable_pdf_parsing:486) - [Stable_Pdf_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:10:31 [INFO] ✅ (stable_pdf_parsing:487) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:10:31 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:10:31 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:10:31 [INFO] 🔍 (pipeline_controller:143) - [Pipeline_Controller] Step 3: Checking document for duplicates
 2025-05-19 00:10:31 [INFO] 💾 (pipeline_controller:264) - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
-2025-05-19 00:10:31 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:10:31 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:10:31 [INFO] 🧠 (stable_save_to_lancedb:271) - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:10:31 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
 2025-05-19 00:10:31 [INFO] ℹ️ (SentenceTransformer:219) - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:10:39 [INFO] ✅ (stable_save_to_lancedb:283) - [Save_To_LanceDB] Model loaded successfully
-2025-05-19 00:10:39 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:10:39 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:10:39 [WARNING] ⚠️ (stable_save_to_lancedb:112) - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
 2025-05-19 00:10:39 [INFO] ✅ (stable_save_to_lancedb:169) - [Save_To_LanceDB] Successfully extracted 1 pages from document
 2025-05-19 00:10:39 [INFO] 🔄 (stable_save_to_lancedb:172) - [Save_To_LanceDB] Checking for document duplicates
-2025-05-19 00:10:39 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:39 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:39 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:10:39 [INFO] 🔍 (pre_save_deduplication:813) - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_changed_values_combined
 2025-05-19 00:10:39 [INFO] 🔄 (pre_save_deduplication:606) - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_changed_values_combined
@@ -253,7 +253,7 @@
 2025-05-19 00:10:39 [INFO] ⚠️ (pre_save_deduplication:338) - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
 2025-05-19 00:10:39 [INFO] 🆕 (pre_save_deduplication:193) - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_changed_values_combined is completely new (all 1 pages are new)
 2025-05-19 00:10:39 [INFO] 📊 (stable_save_to_lancedb:210) - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
-2025-05-19 00:10:39 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:39 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:39 [INFO] ✅ (stable_save_to_lancedb:305) - [Save_To_LanceDB] Connected to LanceDB
 2025-05-19 00:10:39 [INFO] 📂 (stable_save_to_lancedb:249) - [Save_To_LanceDB] Opening existing table: documents
 2025-05-19 00:10:39 [INFO] ➕ (stable_save_to_lancedb:316) - [Save_To_LanceDB] Adding 1 new pages to LanceDB
@@ -261,7 +261,7 @@
 2025-05-19 00:10:39 [INFO] ⏱️ (stable_save_to_lancedb:385) - [Save_To_LanceDB] Processing completed in 7.68 seconds
 2025-05-19 00:10:39 [INFO] ✅ (pipeline_controller:277) - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
 2025-05-19 00:10:39 [INFO] 🔄 (pipeline_controller:285) - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
-2025-05-19 00:10:39 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:39 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:39 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:10:39 [INFO] 🔄 (pipeline_controller:483) - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
 2025-05-19 00:10:39 [INFO] 🔄 (pipeline_controller:505) - [Pipeline_Controller] 🔄 Using standard chunking for new document
@@ -275,7 +275,7 @@
 2025-05-19 00:10:45 [INFO] 🧩 (integrated_chunking:352) - [Integrated_Chunking] 📊 Generated 2 chunks
 2025-05-19 00:10:45 [INFO] 🧩 (integrated_chunking:353) - [Integrated_Chunking]    Min/Max/Avg chars: 340/1110/725.0
 2025-05-19 00:10:45 [INFO] 🧩 (integrated_chunking:354) - [Integrated_Chunking]    Min/Max/Avg tokens: 85/277/181.0
-2025-05-19 00:10:45 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at _03_output/lancedb
+2025-05-19 00:10:45 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at output/lancedb
 2025-05-19 00:10:45 [INFO] 🧩 (integrated_chunking:393) - [Integrated_Chunking] ✅ Opened existing document_chunks table
 2025-05-19 00:10:45 [INFO] 🧮 (integrated_chunking:402) - [Integrated_Chunking] 🔄 Loading embedding model
 2025-05-19 00:10:45 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
@@ -309,8 +309,8 @@
 2025-05-19 00:10:51 [INFO] ✅ (pipeline_controller:513) - [Pipeline_Controller] ✅ Chunking completed successfully
 2025-05-19 00:10:51 [INFO] 📚 (pipeline_controller:525) - [Pipeline_Controller] Step 6: Extracting requirements from document chunks
 2025-05-19 00:10:51 [INFO] ✈️ (extract_requirements:586) - [Extract_Requirements] 🔄 Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
-2025-05-19 00:10:51 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:10:51 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:10:51 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:10:51 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:10:51 [WARNING] ✈️ (extract_requirements:523) - [Extract_Requirements] ⚠️ No document info found for 'fighter_jet_rocket_launcher_spec_2_changed_values.pdf'
 2025-05-19 00:10:51 [ERROR] ✈️ (extract_requirements:597) - [Extract_Requirements] ❌ Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf not found in database
 2025-05-19 00:10:51 [INFO] ✅ (pipeline_controller:537) - [Pipeline_Controller] ✅ Requirements extraction completed for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
@@ -319,8 +319,8 @@
 2025-05-19 00:10:51 [INFO] ⏱️ (test_scenarios:492) - [E2E_Tests] Pipeline completed in 39.56 seconds
 2025-05-19 00:10:51 [ERROR] ❌ (test_scenarios:501) - [E2E_Tests]   Step 2 FAILED ❌
 2025-05-19 00:10:51 [ERROR] ❗ (test_scenarios:505) - [E2E_Tests]     - Expected duplicate_chunks=False, got True
-2025-05-19 00:10:51 [INFO] 💾 (test_scenarios:552) - [E2E_Tests] Test results saved to /Users/fabio/Agentic_AI/Requify_V2/_03_output/test_results/e2e_test_results_20250519_001051.json
-2025-05-19 00:10:51 [INFO] 📝 (test_scenarios:553) - [E2E_Tests] Test summary saved to /Users/fabio/Agentic_AI/Requify_V2/_03_output/test_results/e2e_test_summary_20250519_001051.txt
+2025-05-19 00:10:51 [INFO] 💾 (test_scenarios:552) - [E2E_Tests] Test results saved to /Users/fabio/Agentic_AI/Requify_V2/output/test_results/e2e_test_results_20250519_001051.json
+2025-05-19 00:10:51 [INFO] 📝 (test_scenarios:553) - [E2E_Tests] Test summary saved to /Users/fabio/Agentic_AI/Requify_V2/output/test_results/e2e_test_summary_20250519_001051.txt
 2025-05-19 00:10:51 [ERROR] ❌ (test_scenarios:559) - [E2E_Tests] Scenario 2 FAILED ❌
 2025-05-19 00:12:21 [INFO] 🧠 (stable_pdf_parsing:93) - [Stable_Pdf_Parsing] Using OpenAI models for processing
 2025-05-19 00:12:21 [INFO] 🧠 (integrated_chunking:122) - [Integrated_Chunking] Using OpenAI models for chunking
@@ -332,14 +332,14 @@
 2025-05-19 00:12:24 [INFO] 🚀 (test_scenarios:470) - [E2E_Tests] Starting Scenario 2: Value Change Variant
 2025-05-19 00:12:24 [INFO] 🧹 (test_scenarios:473) - [E2E_Tests] Clearing LanceDB database...
 2025-05-19 00:12:24 [INFO] 🧹 (test_scenarios:374) - [E2E_Tests] Clearing LanceDB database...
-2025-05-19 00:12:24 [INFO] 🔄 (reset_lancedb:38) - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:24 [INFO] 🔄 (reset_lancedb:38) - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:24 [INFO] ✅ (reset_lancedb:40) - [Reset_LanceDB] Connected to LanceDB. Current tables: ['documents', 'file_hashes']
 2025-05-19 00:12:24 [INFO] 🗑️ (reset_lancedb:45) - [Reset_LanceDB] Dropping table: documents
 2025-05-19 00:12:24 [INFO] 🗑️ (reset_lancedb:45) - [Reset_LanceDB] Dropping table: file_hashes
 2025-05-19 00:12:24 [INFO] ✅ (reset_lancedb:48) - [Reset_LanceDB] All tables dropped. Running initialization to create fresh tables.
 2025-05-19 00:12:24 [INFO] 📋 (init_lancedb:160) - [LanceDB_Admin] 🔄 Script started: Initializing LanceDB tables...
-2025-05-19 00:12:24 [INFO] 🛢️ (init_lancedb:169) - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/_03_output/lancedb
-2025-05-19 00:12:24 [INFO] 🔌 (init_lancedb:174) - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/_03_output/lancedb
+2025-05-19 00:12:24 [INFO] 🛢️ (init_lancedb:169) - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/output/lancedb
+2025-05-19 00:12:24 [INFO] 🔌 (init_lancedb:174) - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/tests/e2e/output/lancedb
 2025-05-19 00:12:24 [INFO] 🔌 (init_lancedb:177) - [LanceDB_Admin] ✅ Successfully connected to LanceDB. Current tables: ['document_chunks', 'documents', 'file_hashes', 'requirements']
 2025-05-19 00:12:24 [INFO] 📋 (init_lancedb:123) - [LanceDB_Admin] Table 'documents' already exists in LanceDB. Verifying schema...
 2025-05-19 00:12:24 [INFO] 📋 (init_lancedb:133) - [LanceDB_Admin] ✅ Schema for table 'documents' matches defined schema. No action needed.
@@ -362,22 +362,22 @@
 2025-05-19 00:12:24 [INFO] 🚀 (test_scenarios:398) - [E2E_Tests] Running pipeline for fighter_jet_rocket_launcher_spec_2.pdf...
 2025-05-19 00:12:24 [INFO] 🚀 (pipeline_controller:103) - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2.pdf (max_step=6, dry_run=False, skip_hash_check=False)
 2025-05-19 00:12:24 [INFO] 🔐 (pipeline_controller:107) - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2.pdf
-2025-05-19 00:12:24 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-19 00:12:24 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:12:24 [INFO] 🔢 (file_hash_deduplication:220) - [Hash_Deduplication] Calculated hashes: MD5=ef3e394175eb34bcc1a081face8c7bda, SHA256=43f6165ea7a177ef9d0e3b4c831a9810844537887e74a5fd455373aed015fa93
-2025-05-19 00:12:24 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:12:24 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:24 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:12:24 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:24 [ERROR] ❌ (file_hash_deduplication:225) - [Hash_Deduplication] Failed to connect to LanceDB database
 2025-05-19 00:12:24 [INFO] ✅ (pipeline_controller:114) - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2.pdf passed hash-based duplicate check
 2025-05-19 00:12:24 [INFO] 📑 (pipeline_controller:122) - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:12:24 [INFO] 🔍 (stable_pdf_parsing:298) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:24 [INFO] 🔍 (stable_pdf_parsing:299) - [Stable_Pdf_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:12:24 [INFO] 🔍 (stable_pdf_parsing:300) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:12:24 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf' to images...
+2025-05-19 00:12:24 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2.pdf' to images...
 2025-05-19 00:12:24 [INFO] 📄 (stable_pdf_parsing:179) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:24 [INFO] 📄 (stable_pdf_parsing:180) - [Stable_Pdf_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:12:24 [INFO] 📄 (stable_pdf_parsing:181) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:24 [INFO] 📄 (stable_pdf_parsing:196) - [Stable_Pdf_Parsing] PDF has 1 pages
-2025-05-19 00:12:24 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to _03_output/pdf_images/fighter_jet_rocket_launcher_spec_2/page_001.png
+2025-05-19 00:12:24 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2/page_001.png
 2025-05-19 00:12:24 [INFO] 📄 (stable_pdf_parsing:209) - [Stable_Pdf_Parsing] Page 1/1: Saved to page_001.png
 2025-05-19 00:12:24 [INFO] 📑 (stable_pdf_parsing:214) - [Stable_Pdf_Parsing] Encoded image for page 1 to base64.
 2025-05-19 00:12:24 [INFO] ✅ (stable_pdf_parsing:220) - [Stable_Pdf_Parsing] Generated 1 images from PDF
@@ -403,37 +403,37 @@
 2025-05-19 00:12:40 [INFO] 🔢 (_00_utils:108) - Token counters updated: 2876 input, 659 output
 2025-05-19 00:12:40 [INFO] ⚙️ (stable_pdf_parsing:442) - [Stable_Pdf_Parsing] Successfully processed page 1
 2025-05-19 00:12:40 [INFO] ✅ (stable_pdf_parsing:447) - [Stable_Pdf_Parsing] Page 1: Generated summary and hashtags: rocket_launcher, RLX5000, fighter_jet, technical_specifications, performance_metrics...
-2025-05-19 00:12:40 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:12:40 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:12:40 [INFO] ✅ (stable_pdf_parsing:482) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:40 [INFO] ✅ (stable_pdf_parsing:483) - [Stable_Pdf_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2.pdf
 2025-05-19 00:12:40 [INFO] 📄 (stable_pdf_parsing:484) - [Stable_Pdf_Parsing] Document title: Fighter Jet RLX-5000 Rocket Launcher Specifications
 2025-05-19 00:12:40 [INFO] 📄 (stable_pdf_parsing:485) - [Stable_Pdf_Parsing] Pages processed: 1
 2025-05-19 00:12:40 [INFO] 📄 (stable_pdf_parsing:486) - [Stable_Pdf_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:12:40 [INFO] ✅ (stable_pdf_parsing:487) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:12:40 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:12:40 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:12:40 [INFO] 🔍 (pipeline_controller:143) - [Pipeline_Controller] Step 3: Checking document for duplicates
 2025-05-19 00:12:40 [INFO] 💾 (pipeline_controller:264) - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
-2025-05-19 00:12:40 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:12:40 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:12:40 [INFO] 🧠 (stable_save_to_lancedb:271) - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:12:40 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
 2025-05-19 00:12:40 [INFO] ℹ️ (SentenceTransformer:219) - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:12:44 [INFO] ✅ (stable_save_to_lancedb:283) - [Save_To_LanceDB] Model loaded successfully
-2025-05-19 00:12:44 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-19 00:12:44 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
 2025-05-19 00:12:44 [WARNING] ⚠️ (stable_save_to_lancedb:112) - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
 2025-05-19 00:12:44 [INFO] ✅ (stable_save_to_lancedb:169) - [Save_To_LanceDB] Successfully extracted 1 pages from document
 2025-05-19 00:12:44 [INFO] 🔄 (stable_save_to_lancedb:172) - [Save_To_LanceDB] Checking for document duplicates
-2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:44 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:12:44 [INFO] 🔍 (pre_save_deduplication:813) - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_combined
 2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:606) - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_combined
-2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:44 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:12:44 [INFO] ✅ (pre_save_deduplication:614) - [Docs_Deduplication] No existing database or table found. All 1 pages are new.
-2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:44 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:12:44 [INFO] 🆕 (pre_save_deduplication:193) - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_combined is completely new (all 1 pages are new)
 2025-05-19 00:12:44 [INFO] 📊 (stable_save_to_lancedb:210) - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
-2025-05-19 00:12:44 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:44 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:44 [INFO] ✅ (stable_save_to_lancedb:305) - [Save_To_LanceDB] Connected to LanceDB
 2025-05-19 00:12:44 [INFO] 🆕 (stable_save_to_lancedb:252) - [Save_To_LanceDB] Creating new table: documents
 2025-05-19 00:12:44 [INFO] ➕ (stable_save_to_lancedb:316) - [Save_To_LanceDB] Adding 1 new pages to LanceDB
@@ -441,7 +441,7 @@
 2025-05-19 00:12:44 [INFO] ⏱️ (stable_save_to_lancedb:385) - [Save_To_LanceDB] Processing completed in 3.76 seconds
 2025-05-19 00:12:44 [INFO] ✅ (pipeline_controller:277) - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
 2025-05-19 00:12:44 [INFO] 🔄 (pipeline_controller:285) - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
-2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:44 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:44 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:12:44 [INFO] 🔄 (pipeline_controller:483) - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
 2025-05-19 00:12:44 [INFO] 🔄 (pipeline_controller:505) - [Pipeline_Controller] 🔄 Using standard chunking for new document
@@ -455,7 +455,7 @@
 2025-05-19 00:12:52 [INFO] 🧩 (integrated_chunking:352) - [Integrated_Chunking] 📊 Generated 1 chunks
 2025-05-19 00:12:52 [INFO] 🧩 (integrated_chunking:353) - [Integrated_Chunking]    Min/Max/Avg chars: 1707/1707/1707.0
 2025-05-19 00:12:52 [INFO] 🧩 (integrated_chunking:354) - [Integrated_Chunking]    Min/Max/Avg tokens: 426/426/426.0
-2025-05-19 00:12:52 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at _03_output/lancedb
+2025-05-19 00:12:52 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at output/lancedb
 2025-05-19 00:12:52 [INFO] 🧩 (integrated_chunking:393) - [Integrated_Chunking] ✅ Opened existing document_chunks table
 2025-05-19 00:12:52 [INFO] 🧮 (integrated_chunking:402) - [Integrated_Chunking] 🔄 Loading embedding model
 2025-05-19 00:12:52 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
@@ -486,8 +486,8 @@
 2025-05-19 00:12:56 [INFO] ✅ (pipeline_controller:513) - [Pipeline_Controller] ✅ Chunking completed successfully
 2025-05-19 00:12:56 [INFO] 📚 (pipeline_controller:525) - [Pipeline_Controller] Step 6: Extracting requirements from document chunks
 2025-05-19 00:12:56 [INFO] ✈️ (extract_requirements:586) - [Extract_Requirements] 🔄 Processing document: fighter_jet_rocket_launcher_spec_2.pdf
-2025-05-19 00:12:56 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:12:56 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:56 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:12:56 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:56 [WARNING] ✈️ (extract_requirements:523) - [Extract_Requirements] ⚠️ No document info found for 'fighter_jet_rocket_launcher_spec_2.pdf'
 2025-05-19 00:12:56 [ERROR] ✈️ (extract_requirements:597) - [Extract_Requirements] ❌ Document fighter_jet_rocket_launcher_spec_2.pdf not found in database
 2025-05-19 00:12:56 [INFO] ✅ (pipeline_controller:537) - [Pipeline_Controller] ✅ Requirements extraction completed for fighter_jet_rocket_launcher_spec_2.pdf
@@ -500,25 +500,25 @@
 2025-05-19 00:12:56 [INFO] 🚀 (test_scenarios:398) - [E2E_Tests] Running pipeline for fighter_jet_rocket_launcher_spec_2_changed_values.pdf...
 2025-05-19 00:12:56 [INFO] 🚀 (pipeline_controller:103) - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf (max_step=6, dry_run=False, skip_hash_check=False)
 2025-05-19 00:12:56 [INFO] 🔐 (pipeline_controller:107) - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
-2025-05-19 00:12:56 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-19 00:12:56 [INFO] 🔍 (file_hash_deduplication:215) - [Hash_Deduplication] Checking for duplicate of file: /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:12:56 [INFO] 🔢 (file_hash_deduplication:220) - [Hash_Deduplication] Calculated hashes: MD5=18dc4d423a774bd216a0a7e2a0ab3018, SHA256=6689b49c25c69cfc03b167422fad04b602b064be5abc00e1e749d7ac3142879b
-2025-05-19 00:12:56 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:12:56 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:12:56 [INFO] 🔄 (file_hash_deduplication:56) - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:12:56 [INFO] ✅ (file_hash_deduplication:59) - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:12:56 [INFO] ℹ️ (file_hash_deduplication:109) - [Hash_Deduplication] File hashes table file_hashes does not exist yet
 2025-05-19 00:12:56 [INFO] 🆕 (file_hash_deduplication:161) - [Hash_Deduplication] Creating new file hashes table: file_hashes
-2025-05-19 00:12:56 [INFO] ✅ (file_hash_deduplication:190) - [Hash_Deduplication] Successfully saved file hash information for /Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-19 00:12:56 [INFO] ✅ (file_hash_deduplication:190) - [Hash_Deduplication] Successfully saved file hash information for /Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:12:56 [INFO] ✅ (file_hash_deduplication:239) - [Hash_Deduplication] File hash check completed in 0.02 seconds. File is unique.
 2025-05-19 00:12:56 [INFO] ✅ (pipeline_controller:114) - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf passed hash-based duplicate check
 2025-05-19 00:12:56 [INFO] 📑 (pipeline_controller:122) - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:12:56 [INFO] 🔍 (stable_pdf_parsing:298) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:56 [INFO] 🔍 (stable_pdf_parsing:299) - [Stable_Pdf_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:12:56 [INFO] 🔍 (stable_pdf_parsing:300) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:12:56 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/_01_input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
+2025-05-19 00:12:56 [INFO] 🔄 (stable_pdf_parsing:177) - [Stable_Pdf_Parsing] Processing '/Users/fabio/Agentic_AI/Requify_V2/input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
 2025-05-19 00:12:56 [INFO] 📄 (stable_pdf_parsing:179) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:56 [INFO] 📄 (stable_pdf_parsing:180) - [Stable_Pdf_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:12:56 [INFO] 📄 (stable_pdf_parsing:181) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:12:56 [INFO] 📄 (stable_pdf_parsing:196) - [Stable_Pdf_Parsing] PDF has 1 pages
-2025-05-19 00:12:57 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to _03_output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
+2025-05-19 00:12:57 [INFO] ✈️ (stable_pdf_parsing:207) - [Stable_Pdf_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
 2025-05-19 00:12:57 [INFO] 📄 (stable_pdf_parsing:209) - [Stable_Pdf_Parsing] Page 1/1: Saved to page_001.png
 2025-05-19 00:12:57 [INFO] 📑 (stable_pdf_parsing:214) - [Stable_Pdf_Parsing] Encoded image for page 1 to base64.
 2025-05-19 00:12:57 [INFO] ✅ (stable_pdf_parsing:220) - [Stable_Pdf_Parsing] Generated 1 images from PDF
@@ -543,26 +543,26 @@
 2025-05-19 00:13:12 [INFO] 🔢 (_00_utils:108) - Token counters updated: 6296 input, 1703 output
 2025-05-19 00:13:12 [INFO] ⚙️ (stable_pdf_parsing:442) - [Stable_Pdf_Parsing] Successfully processed page 1
 2025-05-19 00:13:12 [INFO] ✅ (stable_pdf_parsing:447) - [Stable_Pdf_Parsing] Page 1: Generated summary and hashtags: rocket_launcher, fighter_jet, RLX_5000, technical_specifications, performance_metrics...
-2025-05-19 00:13:12 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:13:12 [INFO] ✈️ (stable_pdf_parsing:479) - [Stable_Pdf_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:13:12 [INFO] ✅ (stable_pdf_parsing:482) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
 2025-05-19 00:13:12 [INFO] ✅ (stable_pdf_parsing:483) - [Stable_Pdf_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
 2025-05-19 00:13:12 [INFO] 📄 (stable_pdf_parsing:484) - [Stable_Pdf_Parsing] Document title: RLX-5000 Fighter Jet Rocket Launcher Specifications
 2025-05-19 00:13:12 [INFO] 📄 (stable_pdf_parsing:485) - [Stable_Pdf_Parsing] Pages processed: 1
 2025-05-19 00:13:12 [INFO] 📄 (stable_pdf_parsing:486) - [Stable_Pdf_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:13:12 [INFO] ✅ (stable_pdf_parsing:487) - [Stable_Pdf_Parsing] --------------------------------------------------------------------------------
-2025-05-19 00:13:12 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:13:12 [INFO] ✅ (pipeline_controller:135) - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:13:12 [INFO] 🔍 (pipeline_controller:143) - [Pipeline_Controller] Step 3: Checking document for duplicates
 2025-05-19 00:13:12 [INFO] 💾 (pipeline_controller:264) - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
-2025-05-19 00:13:12 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:13:12 [INFO] 📄 (stable_save_to_lancedb:381) - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:13:12 [INFO] 🧠 (stable_save_to_lancedb:271) - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:13:12 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
 2025-05-19 00:13:12 [INFO] ℹ️ (SentenceTransformer:219) - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
 2025-05-19 00:13:18 [INFO] ✅ (stable_save_to_lancedb:283) - [Save_To_LanceDB] Model loaded successfully
-2025-05-19 00:13:18 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: _03_output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-19 00:13:18 [INFO] 🔄 (stable_save_to_lancedb:86) - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
 2025-05-19 00:13:18 [WARNING] ⚠️ (stable_save_to_lancedb:112) - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
 2025-05-19 00:13:18 [INFO] ✅ (stable_save_to_lancedb:169) - [Save_To_LanceDB] Successfully extracted 1 pages from document
 2025-05-19 00:13:18 [INFO] 🔄 (stable_save_to_lancedb:172) - [Save_To_LanceDB] Checking for document duplicates
-2025-05-19 00:13:18 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:13:18 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:13:18 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:13:18 [INFO] 🔍 (pre_save_deduplication:813) - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_changed_values_combined
 2025-05-19 00:13:18 [INFO] 🔄 (pre_save_deduplication:606) - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_changed_values_combined
@@ -572,7 +572,7 @@
 2025-05-19 00:13:18 [INFO] ⚠️ (pre_save_deduplication:338) - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
 2025-05-19 00:13:18 [INFO] 🆕 (pre_save_deduplication:193) - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_changed_values_combined is completely new (all 1 pages are new)
 2025-05-19 00:13:18 [INFO] 📊 (stable_save_to_lancedb:210) - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
-2025-05-19 00:13:18 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:13:18 [INFO] 🔌 (stable_save_to_lancedb:303) - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:13:18 [INFO] ✅ (stable_save_to_lancedb:305) - [Save_To_LanceDB] Connected to LanceDB
 2025-05-19 00:13:18 [INFO] 📂 (stable_save_to_lancedb:249) - [Save_To_LanceDB] Opening existing table: documents
 2025-05-19 00:13:18 [INFO] ➕ (stable_save_to_lancedb:316) - [Save_To_LanceDB] Adding 1 new pages to LanceDB
@@ -580,7 +580,7 @@
 2025-05-19 00:13:18 [INFO] ⏱️ (stable_save_to_lancedb:385) - [Save_To_LanceDB] Processing completed in 5.37 seconds
 2025-05-19 00:13:18 [INFO] ✅ (pipeline_controller:277) - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
 2025-05-19 00:13:18 [INFO] 🔄 (pipeline_controller:285) - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
-2025-05-19 00:13:18 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:13:18 [INFO] 🔄 (pre_save_deduplication:265) - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:13:18 [INFO] ✅ (pre_save_deduplication:275) - [Docs_Deduplication] Successfully connected to LanceDB
 2025-05-19 00:13:18 [INFO] 🔄 (pipeline_controller:483) - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
 2025-05-19 00:13:18 [INFO] 🔄 (pipeline_controller:505) - [Pipeline_Controller] 🔄 Using standard chunking for new document
@@ -594,7 +594,7 @@
 2025-05-19 00:13:25 [INFO] 🧩 (integrated_chunking:352) - [Integrated_Chunking] 📊 Generated 1 chunks
 2025-05-19 00:13:25 [INFO] 🧩 (integrated_chunking:353) - [Integrated_Chunking]    Min/Max/Avg chars: 1495/1495/1495.0
 2025-05-19 00:13:25 [INFO] 🧩 (integrated_chunking:354) - [Integrated_Chunking]    Min/Max/Avg tokens: 373/373/373.0
-2025-05-19 00:13:25 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at _03_output/lancedb
+2025-05-19 00:13:25 [INFO] 🔌 (integrated_chunking:365) - [Integrated_Chunking] 🔄 Connecting to LanceDB at output/lancedb
 2025-05-19 00:13:25 [INFO] 🧩 (integrated_chunking:393) - [Integrated_Chunking] ✅ Opened existing document_chunks table
 2025-05-19 00:13:25 [INFO] 🧮 (integrated_chunking:402) - [Integrated_Chunking] 🔄 Loading embedding model
 2025-05-19 00:13:25 [INFO] ℹ️ (SentenceTransformer:211) - Use pytorch device_name: mps
@@ -625,8 +625,8 @@
 2025-05-19 00:13:30 [INFO] ✅ (pipeline_controller:513) - [Pipeline_Controller] ✅ Chunking completed successfully
 2025-05-19 00:13:30 [INFO] 📚 (pipeline_controller:525) - [Pipeline_Controller] Step 6: Extracting requirements from document chunks
 2025-05-19 00:13:30 [INFO] ✈️ (extract_requirements:586) - [Extract_Requirements] 🔄 Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
-2025-05-19 00:13:30 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
-2025-05-19 00:13:30 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/_03_output/lancedb
+2025-05-19 00:13:30 [INFO] 🔄 (extract_requirements:310) - [Extract_Requirements] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-19 00:13:30 [INFO] ✅ (extract_requirements:312) - [Extract_Requirements] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
 2025-05-19 00:13:30 [WARNING] ✈️ (extract_requirements:523) - [Extract_Requirements] ⚠️ No document info found for 'fighter_jet_rocket_launcher_spec_2_changed_values.pdf'
 2025-05-19 00:13:30 [ERROR] ✈️ (extract_requirements:597) - [Extract_Requirements] ❌ Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf not found in database
 2025-05-19 00:13:30 [INFO] ✅ (pipeline_controller:537) - [Pipeline_Controller] ✅ Requirements extraction completed for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
@@ -634,6 +634,6 @@
 2025-05-19 00:13:30 [INFO] ⏱️ (test_scenarios:442) - [E2E_Tests] Pipeline completed in 33.70 seconds
 2025-05-19 00:13:30 [INFO] ⏱️ (test_scenarios:492) - [E2E_Tests] Pipeline completed in 33.71 seconds
 2025-05-19 00:13:30 [INFO] ✅ (test_scenarios:498) - [E2E_Tests]   Step 2 PASSED ✅
-2025-05-19 00:13:30 [INFO] 💾 (test_scenarios:552) - [E2E_Tests] Test results saved to /Users/fabio/Agentic_AI/Requify_V2/_03_output/test_results/e2e_test_results_20250519_001330.json
-2025-05-19 00:13:30 [INFO] 📝 (test_scenarios:553) - [E2E_Tests] Test summary saved to /Users/fabio/Agentic_AI/Requify_V2/_03_output/test_results/e2e_test_summary_20250519_001330.txt
+2025-05-19 00:13:30 [INFO] 💾 (test_scenarios:552) - [E2E_Tests] Test results saved to /Users/fabio/Agentic_AI/Requify_V2/output/test_results/e2e_test_results_20250519_001330.json
+2025-05-19 00:13:30 [INFO] 📝 (test_scenarios:553) - [E2E_Tests] Test summary saved to /Users/fabio/Agentic_AI/Requify_V2/output/test_results/e2e_test_summary_20250519_001330.txt
 2025-05-19 00:13:30 [INFO] ✅ (test_scenarios:557) - [E2E_Tests] Scenario 2 PASSED ✅

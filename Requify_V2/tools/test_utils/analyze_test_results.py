@@ -26,7 +26,7 @@ logger = _00_utils.get_logger("Test_Analyzer")
 
 # Constants
 LOG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs", "app.log")
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output", "test_results")
+RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "test_results")
 
 
 def extract_document_sections(log_content: str) -> Dict[str, str]:

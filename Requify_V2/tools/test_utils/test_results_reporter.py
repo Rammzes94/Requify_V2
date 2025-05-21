@@ -24,8 +24,8 @@ _00_utils.setup_project_directory()
 logger = _00_utils.get_logger("Test_Reporter")
 
 # Constants
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output", "test_results")
-REPORT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output", "test_reports")
+RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "test_results")
+REPORT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "test_reports")
 
 # Ensure report directory exists
 os.makedirs(REPORT_DIR, exist_ok=True)

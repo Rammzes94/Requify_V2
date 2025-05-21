@@ -67,7 +67,7 @@ def get_document_path(doc_identifier):
     base_name = os.path.splitext(base_name)[0]
     
     # Check if it's in the standard output directory
-    output_dir = os.path.join("_03_output", "parsed_content", base_name)
+    output_dir = os.path.join("output", "parsed_content", base_name)
     if os.path.exists(output_dir):
         # Look for combined_content.json
         json_path = os.path.join(output_dir, "combined_content.json")

@@ -35,9 +35,9 @@ import torch
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import config
+from src import _00_utils
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-import config
 _00_utils.setup_project_directory()
 
 # Import deduplication module
@@ -56,7 +56,7 @@ SIMILARITY_THRESHOLD = 0.75  # Threshold for similar chunks - lowered to be more
 DUPLICATE_THRESHOLD = 0.995  # High threshold for automatic duplicates without LLM
 
 # LanceDB settings
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 CHUNKS_TABLE_NAME = "document_chunks"
 
@@ -233,12 +233,7 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
     Ask the LLM to chunk the text directly with retry logic.
     Enhanced with support for context-aware chunking when context_chunks is provided.
     
-    Args:
-        md_text: The text to chunk
-        context_chunks: Optional list of existing chunks to use as context for alignment
-        
-    Returns:
-        List of chunked text strings
+    CHANGE: The prompt now explicitly instructs the LLM to ONLY split, NEVER modify, rephrase, or omit any content, and to preserve the original text exactly in each chunk. This ensures perfect traceability for requirements extraction.
     """
     if not md_text.strip():
         return []
@@ -258,12 +253,13 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         Chunk the NEW DOCUMENT TEXT to align with the REFERENCE CHUNKS.
         
         STRICT REQUIREMENTS:
-        1. NEVER exceed {max_size} characters per chunk
-        2. Target {target_size} characters per chunk
-        3. Break at sentence boundaries, NEVER mid-sentence
-        4. Split at paragraph boundaries when possible
-        5. Break large sections rather than creating oversized chunks
-        6. Preserve headers with their content when possible
+        1. ONLY split the text into chunks. NEVER modify, rephrase, paraphrase, summarize, or omit any content. Each chunk must contain the original text exactly as it appears in the input.
+        2. NEVER exceed {max_size} characters per chunk
+        3. Target {target_size} characters per chunk
+        4. Break at sentence boundaries, NEVER mid-sentence
+        5. Split at paragraph boundaries when possible
+        6. Break large sections rather than creating oversized chunks
+        7. Preserve headers with their content when possible
         
         CRITICAL FOR REORDERED CONTENT:
         - Detect and preserve the same content chunks even when sections are reordered
@@ -291,13 +287,14 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         Split this text into chunks of {target_size} to {max_size} characters.
         
         STRICT REQUIREMENTS:
-        1. NEVER exceed {max_size} characters per chunk
-        2. Target {target_size} characters per chunk
-        3. Break at sentence boundaries, NEVER mid-sentence
-        4. Split at paragraph or section boundaries when possible
-        5. Break text at headers when available
-        6. ALWAYS create multiple chunks for text longer than {target_size} characters
-        7. Break large sections rather than creating oversized chunks
+        1. ONLY split the text into chunks. NEVER modify, rephrase, paraphrase, summarize, or omit any content. Each chunk must contain the original text exactly as it appears in the input.
+        2. NEVER exceed {max_size} characters per chunk
+        3. Target {target_size} characters per chunk
+        4. Break at sentence boundaries, NEVER mid-sentence
+        5. Split at paragraph or section boundaries when possible
+        6. Break text at headers when available
+        7. ALWAYS create multiple chunks for text longer than {target_size} characters
+        8. Break large sections rather than creating oversized chunks
         
         Format response as: {{"chunks": ["chunk1", "chunk2", ...]}}
         """
@@ -955,6 +952,17 @@ def process_document_with_context(
                     f"Could not find exact position for chunk {i+1}, using approximate position",
                     extra={"icon": "⚠️"}
                 )
+                # Diagnostic: log and write chunk and document slice to temp file for analysis
+                temp_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'temp', 'chunk_diagnostics')
+                os.makedirs(temp_dir, exist_ok=True)
+                doc_base = os.path.splitext(os.path.basename(document_id))[0]
+                temp_filename = f"{doc_base}_chunk_{i+1:04d}_diagnostic.txt"
+                temp_path = os.path.join(temp_dir, temp_filename)
+                doc_slice = document_text[max(0, current_offset-100):current_offset+100]
+                with open(temp_path, 'w', encoding='utf-8') as f:
+                    f.write(f"CHUNK {i+1} (not found verbatim):\n{'-'*40}\n{chunk_text}\n\n")
+                    f.write(f"Document slice around current_offset={current_offset}:\n{'-'*40}\n{doc_slice}\n")
+                logger.info(f"Diagnostic written to {temp_path}", extra={"icon": "📝"})
                 chunk_start = current_offset
         
         chunk_end = chunk_start + len(chunk_text)
@@ -1065,13 +1073,13 @@ def process_document_with_context(
             # Without reference chunks, all chunks are new
             new_count += 1
             
-        # Skip duplicate chunks in the output (we'll reference the original)
+        # Now instead of skipping duplicate chunks, we'll always save them with the duplicate flag
         if is_duplicate:
             logger.info(
-                f"Skipping duplicate chunk {chunk_id}, referencing {duplicate_of} instead",
+                f"Found duplicate chunk {chunk_id}, will save with reference to {duplicate_of}",
                 extra={"icon": "♻️"}
             )
-            continue
+            # Note: We continue processing instead of 'continue' to save the chunk
                 
         # Create the chunk data structure
         chunk_data = {
@@ -1090,7 +1098,8 @@ def process_document_with_context(
             "previous_chunk_id": previous_chunk_id,
             "timestamp": timestamp,
             "aligned_with_chunk_id": "",
-            "aligned_with_document_id": similar_doc_id or ""
+            "aligned_with_document_id": similar_doc_id or "",
+            "is_duplicate_marker": is_duplicate  # Add a duplicate marker flag
         }
         
         processed_chunks.append(chunk_data)
@@ -1345,9 +1354,8 @@ def process_document(
                 logger.error(f"Failed to save chunks to database for document {document_id}", extra={"icon": "❌"})
                 return False
         else:
-            # If there are no chunks to save because all were duplicates, 
-            # consider this a success (proper deduplication)
-            logger.info(f"All chunks were detected as duplicates - no new chunks to save", extra={"icon": "✅"})
+            # If there are no chunks to save, log this information
+            logger.info(f"No new chunks to save for document {document_id}", extra={"icon": "ℹ️"})
         
         logger.info(f"Successfully processed document: {document_id}", extra={"icon": "✅"})
         return True
@@ -1383,7 +1391,7 @@ def main():
     Test function for chunking.
     """
     # Try to find a test file
-    test_file = os.path.join("_01_input", "raw", "test_document.txt")
+    test_file = os.path.join("input", "raw", "test_document.txt")
     test_content = ""
     
     if os.path.exists(test_file):
@@ -1436,4 +1444,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

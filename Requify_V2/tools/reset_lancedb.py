@@ -10,8 +10,12 @@ import sys
 import logging
 from dotenv import load_dotenv
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Ensure the project root is the first entry in sys.path so 'config' and other modules can be found
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, ".."))
+if sys.path[0] != project_root:
+    sys.path.insert(0, project_root)
+
 from src import _00_utils
 _00_utils.setup_project_directory()
 
@@ -24,7 +28,7 @@ import lancedb
 logger = _00_utils.get_logger("Reset_LanceDB")
 
 # Constants
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 ALL_TABLES = ["document_chunks", "documents", "file_hashes", "requirements"]
 

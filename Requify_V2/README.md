@@ -49,7 +49,7 @@ The system maintains full traceability between documents and requirements, with 
 Process a document through the entire pipeline:
 
 ```bash
-python pipeline_runner.py --doc_path _01_input/raw/your_document.pdf
+python pipeline_runner.py --doc_path input/raw/your_document.pdf
 ```
 
 ### Controlling Pipeline Steps
@@ -57,7 +57,7 @@ python pipeline_runner.py --doc_path _01_input/raw/your_document.pdf
 You can control how far the pipeline runs by specifying the maximum step:
 
 ```bash
-python pipeline_runner.py --doc_path _01_input/raw/your_document.pdf --max_step 4
+python pipeline_runner.py --doc_path input/raw/your_document.pdf --max_step 4
 ```
 
 Available steps:
@@ -73,7 +73,7 @@ Available steps:
 To check a document without modifying the database:
 
 ```bash
-python pipeline_runner.py --doc_path _01_input/raw/your_document.pdf --dry_run
+python pipeline_runner.py --doc_path input/raw/your_document.pdf --dry_run
 ```
 
 ### Visualizing Document Relationships
@@ -96,11 +96,11 @@ For a specific database type:
 python tools/visualization/visualize_db_relationships.py --db-type test
 ```
 
-Output visualizations are saved in `_03_output/visualizations/`.
+Output visualizations are saved in `output/visualizations/`.
 
 ## Directory Structure
 
-- `_01_input/`: Input documents
+- `input/`: Input documents
   - `raw/`: Raw input documents
 - `src/`: Source code
   - `_00_lancedb_admin/`: LanceDB administration utilities
@@ -110,7 +110,7 @@ Output visualizations are saved in `_03_output/visualizations/`.
   - `_03_docs_deduplication/`: Document deduplication modules
   - `_04_extract_reqs/`: Requirements extraction modules
   - `_05_reqs_deduplication/`: Requirements deduplication modules
-- `_03_output/`: Output data
+- `output/`: Output data
   - `lancedb/`: LanceDB vector database
   - `parsed_content/`: Parsed document content
   - `pdf_images/`: Images extracted from PDFs
@@ -130,14 +130,14 @@ Output visualizations are saved in `_03_output/visualizations/`.
 
 Requify_V2 supports multiple database environments:
 
-1. **Main Database** (`_03_output/lancedb/`)
+1. **Main Database** (`output/lancedb/`)
    - Production database with real documents
    
-2. **Test Database** (`tests/e2e/_03_output/lancedb/`)
+2. **Test Database** (`tests/e2e/output/lancedb/`)
    - Used for automated test scenarios
    - Isolated from production data
    
-3. **Validation Database** (`tools/validation/_03_output/lancedb/`)
+3. **Validation Database** (`tools/validation/output/lancedb/`)
    - Used for quality assurance and benchmark testing
 
 ## Key Components

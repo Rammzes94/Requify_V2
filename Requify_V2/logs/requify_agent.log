@@ -1,0 +1,1058 @@
+2025-05-21 10:55:57 [INFO] 🧠 - [PDF_Parsing] Using OpenAI models for processing: Vision=gpt-4.1-mini, Text=gpt-4.1-mini
+2025-05-21 10:55:58 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 10:56:00 [INFO] ℹ️ - PyTorch version 2.6.0 available.
+2025-05-21 10:56:00 [INFO] 🧠 - [Reqs_Deduplication] Model provider for requirements deduplication: openai
+2025-05-21 10:56:00 [INFO] 🧠 - [Extract_Requirements] Using OpenAI model for requirements extraction: gpt-4.1-mini
+2025-05-21 10:56:00 [INFO] 🚀 - [Pipeline_Runner] === Document Processing Pipeline Runner ===
+2025-05-21 10:57:26 [INFO] 📋 - [Pipeline_Runner] === Available Input Files ===
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 1. Fighter_Jet_Engine_Detailed_Requirements.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 2. Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 3. Fighter_Jet_Engine_Detailed_Requirements_1.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 4. SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 5. fighter_jet_rocket_launcher_spec.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 6. fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 7. fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 8. fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 9. fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 10. fighter_jet_rocket_launcher_spec_5_reordered.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 11. fighter_jet_unique_original.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 12. fighter_jet_unique_reordered.pdf
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 13. file-sample_1MB.docx
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 14. high-level_requirements.txt
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 15. high-level_requirements_V2.txt
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 16. small_test.txt
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 17. test_document.txt
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 18. test_document_updated.txt
+2025-05-21 10:57:26 [INFO] 📄 - [Pipeline_Runner] 19. top_requirements.txt
+2025-05-21 10:57:36 [INFO] 📋 - [Pipeline_Runner] === Available Pipeline Steps ===
+2025-05-21 10:57:36 [INFO] ℹ️ - [Pipeline_Runner] 1. File Extension Filtering
+2025-05-21 10:57:36 [INFO] ℹ️ - [Pipeline_Runner] 2. Document Duplication Check
+2025-05-21 10:57:36 [INFO] ℹ️ - [Pipeline_Runner] 3. PDF Parsing & Content Extraction
+2025-05-21 10:57:36 [INFO] ℹ️ - [Pipeline_Runner] 4. Content Chunking
+2025-05-21 10:57:36 [INFO] ℹ️ - [Pipeline_Runner] 5. Requirements Extraction
+2025-05-21 10:57:38 [INFO] ⚙️ - [Pipeline_Runner] === Pipeline Run Settings ===
+2025-05-21 10:57:38 [INFO] 📄 - [Pipeline_Runner] Input file: input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:38 [INFO] 🔢 - [Pipeline_Runner] Maximum UI step: 4 - Content Chunking (Controller step: 5)
+2025-05-21 10:57:38 [INFO] 🚀 - [Pipeline_Runner] === Starting Pipeline ===
+2025-05-21 10:57:38 [INFO] 🚀 - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf (max_step=5, dry_run=False, skip_hash_check=False)
+2025-05-21 10:57:38 [INFO] 🔐 - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:38 [INFO] 🔍 - [Hash_Deduplication] Checking for duplicate of file: input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:38 [INFO] 🔢 - [Hash_Deduplication] Calculated hashes: MD5=18dc4d423a774bd216a0a7e2a0ab3018, SHA256=6689b49c25c69cfc03b167422fad04b602b064be5abc00e1e749d7ac3142879b
+2025-05-21 10:57:38 [INFO] 🔄 - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:57:38 [INFO] ✅ - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:57:39 [INFO] ✅ - [Hash_Deduplication] Successfully saved file hash information for input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:39 [INFO] ✅ - [Hash_Deduplication] File hash check completed in 0.08 seconds. File is unique.
+2025-05-21 10:57:39 [INFO] ✅ - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf passed hash-based duplicate check
+2025-05-21 10:57:39 [INFO] 📑 - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:39 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:39 [INFO] 🔍 - [PDF_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:39 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:39 [INFO] 🔄 - [PDF_Parsing] Processing 'input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
+2025-05-21 10:57:39 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:39 [INFO] 📄 - [PDF_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:39 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:39 [INFO] 📄 - [PDF_Parsing] PDF has 1 pages
+2025-05-21 10:57:39 [INFO] ✈️ - [PDF_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
+2025-05-21 10:57:39 [INFO] 📄 - [PDF_Parsing] Page 1/1: Saved to page_001.png
+2025-05-21 10:57:39 [INFO] 📑 - [PDF_Parsing] Encoded image for page 1 to base64.
+2025-05-21 10:57:39 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 10:57:39 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 10:57:39 [INFO] ✅ - [PDF_Parsing] Successfully converted PDF to 1 images and encoded them.
+2025-05-21 10:57:39 [INFO] 🔍 - [PDF_Parsing] Extracting content from page 1/1
+2025-05-21 10:57:47 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 10:57:47 [INFO] 🔢 - Token counters updated: 2616 input, 391 output for gpt-4.1-mini
+2025-05-21 10:57:47 [INFO] ✅ - [PDF_Parsing] Successfully extracted markdown for page_001
+2025-05-21 10:57:47 [INFO] ✅ - [PDF_Parsing] Extracted 1871 chars from page 1
+2025-05-21 10:57:47 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_changed_values.pdf from page summaries...
+2025-05-21 10:57:47 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_changed_values.pdf...
+2025-05-21 10:57:51 [INFO] 🔢 - Token counters updated: 574 input, 132 output for gpt-4.1-mini
+2025-05-21 10:57:52 [INFO] 🔢 - Token counters updated: 227 input, 11 output for gpt-4.1-mini
+2025-05-21 10:57:52 [INFO] ✈️ - [PDF_Parsing] Generated document title from summaries: RLX-5000 Rocket Launcher Specifications for Fighter Jets
+2025-05-21 10:57:52 [INFO] ✅ - [PDF_Parsing] Generated title: "RLX-5000 Rocket Launcher Specifications for Fighter Jets"
+2025-05-21 10:57:52 [INFO] ⚙️ - [PDF_Parsing] Processing pages sequentially...
+2025-05-21 10:57:52 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:52 [INFO] 🔄 - [PDF_Parsing] GENERATING PAGE METADATA
+2025-05-21 10:57:52 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:52 [INFO] ⚙️ - [PDF_Parsing] Processing page 1...
+2025-05-21 10:57:52 [INFO] 🔄 - [PDF_Parsing] Processing metadata for page 1/1
+2025-05-21 10:57:56 [INFO] 🔢 - Token counters updated: 790 input, 180 output for gpt-4.1-mini
+2025-05-21 10:57:56 [INFO] ⚙️ - [PDF_Parsing] Successfully processed page 1
+2025-05-21 10:57:56 [INFO] ✅ - [PDF_Parsing] Page 1: Generated summary and hashtags: RLX-5000, rocket launcher, fighter jets, hydra 70, APKWS...
+2025-05-21 10:57:56 [INFO] ✈️ - [PDF_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 10:57:56 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:56 [INFO] ✅ - [PDF_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:57:56 [INFO] 📄 - [PDF_Parsing] Document title: RLX-5000 Rocket Launcher Specifications for Fighter Jets
+2025-05-21 10:57:56 [INFO] 📄 - [PDF_Parsing] Pages processed: 1
+2025-05-21 10:57:56 [INFO] 📄 - [PDF_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 10:57:56 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 10:57:56 [INFO] ✅ - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 10:57:56 [INFO] 🔍 - [Pipeline_Controller] Step 3: Checking document for duplicates
+2025-05-21 10:57:56 [INFO] 💾 - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
+2025-05-21 10:57:56 [INFO] 📄 - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 10:57:56 [INFO] 🧠 - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 10:57:56 [INFO] ℹ️ - Use pytorch device_name: mps
+2025-05-21 10:57:56 [INFO] ℹ️ - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
+2025-05-21 10:58:02 [INFO] ✅ - [Save_To_LanceDB] Model loaded successfully
+2025-05-21 10:58:02 [INFO] 🔄 - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 10:58:02 [WARNING] ⚠️ - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
+2025-05-21 10:58:02 [INFO] ✅ - [Save_To_LanceDB] Successfully extracted 1 pages from document
+2025-05-21 10:58:02 [INFO] 🔄 - [Save_To_LanceDB] Checking for document duplicates
+2025-05-21 10:58:02 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:58:02 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 10:58:02 [INFO] 🔍 - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:58:02 [INFO] 🔄 - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:58:02 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
+2025-05-21 10:58:02 [INFO] ✅ - [Docs_Deduplication] Page 1 has no close matches. It's new.
+2025-05-21 10:58:02 [INFO] 📊 - [Docs_Deduplication] Duplicate check completed in 0.02s: 1 new, 0 dup, 0 updates
+2025-05-21 10:58:02 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
+2025-05-21 10:58:02 [INFO] 🆕 - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_changed_values.pdf is completely new (all 1 pages are new)
+2025-05-21 10:58:02 [INFO] 📊 - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
+2025-05-21 10:58:02 [INFO] 🔌 - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:58:02 [INFO] ✅ - [Save_To_LanceDB] Connected to LanceDB
+2025-05-21 10:58:02 [INFO] 📂 - [Save_To_LanceDB] Opening existing table: documents
+2025-05-21 10:58:02 [INFO] ➕ - [Save_To_LanceDB] Adding 1 new pages to LanceDB
+2025-05-21 10:58:02 [INFO] ✅ - [Save_To_LanceDB] New pages added successfully
+2025-05-21 10:58:02 [INFO] ⏱️ - [Save_To_LanceDB] Processing completed in 5.63 seconds
+2025-05-21 10:58:02 [INFO] ✅ - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
+2025-05-21 10:58:02 [INFO] 🔄 - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
+2025-05-21 10:58:02 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:58:02 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 10:58:02 [INFO] 🧪 - [Pipeline_Controller] 📊 Test document detected! Using context-aware chunking for test document with reference to fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 10:58:02 [INFO] 🔄 - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
+2025-05-21 10:58:02 [INFO] 🔍 - [Pipeline_Controller] 🔄 Using context-aware chunking with reference document: fighter_jet_rocket_launcher_spec_2.pdf (similarity: 0.9000)
+2025-05-21 10:58:02 [INFO] 🚀 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:58:02 [INFO] 🔄 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:58:02 [INFO] 🔄 - [Consolidated_Chunking] Using chunks from similar document fighter_jet_rocket_launcher_spec_2.pdf as context
+2025-05-21 10:58:02 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 10:58:02 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 10:58:02 [INFO] ✅ - [Consolidated_Chunking] Retrieved 3 chunks from similar document fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 10:58:02 [INFO] 🧩 - [Consolidated_Chunking] Performing context-aware chunking with 3 reference chunks
+2025-05-21 10:58:02 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Performing context-aware chunking with 3 reference chunks
+2025-05-21 10:58:02 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 10:58:02 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1873 characters
+2025-05-21 10:58:10 [INFO] 🔢 - Token counters updated: 1174 input, 301 output for gpt-4.1-mini
+2025-05-21 10:58:10 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 1 chunks
+2025-05-21 10:58:10 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 1
+2025-05-21 10:58:10 [INFO] ✅ - [Consolidated_Chunking] Created 1 initial chunks
+2025-05-21 10:58:12 [INFO] ✅ - [Consolidated_Chunking] Loaded embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 10:58:12 [INFO] 🔍 - [Consolidated_Chunking] 🔍 Chunk Comparison: fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 vs fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001
+2025-05-21 10:58:12 [INFO] 📏 - [Consolidated_Chunking]    Similarity: 0.0886
+2025-05-21 10:58:12 [INFO] ⚖️ - [Consolidated_Chunking]    Decision: evaluating
+2025-05-21 10:58:12 [INFO] 💬 - [Consolidated_Chunking]    Reason: Comparing chunks for similarity
+2025-05-21 10:58:12 [INFO] ❓ - [Consolidated_Chunking] ❓ Undefined decision for fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 vs fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001: evaluating
+2025-05-21 10:58:12 [INFO] 🔍 - [Consolidated_Chunking] 🔍 Chunk Comparison: fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 vs fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002
+2025-05-21 10:58:12 [INFO] 📏 - [Consolidated_Chunking]    Similarity: 0.8560
+2025-05-21 10:58:12 [INFO] ⚖️ - [Consolidated_Chunking]    Decision: evaluating
+2025-05-21 10:58:12 [INFO] 💬 - [Consolidated_Chunking]    Reason: Comparing chunks for similarity
+2025-05-21 10:58:12 [INFO] ❓ - [Consolidated_Chunking] ❓ Undefined decision for fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 vs fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002: evaluating
+2025-05-21 10:58:12 [INFO] 👨‍💻 - [Consolidated_Chunking] LLM suggested getting user input for chunk comparison (detected test scenario)
+2025-05-21 10:58:12 [INFO] 🔍 - [Consolidated_Chunking] 
+================================================================================
+2025-05-21 10:58:12 [INFO] 🔍 - [Consolidated_Chunking] CHUNK COMPARISON NEEDED
+2025-05-21 10:58:12 [INFO] 🔍 - [Consolidated_Chunking] ================================================================================
+2025-05-21 10:58:12 [INFO] ℹ️ - [Consolidated_Chunking] 
+REASON: Chunks are similar but may contain important changes (similarity: 0.8560)
+2025-05-21 10:58:12 [INFO] 📊 - [Consolidated_Chunking] 
+KEY DIFFERENCES:
+2025-05-21 10:58:12 [INFO] ⚠️ - [Consolidated_Chunking]   (No specific differences detected)
+2025-05-21 10:58:12 [INFO] 📜 - [Consolidated_Chunking] 
+OLD DOCUMENT: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 10:58:12 [INFO] 📜 - [Consolidated_Chunking] ----------------------------------------
+2025-05-21 10:58:12 [INFO] 📜 - [Consolidated_Chunking] Performance Metrics
+
+| Rocket Type | Max Range | Speed    | Penetration Depth         |              
+|-------------|-----------|----------|---------------------------|           
+| Hydra 70   | 8 km      | Mach 2.5 | 250 mm steel              |  
+| APKWS      | 12 km     | Mach 2.8 | 300 mm reinforced armor  |  
+| CRV7       | 10 km     | Mach 3.0 | 280 mm concrete           |  
+| Zuni       | 6 km      | Mach 2.2 | 200 mm bunker walls       |  
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.
+2025-05-21 10:58:12 [INFO] 📜 - [Consolidated_Chunking] ----------------------------------------
+2025-05-21 10:58:12 [INFO] 📄 - [Consolidated_Chunking] 
+NEW DOCUMENT: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 10:58:12 [INFO] 📄 - [Consolidated_Chunking] ----------------------------------------
+2025-05-21 10:58:12 [INFO] 📄 - [Consolidated_Chunking] Performance Metrics
+
+Rocket Type Max Range Speed Penetration Depth
+Hydra 70 8 km Mach 2.5 250 mm steel
+APKWS 12 km Mach 2.8 300 mm reinforced armor
+CRV7 10 km Mach 3.2 280 mm concrete
+Zuni 6 km Mach 2.2 200 mm bunker walls
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.
+- Automatic target recognition for precision strikes.
+- Quick reload mechanism for enhanced sortie effectiveness.
+- Advanced thermal shielding for high-speed flight integration.
+- Weather-resistant design for all-climate operations.
+
+Conclusion
+2025-05-21 10:58:12 [INFO] 📄 - [Consolidated_Chunking] ----------------------------------------
+2025-05-21 11:38:32 [INFO] 🔄 - [Consolidated_Chunking] Chunk fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 replaces fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002 - Reason: Chunks are similar but may contain important changes (similarity: 0.8560) (User decision: keep_new)
+2025-05-21 11:38:32 [INFO] 📊 - [Consolidated_Chunking] 📊 CHUNK DEDUPLICATION SUMMARY FOR fighter_jet_rocket_launcher_spec_2_changed_values.pdf (update of fighter_jet_rocket_launcher_spec_2.pdf):
+2025-05-21 11:38:32 [INFO] 🔢 - [Consolidated_Chunking]   • Total chunks processed: 1
+2025-05-21 11:38:32 [INFO] ♻️ - [Consolidated_Chunking]   • Exact duplicates found: 0
+2025-05-21 11:38:32 [INFO] 🔄 - [Consolidated_Chunking]   • Similar chunks found: 1
+2025-05-21 11:38:32 [INFO] 🆕 - [Consolidated_Chunking]   • New unique chunks: 0
+2025-05-21 11:38:32 [INFO] 📈 - [Consolidated_Chunking]   • Duplicate/similar chunk rate: 100.0%
+2025-05-21 11:38:32 [INFO] 🔁 - [Consolidated_Chunking]   • Document is a minor update of fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 11:38:33 [INFO] ✅ - [Consolidated_Chunking] Processed 1 chunks in 2431.36s (0 duplicates, 1 updated, 0 new)
+2025-05-21 11:38:33 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 11:38:33 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 11:38:33 [INFO] ✅ - [Consolidated_Chunking] Opened existing table: document_chunks
+2025-05-21 11:38:33 [WARNING] ⚠️ - [Consolidated_Chunking] Could not find chunk fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 to mark as replaced
+2025-05-21 11:38:33 [INFO] ✅ - [Consolidated_Chunking] Added 1 new chunks
+2025-05-21 11:38:33 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: document_chunks has only 4 rows, minimum 256 required
+2025-05-21 11:38:33 [INFO] ✅ - [Consolidated_Chunking] Successfully processed document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 11:38:33 [INFO] 🧹 - [Consolidated_Chunking] Memory cleaned up
+2025-05-21 11:38:33 [INFO] ✅ - [Pipeline_Controller] ✅ Chunking completed successfully
+2025-05-21 11:38:33 [INFO] 🏁 - [Pipeline_Controller] 🏁 Pipeline completed at step 5 (Chunking only) for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 11:38:33 [INFO] ✅ - [Pipeline_Runner] === Pipeline Completed Successfully ===
+2025-05-21 11:38:33 [INFO] 📊 - [Pipeline_Runner] === Deduplication Results ===
+2025-05-21 11:38:34 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 11:38:34 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 11:38:34 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 11:38:34 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 11:38:34 [INFO] 🔍 - ✅ Deduplication results displayed
+2025-05-21 11:38:34 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 11:38:34 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 11:38:34 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 11:38:34 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 11:38:34 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+
+=== Documents in Database (1 documents) ===
+1. fighter_jet_rocket_launcher_spec_2_changed_values.pdf: 1 pages
+
+=== Document Relationships ===
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf → fighter_jet_rocket_launcher_spec_2.pdf: 2 aligned chunks
+
+=== Deduplication Statistics ===
+Total chunks in database: 1
+Documents with chunks: 1
+
+=== Chunk Counts by Document ===
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf: 1 chunks
+
+=== Updated Chunks (1 chunks) ===
+Current: fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001 (Doc: fighter_jet_rocket_launcher_spec_2_changed_values.pdf)
+Previous: fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002
+--------------------------------------------------------------------------------
+2025-05-21 11:38:34 [INFO] 🔍 - ✅ Deduplication results displayed
+
+2025-05-21 11:38:34 [INFO] 📊 - [Pipeline_Runner] ================================================================================
+2025-05-21 13:23:17 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 13:23:17 [INFO] 🧪 - [Consolidated_Chunking] Testing chunking with document length: 3425 characters
+2025-05-21 13:23:17 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 3425 characters using standard approach
+2025-05-21 13:23:17 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 13:23:17 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 3425 characters
+2025-05-21 13:23:32 [INFO] ℹ️ - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-21 13:23:32 [INFO] ℹ️ - HTTP Request: POST https://api.agno.com/v1/telemetry/agent/run/create "HTTP/1.1 200 OK"
+2025-05-21 13:23:32 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 13:23:32 [INFO] 🔢 - Token counters updated: 966 input, 706 output for gpt-4.1-mini
+2025-05-21 13:23:32 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 5 chunks
+2025-05-21 13:23:32 [INFO] ⚠️ - [Consolidated_Chunking] ⚠️ Found 1 oversized chunks, re-chunking them
+2025-05-21 13:23:32 [INFO] ⚠️ - [Consolidated_Chunking] ⚠️ Oversized chunk #4: 1096 chars (limit: 900)
+2025-05-21 13:23:32 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1096 characters
+2025-05-21 13:23:36 [INFO] ℹ️ - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-21 13:23:37 [INFO] ℹ️ - HTTP Request: POST https://api.agno.com/v1/telemetry/agent/run/create "HTTP/1.1 200 OK"
+2025-05-21 13:23:37 [INFO] 🔢 - Token counters updated: 527 input, 246 output for gpt-4.1-mini
+2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 3 chunks
+2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ After re-chunking oversized chunks, we now have 7 chunks
+2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 7
+2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] Generated 7 chunks
+2025-05-21 13:23:37 [INFO] 📊 - [Consolidated_Chunking] Min/Max/Avg chars: 219/869/487.3
+2025-05-21 13:23:37 [INFO] 📊 - [Consolidated_Chunking] Min/Max/Avg tokens: 54/217/121.3
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 1 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] # Test Document
+
+## Introduction
+This is a test document for the Requify chunking system. It should be processed and chunked properly according to sem...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 2 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Technical Details
+The consolidated chunking implementation combines the strengths of:
+1. context_aware_chunking.py - For handling document versions...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 3 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Conclusion
+This document should be long enough to be split into multiple chunks. The chunking system should identify semantically coherent boundari...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 4 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] Proin aliquet metus vel magna lacinia, ut faucibus metus facilisis. Suspendisse potenti. Integer sed lacus ac augue hendrerit placerat. Curabitur temp...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 5 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ### Additional Requirements
+
+1. The system should handle edge cases gracefully
+2. Performance should be optimized for large documents
+3. Memory usage ...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 6 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] #### Edge Cases
+
+Some edge cases to consider:
+- Empty documents
+- Very large documents (millions of characters)
+- Documents with unusual formatting
+- ...
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+--- Chunk 7 ---
+2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Final Thoughts
+
+This test document should provide sufficient material to evaluate the chunking system's ability to create semantically meaningful c...
+2025-05-21 13:33:03 [INFO] 🧠 - [PDF_Parsing] Using OpenAI models for processing: Vision=gpt-4.1-mini, Text=gpt-4.1-mini
+2025-05-21 13:33:03 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 13:33:06 [INFO] ℹ️ - PyTorch version 2.6.0 available.
+2025-05-21 13:33:06 [INFO] 🧠 - [Reqs_Deduplication] Model provider for requirements deduplication: openai
+2025-05-21 13:33:06 [INFO] 🧠 - [Extract_Requirements] Using OpenAI model for requirements extraction: gpt-4.1-mini
+2025-05-21 13:33:06 [INFO] 🚀 - [Pipeline_Runner] === Document Processing Pipeline Runner ===
+2025-05-21 13:33:08 [INFO] 🔧 - [Pipeline_Runner] === Database Reset & Setup ===
+2025-05-21 13:33:08 [INFO] 🔄 - [Pipeline_Runner] Resetting (clearing) and initializing LanceDB tables...
+2025-05-21 13:33:08 [INFO] 🔄 - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:08 [INFO] ✅ - [Reset_LanceDB] Connected to LanceDB. Current tables: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: document_chunks
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: documents
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: file_hashes
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: requirements
+2025-05-21 13:33:08 [INFO] ✅ - [Reset_LanceDB] All tables dropped. Running initialization to create fresh tables.
+2025-05-21 13:33:08 [INFO] 📋 - [LanceDB_Admin] 🔄 Script started: Initializing LanceDB tables...
+2025-05-21 13:33:08 [INFO] 🛢️ - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:08 [INFO] 🔌 - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:09 [INFO] 🔌 - [LanceDB_Admin] ✅ Successfully connected to LanceDB. Current tables: []
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'documents' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'documents'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'documents' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'document_chunks' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'document_chunks'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'document_chunks' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'requirements' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'requirements'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'requirements' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'file_hashes' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'file_hashes'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'file_hashes' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ All LanceDB tables initialized successfully.
+2025-05-21 13:33:09 [INFO] ✅ - [Reset_LanceDB] LanceDB tables reinitialized with consistent schemas.
+2025-05-21 13:33:09 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 13:33:08 [INFO] 🔄 - [Reset_LanceDB] Connecting to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:08 [INFO] ✅ - [Reset_LanceDB] Connected to LanceDB. Current tables: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: document_chunks
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: documents
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: file_hashes
+2025-05-21 13:33:08 [INFO] 🗑️ - [Reset_LanceDB] Dropping table: requirements
+2025-05-21 13:33:08 [INFO] ✅ - [Reset_LanceDB] All tables dropped. Running initialization to create fresh tables.
+2025-05-21 13:33:08 [INFO] 📋 - [LanceDB_Admin] 🔄 Script started: Initializing LanceDB tables...
+2025-05-21 13:33:08 [INFO] 🛢️ - [LanceDB_Admin] ✅ LanceDB directory ensured at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:08 [INFO] 🔌 - [LanceDB_Admin] 🔄 Attempting to connect to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:09 [INFO] 🔌 - [LanceDB_Admin] ✅ Successfully connected to LanceDB. Current tables: []
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'documents' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'documents'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'documents' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'document_chunks' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'document_chunks'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'document_chunks' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'requirements' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'requirements'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'requirements' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] Table 'file_hashes' does not exist. Attempting to create it now...
+2025-05-21 13:33:09 [INFO] 📝 - [LanceDB_Admin] ✅ Successfully created table 'file_hashes'.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ 'file_hashes' table is ready for use.
+2025-05-21 13:33:09 [INFO] 📋 - [LanceDB_Admin] ✅ All LanceDB tables initialized successfully.
+2025-05-21 13:33:09 [INFO] ✅ - [Reset_LanceDB] LanceDB tables reinitialized with consistent schemas.
+
+2025-05-21 13:33:09 [INFO] ✅ - [Pipeline_Runner] Database reset/setup completed.
+2025-05-21 13:33:09 [INFO] 📋 - [Pipeline_Runner] === Available Input Files ===
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 1. Fighter_Jet_Engine_Detailed_Requirements.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 2. Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 3. Fighter_Jet_Engine_Detailed_Requirements_1.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 4. SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 5. fighter_jet_rocket_launcher_spec.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 6. fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 7. fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 8. fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 9. fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 10. fighter_jet_rocket_launcher_spec_5_reordered.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 11. fighter_jet_unique_original.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 12. fighter_jet_unique_reordered.pdf
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 13. file-sample_1MB.docx
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 14. high-level_requirements.txt
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 15. high-level_requirements_V2.txt
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 16. small_test.txt
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 17. test_document.txt
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 18. test_document_updated.txt
+2025-05-21 13:33:09 [INFO] 📄 - [Pipeline_Runner] 19. top_requirements.txt
+2025-05-21 13:33:13 [INFO] 📋 - [Pipeline_Runner] === Available Pipeline Steps ===
+2025-05-21 13:33:13 [INFO] ℹ️ - [Pipeline_Runner] 1. File Extension Filtering
+2025-05-21 13:33:13 [INFO] ℹ️ - [Pipeline_Runner] 2. Document Duplication Check
+2025-05-21 13:33:13 [INFO] ℹ️ - [Pipeline_Runner] 3. PDF Parsing & Content Extraction
+2025-05-21 13:33:13 [INFO] ℹ️ - [Pipeline_Runner] 4. Content Chunking
+2025-05-21 13:33:13 [INFO] ℹ️ - [Pipeline_Runner] 5. Requirements Extraction
+2025-05-21 13:33:18 [INFO] ⚙️ - [Pipeline_Runner] === Pipeline Run Settings ===
+2025-05-21 13:33:18 [INFO] 📄 - [Pipeline_Runner] Input file: input/raw/fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 🔢 - [Pipeline_Runner] Maximum UI step: 4 - Content Chunking (Controller step: 5)
+2025-05-21 13:33:18 [INFO] 🚀 - [Pipeline_Runner] === Starting Pipeline ===
+2025-05-21 13:33:18 [INFO] 🚀 - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2.pdf (max_step=5, dry_run=False, skip_hash_check=False)
+2025-05-21 13:33:18 [INFO] 🔐 - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 🔍 - [Hash_Deduplication] Checking for duplicate of file: input/raw/fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 🔢 - [Hash_Deduplication] Calculated hashes: MD5=ef3e394175eb34bcc1a081face8c7bda, SHA256=43f6165ea7a177ef9d0e3b4c831a9810844537887e74a5fd455373aed015fa93
+2025-05-21 13:33:18 [INFO] 🔄 - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:18 [INFO] ✅ - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:18 [INFO] ℹ️ - [Hash_Deduplication] File hashes table is empty
+2025-05-21 13:33:18 [INFO] ✅ - [Hash_Deduplication] Successfully saved file hash information for input/raw/fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] ✅ - [Hash_Deduplication] File hash check completed in 0.07 seconds. File is unique.
+2025-05-21 13:33:18 [INFO] ✅ - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2.pdf passed hash-based duplicate check
+2025-05-21 13:33:18 [INFO] 📑 - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:18 [INFO] 🔍 - [PDF_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:18 [INFO] 🔄 - [PDF_Parsing] Processing 'input/raw/fighter_jet_rocket_launcher_spec_2.pdf' to images...
+2025-05-21 13:33:18 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:18 [INFO] 📄 - [PDF_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:18 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:18 [INFO] 📄 - [PDF_Parsing] PDF has 1 pages
+2025-05-21 13:33:18 [INFO] ✈️ - [PDF_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2/page_001.png
+2025-05-21 13:33:18 [INFO] 📄 - [PDF_Parsing] Page 1/1: Saved to page_001.png
+2025-05-21 13:33:18 [INFO] 📑 - [PDF_Parsing] Encoded image for page 1 to base64.
+2025-05-21 13:33:18 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:33:18 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:33:18 [INFO] ✅ - [PDF_Parsing] Successfully converted PDF to 1 images and encoded them.
+2025-05-21 13:33:18 [INFO] 🔍 - [PDF_Parsing] Extracting content from page 1/1
+2025-05-21 13:33:27 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 13:33:27 [INFO] 🔢 - Token counters updated: 2616 input, 368 output for gpt-4.1-mini
+2025-05-21 13:33:27 [INFO] ✅ - [PDF_Parsing] Successfully extracted markdown for page_001
+2025-05-21 13:33:27 [INFO] ✅ - [PDF_Parsing] Extracted 1803 chars from page 1
+2025-05-21 13:33:27 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2.pdf from page summaries...
+2025-05-21 13:33:27 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2.pdf...
+2025-05-21 13:33:30 [INFO] 🔢 - Token counters updated: 544 input, 123 output for gpt-4.1-mini
+2025-05-21 13:33:31 [INFO] 🔢 - Token counters updated: 231 input, 12 output for gpt-4.1-mini
+2025-05-21 13:33:31 [INFO] ✈️ - [PDF_Parsing] Generated document title from summaries: RLX-5000 Rocket Launcher System Specifications for Fighter Jets
+2025-05-21 13:33:31 [INFO] ✅ - [PDF_Parsing] Generated title: "RLX-5000 Rocket Launcher System Specifications for Fighter Jets"
+2025-05-21 13:33:31 [INFO] ⚙️ - [PDF_Parsing] Processing pages sequentially...
+2025-05-21 13:33:31 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:31 [INFO] 🔄 - [PDF_Parsing] GENERATING PAGE METADATA
+2025-05-21 13:33:31 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:31 [INFO] ⚙️ - [PDF_Parsing] Processing page 1...
+2025-05-21 13:33:31 [INFO] 🔄 - [PDF_Parsing] Processing metadata for page 1/1
+2025-05-21 13:33:34 [INFO] 🔢 - Token counters updated: 768 input, 146 output for gpt-4.1-mini
+2025-05-21 13:33:34 [INFO] ⚙️ - [PDF_Parsing] Successfully processed page 1
+2025-05-21 13:33:34 [INFO] ✅ - [PDF_Parsing] Page 1: Generated summary and hashtags: RLX-5000, rocket launcher, fighter jets, technical specifications, performance metrics...
+2025-05-21 13:33:34 [INFO] ✈️ - [PDF_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-21 13:33:34 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:34 [INFO] ✅ - [PDF_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:34 [INFO] 📄 - [PDF_Parsing] Document title: RLX-5000 Rocket Launcher System Specifications for Fighter Jets
+2025-05-21 13:33:34 [INFO] 📄 - [PDF_Parsing] Pages processed: 1
+2025-05-21 13:33:34 [INFO] 📄 - [PDF_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-21 13:33:34 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:33:34 [INFO] ✅ - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-21 13:33:34 [INFO] 🔍 - [Pipeline_Controller] Step 3: Checking document for duplicates
+2025-05-21 13:33:34 [INFO] 💾 - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
+2025-05-21 13:33:34 [INFO] 📄 - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-21 13:33:34 [INFO] 🧠 - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:33:34 [INFO] ℹ️ - Use pytorch device_name: mps
+2025-05-21 13:33:34 [INFO] ℹ️ - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:33:40 [INFO] ✅ - [Save_To_LanceDB] Model loaded successfully
+2025-05-21 13:33:40 [INFO] 🔄 - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2/fighter_jet_rocket_launcher_spec_2_combined.json
+2025-05-21 13:33:40 [WARNING] ⚠️ - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
+2025-05-21 13:33:40 [INFO] ✅ - [Save_To_LanceDB] Successfully extracted 1 pages from document
+2025-05-21 13:33:40 [INFO] 🔄 - [Save_To_LanceDB] Checking for document duplicates
+2025-05-21 13:33:40 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:40 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:33:40 [INFO] 🔍 - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:40 [INFO] 🔄 - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:40 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 0 rows, minimum 256 required
+2025-05-21 13:33:40 [INFO] ✅ - [Docs_Deduplication] No similar pages found for page 1. It's new.
+2025-05-21 13:33:40 [INFO] 📊 - [Docs_Deduplication] Duplicate check completed in 0.02s: 1 new, 0 dup, 0 updates
+2025-05-21 13:33:40 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 0 rows, minimum 256 required
+2025-05-21 13:33:40 [INFO] 🆕 - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2.pdf is completely new (all 1 pages are new)
+2025-05-21 13:33:40 [INFO] 📊 - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
+2025-05-21 13:33:40 [INFO] 🔌 - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:40 [INFO] ✅ - [Save_To_LanceDB] Connected to LanceDB
+2025-05-21 13:33:40 [INFO] 📂 - [Save_To_LanceDB] Opening existing table: documents
+2025-05-21 13:33:40 [INFO] ➕ - [Save_To_LanceDB] Adding 1 new pages to LanceDB
+2025-05-21 13:33:40 [INFO] ✅ - [Save_To_LanceDB] New pages added successfully
+2025-05-21 13:33:40 [INFO] ⏱️ - [Save_To_LanceDB] Processing completed in 6.01 seconds
+2025-05-21 13:33:40 [INFO] ✅ - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
+2025-05-21 13:33:40 [INFO] 🔄 - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
+2025-05-21 13:33:40 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:40 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:33:40 [INFO] 🔄 - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
+2025-05-21 13:33:40 [INFO] 🔄 - [Pipeline_Controller] 🔄 Using standard chunking for new document
+2025-05-21 13:33:40 [INFO] 🚀 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:40 [INFO] 🔄 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:40 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 1805 characters using standard approach
+2025-05-21 13:33:40 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 13:33:40 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1805 characters
+2025-05-21 13:33:49 [INFO] 🔢 - Token counters updated: 671 input, 406 output for gpt-4.1-mini
+2025-05-21 13:33:49 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 3 chunks
+2025-05-21 13:33:49 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 3
+2025-05-21 13:33:49 [INFO] ✅ - [Consolidated_Chunking] Created 3 initial chunks
+2025-05-21 13:33:51 [INFO] ✅ - [Consolidated_Chunking] Loaded embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:33:52 [INFO] 📊 - [Consolidated_Chunking] 📊 CHUNK DEDUPLICATION SUMMARY FOR fighter_jet_rocket_launcher_spec_2.pdf:
+2025-05-21 13:33:52 [INFO] 🔢 - [Consolidated_Chunking]   • Total chunks processed: 3
+2025-05-21 13:33:52 [INFO] ♻️ - [Consolidated_Chunking]   • Exact duplicates found: 0
+2025-05-21 13:33:52 [INFO] 🔄 - [Consolidated_Chunking]   • Similar chunks found: 0
+2025-05-21 13:33:52 [INFO] 🆕 - [Consolidated_Chunking]   • New unique chunks: 3
+2025-05-21 13:33:53 [INFO] ✅ - [Consolidated_Chunking] Processed 3 chunks in 12.32s (0 duplicates, 0 updated, 3 new)
+2025-05-21 13:33:53 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:53 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:33:53 [INFO] ✅ - [Consolidated_Chunking] Opened existing table: document_chunks
+2025-05-21 13:33:53 [INFO] 🔄 - [Consolidated_Chunking] Adding missing columns: {'is_duplicate_marker', 'is_replaced', 'replaced_by'}
+2025-05-21 13:33:53 [INFO] ✅ - [Consolidated_Chunking] Updated schema with 3 new columns, added 3 new chunks
+2025-05-21 13:33:53 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: document_chunks has only 3 rows, minimum 256 required
+2025-05-21 13:33:53 [INFO] ✅ - [Consolidated_Chunking] Successfully processed document: fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:53 [INFO] 🧹 - [Consolidated_Chunking] Memory cleaned up
+2025-05-21 13:33:53 [INFO] ✅ - [Pipeline_Controller] ✅ Chunking completed successfully
+2025-05-21 13:33:53 [INFO] 🏁 - [Pipeline_Controller] 🏁 Pipeline completed at step 5 (Chunking only) for fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:33:53 [INFO] ✅ - [Pipeline_Runner] === Pipeline Completed Successfully ===
+2025-05-21 13:33:53 [INFO] 📊 - [Pipeline_Runner] === Deduplication Results ===
+2025-05-21 13:33:54 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:33:54 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:54 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:33:54 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 13:33:54 [INFO] 🔍 - ✅ Deduplication results displayed
+2025-05-21 13:33:54 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 13:33:54 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:33:54 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:33:54 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:33:54 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+
+=== Documents in Database (1 documents) ===
+1. fighter_jet_rocket_launcher_spec_2.pdf: 1 pages
+
+=== Document Relationships ===
+No document relationships found
+
+=== Deduplication Statistics ===
+Total chunks in database: 3
+Documents with chunks: 1
+
+=== Chunk Counts by Document ===
+fighter_jet_rocket_launcher_spec_2.pdf: 3 chunks
+2025-05-21 13:33:54 [INFO] 🔍 - ✅ Deduplication results displayed
+
+2025-05-21 13:33:54 [INFO] 📊 - [Pipeline_Runner] ================================================================================
+2025-05-21 13:41:54 [INFO] 🧠 - [PDF_Parsing] Using OpenAI models for processing: Vision=gpt-4.1-mini, Text=gpt-4.1-mini
+2025-05-21 13:41:55 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 13:41:57 [INFO] ℹ️ - PyTorch version 2.6.0 available.
+2025-05-21 13:41:57 [INFO] 🧠 - [Reqs_Deduplication] Model provider for requirements deduplication: openai
+2025-05-21 13:41:57 [INFO] 🧠 - [Extract_Requirements] Using OpenAI model for requirements extraction: gpt-4.1-mini
+2025-05-21 13:41:57 [INFO] 🚀 - [Pipeline_Runner] === Document Processing Pipeline Runner ===
+2025-05-21 13:42:07 [INFO] 📋 - [Pipeline_Runner] === Available Input Files ===
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 1. Fighter_Jet_Engine_Detailed_Requirements.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 2. Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 3. Fighter_Jet_Engine_Detailed_Requirements_1.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 4. SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 5. fighter_jet_rocket_launcher_spec.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 6. fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 7. fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 8. fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 9. fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 10. fighter_jet_rocket_launcher_spec_5_reordered.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 11. fighter_jet_unique_original.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 12. fighter_jet_unique_reordered.pdf
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 13. file-sample_1MB.docx
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 14. high-level_requirements.txt
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 15. high-level_requirements_V2.txt
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 16. small_test.txt
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 17. test_document.txt
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 18. test_document_updated.txt
+2025-05-21 13:42:07 [INFO] 📄 - [Pipeline_Runner] 19. top_requirements.txt
+2025-05-21 13:42:10 [INFO] 📋 - [Pipeline_Runner] === Available Pipeline Steps ===
+2025-05-21 13:42:10 [INFO] ℹ️ - [Pipeline_Runner] 1. File Extension Filtering
+2025-05-21 13:42:10 [INFO] ℹ️ - [Pipeline_Runner] 2. Document Duplication Check
+2025-05-21 13:42:10 [INFO] ℹ️ - [Pipeline_Runner] 3. PDF Parsing & Content Extraction
+2025-05-21 13:42:10 [INFO] ℹ️ - [Pipeline_Runner] 4. Content Chunking
+2025-05-21 13:42:10 [INFO] ℹ️ - [Pipeline_Runner] 5. Requirements Extraction
+2025-05-21 13:42:12 [INFO] ⚙️ - [Pipeline_Runner] === Pipeline Run Settings ===
+2025-05-21 13:42:12 [INFO] 📄 - [Pipeline_Runner] Input file: input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 🔢 - [Pipeline_Runner] Maximum UI step: 4 - Content Chunking (Controller step: 5)
+2025-05-21 13:42:12 [INFO] 🚀 - [Pipeline_Runner] === Starting Pipeline ===
+2025-05-21 13:42:12 [INFO] 🚀 - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf (max_step=5, dry_run=False, skip_hash_check=False)
+2025-05-21 13:42:12 [INFO] 🔐 - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 🔍 - [Hash_Deduplication] Checking for duplicate of file: input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 🔢 - [Hash_Deduplication] Calculated hashes: MD5=18dc4d423a774bd216a0a7e2a0ab3018, SHA256=6689b49c25c69cfc03b167422fad04b602b064be5abc00e1e749d7ac3142879b
+2025-05-21 13:42:12 [INFO] 🔄 - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:12 [INFO] ✅ - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:12 [INFO] ✅ - [Hash_Deduplication] Successfully saved file hash information for input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] ✅ - [Hash_Deduplication] File hash check completed in 0.08 seconds. File is unique.
+2025-05-21 13:42:12 [INFO] ✅ - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2_changed_values.pdf passed hash-based duplicate check
+2025-05-21 13:42:12 [INFO] 📑 - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:12 [INFO] 🔍 - [PDF_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:12 [INFO] 🔄 - [PDF_Parsing] Processing 'input/raw/fighter_jet_rocket_launcher_spec_2_changed_values.pdf' to images...
+2025-05-21 13:42:12 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:12 [INFO] 📄 - [PDF_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:12 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:12 [INFO] 📄 - [PDF_Parsing] PDF has 1 pages
+2025-05-21 13:42:12 [INFO] ✈️ - [PDF_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2_changed_values/page_001.png
+2025-05-21 13:42:12 [INFO] 📄 - [PDF_Parsing] Page 1/1: Saved to page_001.png
+2025-05-21 13:42:12 [INFO] 📑 - [PDF_Parsing] Encoded image for page 1 to base64.
+2025-05-21 13:42:12 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:42:12 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:42:12 [INFO] ✅ - [PDF_Parsing] Successfully converted PDF to 1 images and encoded them.
+2025-05-21 13:42:12 [INFO] 🔍 - [PDF_Parsing] Extracting content from page 1/1
+2025-05-21 13:42:21 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 13:42:21 [INFO] 🔢 - Token counters updated: 2616 input, 296 output for gpt-4.1-mini
+2025-05-21 13:42:21 [INFO] ✅ - [PDF_Parsing] Successfully extracted markdown for page_001
+2025-05-21 13:42:21 [INFO] ✅ - [PDF_Parsing] Extracted 1332 chars from page 1
+2025-05-21 13:42:21 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_changed_values.pdf from page summaries...
+2025-05-21 13:42:21 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_changed_values.pdf...
+2025-05-21 13:42:24 [INFO] 🔢 - Token counters updated: 567 input, 124 output for gpt-4.1-mini
+2025-05-21 13:42:25 [INFO] 🔢 - Token counters updated: 219 input, 10 output for gpt-4.1-mini
+2025-05-21 13:42:25 [INFO] ✈️ - [PDF_Parsing] Generated document title from summaries: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 13:42:25 [INFO] ✅ - [PDF_Parsing] Generated title: "RLX-5000 Fighter Jet Rocket Launcher Specifications"
+2025-05-21 13:42:25 [INFO] ⚙️ - [PDF_Parsing] Processing pages sequentially...
+2025-05-21 13:42:25 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:25 [INFO] 🔄 - [PDF_Parsing] GENERATING PAGE METADATA
+2025-05-21 13:42:25 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:25 [INFO] ⚙️ - [PDF_Parsing] Processing page 1...
+2025-05-21 13:42:25 [INFO] 🔄 - [PDF_Parsing] Processing metadata for page 1/1
+2025-05-21 13:42:29 [INFO] 🔢 - Token counters updated: 694 input, 157 output for gpt-4.1-mini
+2025-05-21 13:42:29 [INFO] ⚙️ - [PDF_Parsing] Successfully processed page 1
+2025-05-21 13:42:29 [INFO] ✅ - [PDF_Parsing] Page 1: Generated summary and hashtags: RLX-5000, rocket launcher, weight, dimensions, max rocket capacity...
+2025-05-21 13:42:29 [INFO] ✈️ - [PDF_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 13:42:29 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:29 [INFO] ✅ - [PDF_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:29 [INFO] 📄 - [PDF_Parsing] Document title: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 13:42:29 [INFO] 📄 - [PDF_Parsing] Pages processed: 1
+2025-05-21 13:42:29 [INFO] 📄 - [PDF_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 13:42:29 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:42:29 [INFO] ✅ - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 13:42:29 [INFO] 🔍 - [Pipeline_Controller] Step 3: Checking document for duplicates
+2025-05-21 13:42:29 [INFO] 💾 - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
+2025-05-21 13:42:29 [INFO] 📄 - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 13:42:29 [INFO] 🧠 - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:42:29 [INFO] ℹ️ - Use pytorch device_name: mps
+2025-05-21 13:42:29 [INFO] ℹ️ - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:42:35 [INFO] ✅ - [Save_To_LanceDB] Model loaded successfully
+2025-05-21 13:42:35 [INFO] 🔄 - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_changed_values/fighter_jet_rocket_launcher_spec_2_changed_values_combined.json
+2025-05-21 13:42:35 [WARNING] ⚠️ - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
+2025-05-21 13:42:35 [INFO] ✅ - [Save_To_LanceDB] Successfully extracted 1 pages from document
+2025-05-21 13:42:35 [INFO] 🔄 - [Save_To_LanceDB] Checking for document duplicates
+2025-05-21 13:42:35 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:35 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:42:35 [INFO] 🔍 - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:35 [INFO] 🔄 - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:35 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
+2025-05-21 13:42:35 [INFO] ✅ - [Docs_Deduplication] Page 1 has no close matches. It's new.
+2025-05-21 13:42:35 [INFO] 📊 - [Docs_Deduplication] Duplicate check completed in 0.02s: 1 new, 0 dup, 0 updates
+2025-05-21 13:42:35 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 1 rows, minimum 256 required
+2025-05-21 13:42:35 [INFO] 🆕 - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_changed_values.pdf is completely new (all 1 pages are new)
+2025-05-21 13:42:35 [INFO] 📊 - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
+2025-05-21 13:42:35 [INFO] 🔌 - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:35 [INFO] ✅ - [Save_To_LanceDB] Connected to LanceDB
+2025-05-21 13:42:35 [INFO] 📂 - [Save_To_LanceDB] Opening existing table: documents
+2025-05-21 13:42:35 [INFO] ➕ - [Save_To_LanceDB] Adding 1 new pages to LanceDB
+2025-05-21 13:42:35 [INFO] ✅ - [Save_To_LanceDB] New pages added successfully
+2025-05-21 13:42:35 [INFO] ⏱️ - [Save_To_LanceDB] Processing completed in 5.97 seconds
+2025-05-21 13:42:35 [INFO] ✅ - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
+2025-05-21 13:42:35 [INFO] 🔄 - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
+2025-05-21 13:42:35 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:35 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:42:35 [INFO] 🔄 - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
+2025-05-21 13:42:35 [INFO] 🔄 - [Pipeline_Controller] 🔄 Using standard chunking for new document
+2025-05-21 13:42:35 [INFO] 🚀 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:35 [INFO] 🔄 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:35 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 1334 characters using standard approach
+2025-05-21 13:42:35 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 13:42:35 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1334 characters
+2025-05-21 13:42:42 [INFO] 🔢 - Token counters updated: 600 input, 329 output for gpt-4.1-mini
+2025-05-21 13:42:42 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 2 chunks
+2025-05-21 13:42:42 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 2
+2025-05-21 13:42:42 [INFO] ✅ - [Consolidated_Chunking] Created 2 initial chunks
+2025-05-21 13:42:44 [INFO] ✅ - [Consolidated_Chunking] Loaded embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:42:45 [INFO] 📊 - [Consolidated_Chunking] 📊 CHUNK DEDUPLICATION SUMMARY FOR fighter_jet_rocket_launcher_spec_2_changed_values.pdf:
+2025-05-21 13:42:45 [INFO] 🔢 - [Consolidated_Chunking]   • Total chunks processed: 2
+2025-05-21 13:42:45 [INFO] ♻️ - [Consolidated_Chunking]   • Exact duplicates found: 0
+2025-05-21 13:42:45 [INFO] 🔄 - [Consolidated_Chunking]   • Similar chunks found: 0
+2025-05-21 13:42:45 [INFO] 🆕 - [Consolidated_Chunking]   • New unique chunks: 2
+2025-05-21 13:42:45 [INFO] ✅ - [Consolidated_Chunking] Processed 2 chunks in 10.08s (0 duplicates, 0 updated, 2 new)
+2025-05-21 13:42:45 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:45 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:42:45 [INFO] ✅ - [Consolidated_Chunking] Opened existing table: document_chunks
+2025-05-21 13:42:45 [INFO] ✅ - [Consolidated_Chunking] Added 2 new chunks
+2025-05-21 13:42:45 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: document_chunks has only 5 rows, minimum 256 required
+2025-05-21 13:42:45 [INFO] ✅ - [Consolidated_Chunking] Successfully processed document: fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:45 [INFO] 🧹 - [Consolidated_Chunking] Memory cleaned up
+2025-05-21 13:42:45 [INFO] ✅ - [Pipeline_Controller] ✅ Chunking completed successfully
+2025-05-21 13:42:45 [INFO] 🏁 - [Pipeline_Controller] 🏁 Pipeline completed at step 5 (Chunking only) for fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:42:45 [INFO] ✅ - [Pipeline_Runner] === Pipeline Completed Successfully ===
+2025-05-21 13:42:45 [INFO] 📊 - [Pipeline_Runner] === Deduplication Results ===
+2025-05-21 13:42:46 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:42:46 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:46 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:42:46 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 13:42:46 [INFO] 🔍 - ✅ Deduplication results displayed
+2025-05-21 13:42:46 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 13:42:46 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:42:46 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:42:46 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:42:46 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+
+=== Documents in Database (1 documents) ===
+1. fighter_jet_rocket_launcher_spec_2_changed_values.pdf: 1 pages
+
+=== Document Relationships ===
+No document relationships found
+
+=== Deduplication Statistics ===
+Total chunks in database: 2
+Documents with chunks: 1
+
+=== Chunk Counts by Document ===
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf: 2 chunks
+2025-05-21 13:42:46 [INFO] 🔍 - ✅ Deduplication results displayed
+
+2025-05-21 13:42:46 [INFO] 📊 - [Pipeline_Runner] ================================================================================
+2025-05-21 13:50:49 [INFO] 🧠 - [PDF_Parsing] Using OpenAI models for processing: Vision=gpt-4.1-mini, Text=gpt-4.1-mini
+2025-05-21 13:50:49 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 13:50:51 [INFO] ℹ️ - PyTorch version 2.6.0 available.
+2025-05-21 13:50:52 [INFO] 🧠 - [Reqs_Deduplication] Model provider for requirements deduplication: openai
+2025-05-21 13:50:52 [INFO] 🧠 - [Extract_Requirements] Using OpenAI model for requirements extraction: gpt-4.1-mini
+2025-05-21 13:50:52 [INFO] 🚀 - [Pipeline_Runner] === Document Processing Pipeline Runner ===
+2025-05-21 13:50:54 [INFO] 📋 - [Pipeline_Runner] === Available Input Files ===
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 1. Fighter_Jet_Engine_Detailed_Requirements.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 2. Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 3. Fighter_Jet_Engine_Detailed_Requirements_1.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 4. SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 5. fighter_jet_rocket_launcher_spec.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 6. fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 7. fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 8. fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 9. fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 10. fighter_jet_rocket_launcher_spec_5_reordered.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 11. fighter_jet_unique_original.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 12. fighter_jet_unique_reordered.pdf
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 13. file-sample_1MB.docx
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 14. high-level_requirements.txt
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 15. high-level_requirements_V2.txt
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 16. small_test.txt
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 17. test_document.txt
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 18. test_document_updated.txt
+2025-05-21 13:50:54 [INFO] 📄 - [Pipeline_Runner] 19. top_requirements.txt
+2025-05-21 13:50:58 [INFO] 📋 - [Pipeline_Runner] === Available Pipeline Steps ===
+2025-05-21 13:50:58 [INFO] ℹ️ - [Pipeline_Runner] 1. File Extension Filtering
+2025-05-21 13:50:58 [INFO] ℹ️ - [Pipeline_Runner] 2. Document Duplication Check
+2025-05-21 13:50:58 [INFO] ℹ️ - [Pipeline_Runner] 3. PDF Parsing & Content Extraction
+2025-05-21 13:50:58 [INFO] ℹ️ - [Pipeline_Runner] 4. Content Chunking
+2025-05-21 13:50:58 [INFO] ℹ️ - [Pipeline_Runner] 5. Requirements Extraction
+2025-05-21 13:50:59 [INFO] ⚙️ - [Pipeline_Runner] === Pipeline Run Settings ===
+2025-05-21 13:50:59 [INFO] 📄 - [Pipeline_Runner] Input file: input/raw/fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 🔢 - [Pipeline_Runner] Maximum UI step: 4 - Content Chunking (Controller step: 5)
+2025-05-21 13:50:59 [INFO] 🚀 - [Pipeline_Runner] === Starting Pipeline ===
+2025-05-21 13:50:59 [INFO] 🚀 - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_2_extra_end.pdf (max_step=5, dry_run=False, skip_hash_check=False)
+2025-05-21 13:50:59 [INFO] 🔐 - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 🔍 - [Hash_Deduplication] Checking for duplicate of file: input/raw/fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 🔢 - [Hash_Deduplication] Calculated hashes: MD5=19f764c8e9fe0b2d9e39c31e28954270, SHA256=7dcc9cb0be2a4acaa028a195ad57c9fd268e8fb8ff5856c7245fe5c2a0ab132a
+2025-05-21 13:50:59 [INFO] 🔄 - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:50:59 [INFO] ✅ - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:50:59 [INFO] ✅ - [Hash_Deduplication] Successfully saved file hash information for input/raw/fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] ✅ - [Hash_Deduplication] File hash check completed in 0.09 seconds. File is unique.
+2025-05-21 13:50:59 [INFO] ✅ - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_2_extra_end.pdf passed hash-based duplicate check
+2025-05-21 13:50:59 [INFO] 📑 - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:50:59 [INFO] 🔍 - [PDF_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:50:59 [INFO] 🔄 - [PDF_Parsing] Processing 'input/raw/fighter_jet_rocket_launcher_spec_2_extra_end.pdf' to images...
+2025-05-21 13:50:59 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:50:59 [INFO] 📄 - [PDF_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:50:59 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:50:59 [INFO] 📄 - [PDF_Parsing] PDF has 1 pages
+2025-05-21 13:50:59 [INFO] ✈️ - [PDF_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_2_extra_end/page_001.png
+2025-05-21 13:50:59 [INFO] 📄 - [PDF_Parsing] Page 1/1: Saved to page_001.png
+2025-05-21 13:50:59 [INFO] 📑 - [PDF_Parsing] Encoded image for page 1 to base64.
+2025-05-21 13:50:59 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:50:59 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 13:50:59 [INFO] ✅ - [PDF_Parsing] Successfully converted PDF to 1 images and encoded them.
+2025-05-21 13:50:59 [INFO] 🔍 - [PDF_Parsing] Extracting content from page 1/1
+2025-05-21 13:51:06 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 13:51:06 [INFO] 🔢 - Token counters updated: 2616 input, 344 output for gpt-4.1-mini
+2025-05-21 13:51:06 [INFO] ✅ - [PDF_Parsing] Successfully extracted markdown for page_001
+2025-05-21 13:51:06 [INFO] ✅ - [PDF_Parsing] Extracted 1561 chars from page 1
+2025-05-21 13:51:06 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_extra_end.pdf from page summaries...
+2025-05-21 13:51:06 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_2_extra_end.pdf...
+2025-05-21 13:51:10 [INFO] 🔢 - Token counters updated: 575 input, 120 output for gpt-4.1-mini
+2025-05-21 13:51:11 [INFO] 🔢 - Token counters updated: 215 input, 10 output for gpt-4.1-mini
+2025-05-21 13:51:11 [INFO] ✈️ - [PDF_Parsing] Generated document title from summaries: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 13:51:11 [INFO] ✅ - [PDF_Parsing] Generated title: "RLX-5000 Fighter Jet Rocket Launcher Specifications"
+2025-05-21 13:51:11 [INFO] ⚙️ - [PDF_Parsing] Processing pages sequentially...
+2025-05-21 13:51:11 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:51:11 [INFO] 🔄 - [PDF_Parsing] GENERATING PAGE METADATA
+2025-05-21 13:51:11 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:51:11 [INFO] ⚙️ - [PDF_Parsing] Processing page 1...
+2025-05-21 13:51:11 [INFO] 🔄 - [PDF_Parsing] Processing metadata for page 1/1
+2025-05-21 13:51:15 [INFO] 🔢 - Token counters updated: 742 input, 187 output for gpt-4.1-mini
+2025-05-21 13:51:15 [INFO] ⚙️ - [PDF_Parsing] Successfully processed page 1
+2025-05-21 13:51:15 [INFO] ✅ - [PDF_Parsing] Page 1: Generated summary and hashtags: RLX-5000, rocket launcher, weight, dimensions, rocket capacity...
+2025-05-21 13:51:15 [INFO] ✈️ - [PDF_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_2_extra_end/fighter_jet_rocket_launcher_spec_2_extra_end_combined.json
+2025-05-21 13:51:15 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:51:15 [INFO] ✅ - [PDF_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:15 [INFO] 📄 - [PDF_Parsing] Document title: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 13:51:15 [INFO] 📄 - [PDF_Parsing] Pages processed: 1
+2025-05-21 13:51:15 [INFO] 📄 - [PDF_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_2_extra_end_combined.json
+2025-05-21 13:51:15 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 13:51:15 [INFO] ✅ - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_2_extra_end/fighter_jet_rocket_launcher_spec_2_extra_end_combined.json
+2025-05-21 13:51:15 [INFO] 🔍 - [Pipeline_Controller] Step 3: Checking document for duplicates
+2025-05-21 13:51:15 [INFO] 💾 - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
+2025-05-21 13:51:15 [INFO] 📄 - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_extra_end/fighter_jet_rocket_launcher_spec_2_extra_end_combined.json
+2025-05-21 13:51:15 [INFO] 🧠 - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:51:15 [INFO] ℹ️ - Use pytorch device_name: mps
+2025-05-21 13:51:15 [INFO] ℹ️ - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:51:21 [INFO] ✅ - [Save_To_LanceDB] Model loaded successfully
+2025-05-21 13:51:21 [INFO] 🔄 - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_2_extra_end/fighter_jet_rocket_launcher_spec_2_extra_end_combined.json
+2025-05-21 13:51:21 [WARNING] ⚠️ - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
+2025-05-21 13:51:21 [INFO] ✅ - [Save_To_LanceDB] Successfully extracted 1 pages from document
+2025-05-21 13:51:21 [INFO] 🔄 - [Save_To_LanceDB] Checking for document duplicates
+2025-05-21 13:51:21 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:21 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:51:21 [INFO] 🔍 - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:21 [INFO] 🔄 - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:21 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 2 rows, minimum 256 required
+2025-05-21 13:51:21 [INFO] ✅ - [Docs_Deduplication] Page 1 has no close matches. It's new.
+2025-05-21 13:51:21 [INFO] 📊 - [Docs_Deduplication] Duplicate check completed in 0.03s: 1 new, 0 dup, 0 updates
+2025-05-21 13:51:21 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 2 rows, minimum 256 required
+2025-05-21 13:51:21 [INFO] 🆕 - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_2_extra_end.pdf is completely new (all 1 pages are new)
+2025-05-21 13:51:21 [INFO] 📊 - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
+2025-05-21 13:51:21 [INFO] 🔌 - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:21 [INFO] ✅ - [Save_To_LanceDB] Connected to LanceDB
+2025-05-21 13:51:21 [INFO] 📂 - [Save_To_LanceDB] Opening existing table: documents
+2025-05-21 13:51:21 [INFO] ➕ - [Save_To_LanceDB] Adding 1 new pages to LanceDB
+2025-05-21 13:51:21 [INFO] ✅ - [Save_To_LanceDB] New pages added successfully
+2025-05-21 13:51:21 [INFO] ⏱️ - [Save_To_LanceDB] Processing completed in 5.76 seconds
+2025-05-21 13:51:21 [INFO] ✅ - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
+2025-05-21 13:51:21 [INFO] 🔄 - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
+2025-05-21 13:51:21 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:21 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:51:21 [INFO] 🔄 - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
+2025-05-21 13:51:21 [INFO] 🔄 - [Pipeline_Controller] 🔄 Using standard chunking for new document
+2025-05-21 13:51:21 [INFO] 🚀 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:21 [INFO] 🔄 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:21 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 1563 characters using standard approach
+2025-05-21 13:51:21 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 13:51:21 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1563 characters
+2025-05-21 13:51:28 [INFO] 🔢 - Token counters updated: 648 input, 378 output for gpt-4.1-mini
+2025-05-21 13:51:28 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 5 chunks
+2025-05-21 13:51:28 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 5
+2025-05-21 13:51:28 [INFO] ✅ - [Consolidated_Chunking] Created 5 initial chunks
+2025-05-21 13:51:30 [INFO] ✅ - [Consolidated_Chunking] Loaded embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 13:51:31 [INFO] 📊 - [Consolidated_Chunking] 📊 CHUNK DEDUPLICATION SUMMARY FOR fighter_jet_rocket_launcher_spec_2_extra_end.pdf:
+2025-05-21 13:51:31 [INFO] 🔢 - [Consolidated_Chunking]   • Total chunks processed: 5
+2025-05-21 13:51:31 [INFO] ♻️ - [Consolidated_Chunking]   • Exact duplicates found: 0
+2025-05-21 13:51:31 [INFO] 🔄 - [Consolidated_Chunking]   • Similar chunks found: 0
+2025-05-21 13:51:31 [INFO] 🆕 - [Consolidated_Chunking]   • New unique chunks: 5
+2025-05-21 13:51:32 [INFO] ✅ - [Consolidated_Chunking] Processed 5 chunks in 10.92s (0 duplicates, 0 updated, 5 new)
+2025-05-21 13:51:32 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:32 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 13:51:32 [INFO] ✅ - [Consolidated_Chunking] Opened existing table: document_chunks
+2025-05-21 13:51:32 [INFO] ✅ - [Consolidated_Chunking] Added 5 new chunks
+2025-05-21 13:51:32 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: document_chunks has only 10 rows, minimum 256 required
+2025-05-21 13:51:32 [INFO] ✅ - [Consolidated_Chunking] Successfully processed document: fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:32 [INFO] 🧹 - [Consolidated_Chunking] Memory cleaned up
+2025-05-21 13:51:32 [INFO] ✅ - [Pipeline_Controller] ✅ Chunking completed successfully
+2025-05-21 13:51:32 [INFO] 🏁 - [Pipeline_Controller] 🏁 Pipeline completed at step 5 (Chunking only) for fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 13:51:32 [INFO] ✅ - [Pipeline_Runner] === Pipeline Completed Successfully ===
+2025-05-21 13:51:32 [INFO] 📊 - [Pipeline_Runner] === Deduplication Results ===
+2025-05-21 13:51:33 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:51:33 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:33 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:51:33 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 13:51:33 [INFO] 🔍 - ✅ Deduplication results displayed
+2025-05-21 13:51:33 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 13:51:33 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 13:51:33 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 13:51:33 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 13:51:33 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+
+=== Documents in Database (1 documents) ===
+1. fighter_jet_rocket_launcher_spec_2_extra_end.pdf: 1 pages
+
+=== Document Relationships ===
+No document relationships found
+
+=== Deduplication Statistics ===
+Total chunks in database: 5
+Documents with chunks: 1
+
+=== Chunk Counts by Document ===
+fighter_jet_rocket_launcher_spec_2_extra_end.pdf: 5 chunks
+2025-05-21 13:51:33 [INFO] 🔍 - ✅ Deduplication results displayed
+
+2025-05-21 13:51:33 [INFO] 📊 - [Pipeline_Runner] ================================================================================
+2025-05-21 14:42:42 [INFO] 🧠 - [PDF_Parsing] Using OpenAI models for processing: Vision=gpt-4.1-mini, Text=gpt-4.1-mini
+2025-05-21 14:42:43 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 14:42:45 [INFO] ℹ️ - PyTorch version 2.6.0 available.
+2025-05-21 14:42:45 [INFO] 🧠 - [Reqs_Deduplication] Model provider for requirements deduplication: openai
+2025-05-21 14:42:45 [INFO] 🧠 - [Extract_Requirements] Using OpenAI model for requirements extraction: gpt-4.1-mini
+2025-05-21 14:42:45 [INFO] 🚀 - [Pipeline_Runner] === Document Processing Pipeline Runner ===
+2025-05-21 14:42:47 [INFO] 📋 - [Pipeline_Runner] === Available Input Files ===
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 1. Fighter_Jet_Engine_Detailed_Requirements.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 2. Fighter_Jet_Engine_Detailed_Requirements_1 copy.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 3. Fighter_Jet_Engine_Detailed_Requirements_1.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 4. SYSTEM REQUIREMENTS ALQ-172 & Low Band Jammer - AC130.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 5. fighter_jet_rocket_launcher_spec.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 6. fighter_jet_rocket_launcher_spec_2.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 7. fighter_jet_rocket_launcher_spec_2_changed_values.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 8. fighter_jet_rocket_launcher_spec_2_extra_end.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 9. fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 10. fighter_jet_rocket_launcher_spec_5_reordered.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 11. fighter_jet_unique_original.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 12. fighter_jet_unique_reordered.pdf
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 13. file-sample_1MB.docx
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 14. high-level_requirements.txt
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 15. high-level_requirements_V2.txt
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 16. small_test.txt
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 17. test_document.txt
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 18. test_document_updated.txt
+2025-05-21 14:42:47 [INFO] 📄 - [Pipeline_Runner] 19. top_requirements.txt
+2025-05-21 14:42:54 [INFO] 📋 - [Pipeline_Runner] === Available Pipeline Steps ===
+2025-05-21 14:42:54 [INFO] ℹ️ - [Pipeline_Runner] 1. File Extension Filtering
+2025-05-21 14:42:54 [INFO] ℹ️ - [Pipeline_Runner] 2. Document Duplication Check
+2025-05-21 14:42:54 [INFO] ℹ️ - [Pipeline_Runner] 3. PDF Parsing & Content Extraction
+2025-05-21 14:42:54 [INFO] ℹ️ - [Pipeline_Runner] 4. Content Chunking
+2025-05-21 14:42:54 [INFO] ℹ️ - [Pipeline_Runner] 5. Requirements Extraction
+2025-05-21 14:42:55 [INFO] ⚙️ - [Pipeline_Runner] === Pipeline Run Settings ===
+2025-05-21 14:42:55 [INFO] 📄 - [Pipeline_Runner] Input file: input/raw/fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:55 [INFO] 🔢 - [Pipeline_Runner] Maximum UI step: 4 - Content Chunking (Controller step: 5)
+2025-05-21 14:42:55 [INFO] 🚀 - [Pipeline_Runner] === Starting Pipeline ===
+2025-05-21 14:42:55 [INFO] 🚀 - [Pipeline_Controller] Starting pipeline for document: fighter_jet_rocket_launcher_spec_3_language_variant.pdf (max_step=5, dry_run=False, skip_hash_check=False)
+2025-05-21 14:42:55 [INFO] 🔐 - [Pipeline_Controller] Step 1: Performing hash-based duplicate check for fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:55 [INFO] 🔍 - [Hash_Deduplication] Checking for duplicate of file: input/raw/fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:55 [INFO] 🔢 - [Hash_Deduplication] Calculated hashes: MD5=a552cdc6b059f526cf6c7fd43ecec9b4, SHA256=c266feb82f0c187faa9d1e3fd0800b9afbb6a5c94a8c7395cd18045025377ad3
+2025-05-21 14:42:55 [INFO] 🔄 - [Hash_Deduplication] Connecting to LanceDB database at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:42:56 [INFO] ✅ - [Hash_Deduplication] Connected to LanceDB at /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:42:56 [INFO] ✅ - [Hash_Deduplication] Successfully saved file hash information for input/raw/fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:56 [INFO] ✅ - [Hash_Deduplication] File hash check completed in 0.09 seconds. File is unique.
+2025-05-21 14:42:56 [INFO] ✅ - [Pipeline_Controller] Document fighter_jet_rocket_launcher_spec_3_language_variant.pdf passed hash-based duplicate check
+2025-05-21 14:42:56 [INFO] 📑 - [Pipeline_Controller] Step 2: Parsing document fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:56 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:42:56 [INFO] 🔍 - [PDF_Parsing] PARSING PDF: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:56 [INFO] 🔍 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:42:56 [INFO] 🔄 - [PDF_Parsing] Processing 'input/raw/fighter_jet_rocket_launcher_spec_3_language_variant.pdf' to images...
+2025-05-21 14:42:56 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:42:56 [INFO] 📄 - [PDF_Parsing] Converting PDF to images: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:42:56 [INFO] 📄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:42:56 [INFO] 📄 - [PDF_Parsing] PDF has 1 pages
+2025-05-21 14:42:56 [INFO] ✈️ - [PDF_Parsing] Saved image for page 1 to output/pdf_images/fighter_jet_rocket_launcher_spec_3_language_variant/page_001.png
+2025-05-21 14:42:56 [INFO] 📄 - [PDF_Parsing] Page 1/1: Saved to page_001.png
+2025-05-21 14:42:56 [INFO] 📑 - [PDF_Parsing] Encoded image for page 1 to base64.
+2025-05-21 14:42:56 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 14:42:56 [INFO] ✅ - [PDF_Parsing] Generated 1 images from PDF
+2025-05-21 14:42:56 [INFO] ✅ - [PDF_Parsing] Successfully converted PDF to 1 images and encoded them.
+2025-05-21 14:42:56 [INFO] 🔍 - [PDF_Parsing] Extracting content from page 1/1
+2025-05-21 14:43:06 [INFO] 📊 - Loaded token usage data for 3 models
+2025-05-21 14:43:06 [INFO] 🔢 - Token counters updated: 2616 input, 376 output for gpt-4.1-mini
+2025-05-21 14:43:06 [INFO] ✅ - [PDF_Parsing] Successfully extracted markdown for page_001
+2025-05-21 14:43:06 [INFO] ✅ - [PDF_Parsing] Extracted 1728 chars from page 1
+2025-05-21 14:43:06 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_3_language_variant.pdf from page summaries...
+2025-05-21 14:43:06 [INFO] 🔤 - [PDF_Parsing] Generating document title for fighter_jet_rocket_launcher_spec_3_language_variant.pdf...
+2025-05-21 14:43:11 [INFO] 🔢 - Token counters updated: 555 input, 138 output for gpt-4.1-mini
+2025-05-21 14:43:12 [INFO] 🔢 - Token counters updated: 233 input, 10 output for gpt-4.1-mini
+2025-05-21 14:43:12 [INFO] ✈️ - [PDF_Parsing] Generated document title from summaries: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 14:43:12 [INFO] ✅ - [PDF_Parsing] Generated title: "RLX-5000 Fighter Jet Rocket Launcher Specifications"
+2025-05-21 14:43:12 [INFO] ⚙️ - [PDF_Parsing] Processing pages sequentially...
+2025-05-21 14:43:12 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:43:12 [INFO] 🔄 - [PDF_Parsing] GENERATING PAGE METADATA
+2025-05-21 14:43:12 [INFO] 🔄 - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:43:12 [INFO] ⚙️ - [PDF_Parsing] Processing page 1...
+2025-05-21 14:43:12 [INFO] 🔄 - [PDF_Parsing] Processing metadata for page 1/1
+2025-05-21 14:43:16 [INFO] 🔢 - Token counters updated: 774 input, 145 output for gpt-4.1-mini
+2025-05-21 14:43:16 [INFO] ⚙️ - [PDF_Parsing] Successfully processed page 1
+2025-05-21 14:43:16 [INFO] ✅ - [PDF_Parsing] Page 1: Generated summary and hashtags: RLX-5000, rocket launcher, fighter jet, rocket capacity, fire rate...
+2025-05-21 14:43:16 [INFO] ✈️ - [PDF_Parsing] All extracted page data combined and saved to output/parsed_content/fighter_jet_rocket_launcher_spec_3_language_variant/fighter_jet_rocket_launcher_spec_3_language_variant_combined.json
+2025-05-21 14:43:16 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:43:16 [INFO] ✅ - [PDF_Parsing] PARSING COMPLETED: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:16 [INFO] 📄 - [PDF_Parsing] Document title: RLX-5000 Fighter Jet Rocket Launcher Specifications
+2025-05-21 14:43:16 [INFO] 📄 - [PDF_Parsing] Pages processed: 1
+2025-05-21 14:43:16 [INFO] 📄 - [PDF_Parsing] Output saved to: fighter_jet_rocket_launcher_spec_3_language_variant_combined.json
+2025-05-21 14:43:16 [INFO] ✅ - [PDF_Parsing] --------------------------------------------------------------------------------
+2025-05-21 14:43:16 [INFO] ✅ - [Pipeline_Controller] Document parsing completed: output/parsed_content/fighter_jet_rocket_launcher_spec_3_language_variant/fighter_jet_rocket_launcher_spec_3_language_variant_combined.json
+2025-05-21 14:43:16 [INFO] 🔍 - [Pipeline_Controller] Step 3: Checking document for duplicates
+2025-05-21 14:43:16 [INFO] 💾 - [Pipeline_Controller] Step 4: Saving document to LanceDB with deduplication
+2025-05-21 14:43:16 [INFO] 📄 - [Save_To_LanceDB] Processing specified document: output/parsed_content/fighter_jet_rocket_launcher_spec_3_language_variant/fighter_jet_rocket_launcher_spec_3_language_variant_combined.json
+2025-05-21 14:43:16 [INFO] 🧠 - [Save_To_LanceDB] Loading embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 14:43:16 [INFO] ℹ️ - Use pytorch device_name: mps
+2025-05-21 14:43:16 [INFO] ℹ️ - Load pretrained SentenceTransformer: intfloat/multilingual-e5-large-instruct
+2025-05-21 14:43:22 [INFO] ✅ - [Save_To_LanceDB] Model loaded successfully
+2025-05-21 14:43:22 [INFO] 🔄 - [Save_To_LanceDB] Loading document: output/parsed_content/fighter_jet_rocket_launcher_spec_3_language_variant/fighter_jet_rocket_launcher_spec_3_language_variant_combined.json
+2025-05-21 14:43:22 [WARNING] ⚠️ - [Save_To_LanceDB] Could not find explicit page structure, treating document as single page
+2025-05-21 14:43:22 [INFO] ✅ - [Save_To_LanceDB] Successfully extracted 1 pages from document
+2025-05-21 14:43:22 [INFO] 🔄 - [Save_To_LanceDB] Checking for document duplicates
+2025-05-21 14:43:22 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:22 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 14:43:22 [INFO] 🔍 - [Docs_Deduplication] Checking for duplicate/similar documents: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:22 [INFO] 🔄 - [Docs_Deduplication] Checking for duplicates of document: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:22 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 3 rows, minimum 256 required
+2025-05-21 14:43:22 [ERROR] ❌ - [Docs_Deduplication] Search error on page 1: Cannot index by location index with a non-integer key
+2025-05-21 14:43:22 [INFO] 📊 - [Docs_Deduplication] Duplicate check done in 0.03s → 1 new, 0 dup, 0 updates
+2025-05-21 14:43:22 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: documents has only 3 rows, minimum 256 required
+2025-05-21 14:43:22 [INFO] 🆕 - [Docs_Deduplication] 📊 Document deduplication summary: fighter_jet_rocket_launcher_spec_3_language_variant.pdf is completely new (all 1 pages are new)
+2025-05-21 14:43:22 [INFO] 📊 - [Save_To_LanceDB] Document has 1 new pages, 0 updated pages
+2025-05-21 14:43:22 [INFO] 🔌 - [Save_To_LanceDB] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:22 [INFO] ✅ - [Save_To_LanceDB] Connected to LanceDB
+2025-05-21 14:43:22 [INFO] 📂 - [Save_To_LanceDB] Opening existing table: documents
+2025-05-21 14:43:22 [INFO] ➕ - [Save_To_LanceDB] Adding 1 new pages to LanceDB
+2025-05-21 14:43:22 [INFO] ✅ - [Save_To_LanceDB] New pages added successfully
+2025-05-21 14:43:22 [INFO] ⏱️ - [Save_To_LanceDB] Processing completed in 6.05 seconds
+2025-05-21 14:43:22 [INFO] ✅ - [Pipeline_Controller] ✅ Document saved to LanceDB successfully
+2025-05-21 14:43:22 [INFO] 🔄 - [Pipeline_Controller] Step 5: Chunking document and checking for duplicate chunks
+2025-05-21 14:43:22 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:22 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 14:43:22 [INFO] 🔄 - [Pipeline_Controller] 🔄 Processing document with 1 pages for chunking
+2025-05-21 14:43:22 [INFO] 🔄 - [Pipeline_Controller] 🔄 Using standard chunking for new document
+2025-05-21 14:43:22 [INFO] 🚀 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:22 [INFO] 🔄 - [Consolidated_Chunking] Processing document: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:22 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 1730 characters using standard approach
+2025-05-21 14:43:22 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
+2025-05-21 14:43:22 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1730 characters
+2025-05-21 14:43:30 [INFO] 🔢 - Token counters updated: 679 input, 436 output for gpt-4.1-mini
+2025-05-21 14:43:30 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 3 chunks
+2025-05-21 14:43:30 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 3
+2025-05-21 14:43:30 [INFO] ✅ - [Consolidated_Chunking] Created 3 initial chunks
+2025-05-21 14:43:32 [INFO] ✅ - [Consolidated_Chunking] Loaded embedding model: intfloat/multilingual-e5-large-instruct
+2025-05-21 14:43:33 [INFO] 📊 - [Consolidated_Chunking] 📊 CHUNK DEDUPLICATION SUMMARY FOR fighter_jet_rocket_launcher_spec_3_language_variant.pdf:
+2025-05-21 14:43:33 [INFO] 🔢 - [Consolidated_Chunking]   • Total chunks processed: 3
+2025-05-21 14:43:33 [INFO] ♻️ - [Consolidated_Chunking]   • Exact duplicates found: 0
+2025-05-21 14:43:33 [INFO] 🔄 - [Consolidated_Chunking]   • Similar chunks found: 0
+2025-05-21 14:43:33 [INFO] 🆕 - [Consolidated_Chunking]   • New unique chunks: 3
+2025-05-21 14:43:34 [INFO] ✅ - [Consolidated_Chunking] Processed 3 chunks in 11.29s (0 duplicates, 0 updated, 3 new)
+2025-05-21 14:43:34 [INFO] 🔄 - [Docs_Deduplication] Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:34 [INFO] ✅ - [Docs_Deduplication] Successfully connected to LanceDB
+2025-05-21 14:43:34 [INFO] ✅ - [Consolidated_Chunking] Opened existing table: document_chunks
+2025-05-21 14:43:34 [INFO] ✅ - [Consolidated_Chunking] Added 3 new chunks
+2025-05-21 14:43:34 [INFO] ⚠️ - [Docs_Deduplication] Not creating index: document_chunks has only 13 rows, minimum 256 required
+2025-05-21 14:43:34 [INFO] ✅ - [Consolidated_Chunking] Successfully processed document: fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:34 [INFO] 🧹 - [Consolidated_Chunking] Memory cleaned up
+2025-05-21 14:43:34 [INFO] ✅ - [Pipeline_Controller] ✅ Chunking completed successfully
+2025-05-21 14:43:34 [INFO] 🏁 - [Pipeline_Controller] 🏁 Pipeline completed at step 5 (Chunking only) for fighter_jet_rocket_launcher_spec_3_language_variant.pdf
+2025-05-21 14:43:34 [INFO] ✅ - [Pipeline_Runner] === Pipeline Completed Successfully ===
+2025-05-21 14:43:34 [INFO] 📊 - [Pipeline_Runner] === Deduplication Results ===
+2025-05-21 14:43:35 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 14:43:35 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:35 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 14:43:35 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+2025-05-21 14:43:35 [INFO] 🔍 - ✅ Deduplication results displayed
+2025-05-21 14:43:35 [INFO] ℹ️ - [Pipeline_Runner] 2025-05-21 14:43:35 [INFO] 🔄 - 🔍 Showing deduplication results from the most recent pipeline run
+2025-05-21 14:43:35 [INFO] 🔌 - 🔌 Connecting to LanceDB at: /Users/fabio/Agentic_AI/Requify_V2/output/lancedb
+2025-05-21 14:43:35 [INFO] 🔌 - ✅ Connected to LanceDB successfully
+2025-05-21 14:43:35 [INFO] 📋 - 📋 Tables in database: ['document_chunks', 'documents', 'file_hashes', 'requirements']
+
+=== Documents in Database (1 documents) ===
+1. fighter_jet_rocket_launcher_spec_3_language_variant.pdf: 1 pages
+
+=== Document Relationships ===
+No document relationships found
+
+=== Deduplication Statistics ===
+Total chunks in database: 3
+Documents with chunks: 1
+
+=== Chunk Counts by Document ===
+fighter_jet_rocket_launcher_spec_3_language_variant.pdf: 3 chunks
+2025-05-21 14:43:35 [INFO] 🔍 - ✅ Deduplication results displayed
+
+2025-05-21 14:43:35 [INFO] 📊 - [Pipeline_Runner] ================================================================================

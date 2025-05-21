@@ -19,8 +19,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # from src import _00_utils
 
 # Constants
-TEST_FILES_DIR = os.path.join("_01_input", "raw")
-RESULTS_DIR = os.path.join("_03_output", "test_results")
+TEST_FILES_DIR = os.path.join("input", "raw")
+RESULTS_DIR = os.path.join("output", "test_results")
 
 def check_test_files():
     """Check if test files exist before running tests"""

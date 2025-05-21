@@ -39,9 +39,9 @@ from agno.models.groq import Groq
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import config
+from src import _00_utils
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-import config
 _00_utils.setup_project_directory()
 
 # Setup centralized logging with script prefix
@@ -188,7 +188,7 @@ class PDFProcessor:
             image_data_list = []
             if output_images_dir is None:
                 base_name = os.path.splitext(os.path.basename(pdf_path))[0]
-                # Use the central processed directory, now under _03_output
+                # Use the central processed directory, now under output
                 output_images_dir = os.path.join(PROCESSED_OUTPUT_BASE_DIR, "pdf_images", base_name)
             os.makedirs(output_images_dir, exist_ok=True)
             
@@ -287,7 +287,7 @@ class PDFProcessor:
     # -----------------------------------------------------------------
     def pdf_to_structured_json(self, pdf_path, output_dir=None): # output_dir will be constructed, not taken as default
         try:
-            # Ensure the base output directory for parsed content exists under _03_output
+            # Ensure the base output directory for parsed content exists under output
             # output_dir for specific PDF will be a subfolder of this
             pdf_base_name = os.path.splitext(os.path.basename(pdf_path))[0]
             # Construct specific output_dir for this PDF's parsed content

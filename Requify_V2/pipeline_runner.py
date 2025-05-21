@@ -21,9 +21,9 @@ from typing import Dict, List, Optional
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+from src import config
 import _00_utils
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
-import config
 
 # Import main pipeline controller and its step constants
 # These are the constants pipeline_controller.process_document expects.
@@ -102,24 +102,37 @@ def show_deduplication_results(input_file: str) -> None:
     logger.info("=" * 80, extra={"icon": "📊"})
 
 def setup_database() -> bool:
-    """Set up the LanceDB database tables."""
+    """Set up (reset) the LanceDB database tables by running the reset_lancedb.py script.
+    This will drop all existing tables and reinitialize them with the current schema definitions.
+    """
     try:
-        from src._00_lancedb_admin.init_lancedb import main as setup_db_main
-        logger.info("=== Database Setup ===", extra={"icon": "🔧"})
-        logger.info("Setting up database tables...", extra={"icon": "🔄"})
-        setup_db_main()
-        logger.info("Database setup completed.", extra={"icon": "✅"})
-        return True
-    except ImportError as e:
-        logger.error(f"Could not import database setup module: {e}", extra={"icon": "❌"})
-        return False
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        reset_script = os.path.join(script_dir, "tools", "reset_lancedb.py")
+        logger.info("=== Database Reset & Setup ===", extra={"icon": "🔧"})
+        logger.info("Resetting (clearing) and initializing LanceDB tables...", extra={"icon": "🔄"})
+        if os.path.exists(reset_script):
+            cmd = [sys.executable, reset_script]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.stdout:
+                logger.info(result.stdout, extra={"icon": "ℹ️"})
+            if result.stderr:
+                logger.error(f"Errors from reset_lancedb.py: {result.stderr}", extra={"icon": "❌"})
+            if result.returncode == 0:
+                logger.info("Database reset/setup completed.", extra={"icon": "✅"})
+                return True
+            else:
+                logger.error(f"reset_lancedb.py exited with code {result.returncode}", extra={"icon": "❌"})
+                return False
+        else:
+            logger.error(f"Reset script not found at: {reset_script}", extra={"icon": "❌"})
+            return False
     except Exception as e:
-        logger.error(f"Error setting up database: {e}", extra={"icon": "❌"})
+        logger.error(f"Error resetting LanceDB: {e}", extra={"icon": "❌"})
         return False
 
 def list_input_files() -> List[str]:
     """List available input files."""
-    input_dir = os.path.join("_01_input", "raw")
+    input_dir = os.path.join("input", "raw")
     if not os.path.exists(input_dir):
         logger.error(f"Input directory not found: {input_dir}", extra={"icon": "❌"})
         return []
@@ -150,7 +163,7 @@ def select_input_file() -> Optional[str]:
     """Prompt the user to select an input file."""
     files = list_input_files()
     if not files:
-        logger.warning("No input files found. Please add files to the _01_input/raw directory.", extra={"icon": "⚠️"})
+        logger.warning("No input files found. Please add files to the input/raw directory.", extra={"icon": "⚠️"})
         return None
     logger.info("=== Available Input Files ===", extra={"icon": "📋"})
     for i, file_path in enumerate(files):
@@ -271,7 +284,7 @@ def test_with_hardcoded_file():
     
     # Config is already loaded, no need to set environment variables
     
-    test_file = "_01_input/raw/fighter_jet_rocket_launcher_spec_2.pdf"
+    test_file = "input/raw/fighter_jet_rocket_launcher_spec_2.pdf"
     if not os.path.exists(test_file):
         logger.error(f"Test file not found: {test_file}", extra={"icon": "❌"})
         return False

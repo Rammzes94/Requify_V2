@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Model Provider Configuration
-MODEL_PROVIDER = "groq"  # Options: "openai", "groq"
+MODEL_PROVIDER = "openai"  # Options: "openai", "groq"
 
 # Embedding Model Configuration
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
@@ -158,12 +158,12 @@ VERBOSE_PDF_PARSING_OUTPUT = True  # Controls detailed logging during PDF parsin
 VERBOSE_CHUNKING_OUTPUT = True     # Controls detailed logging during document chunking
 LOG_LEVEL = "INFO"                 # Sets minimum message level to display (INFO, DEBUG, WARNING, ERROR)
 LOG_TO_CONSOLE = True              # Whether to show logs in terminal/console
-LOG_TO_FILE = False                # Whether to save logs to a file
+LOG_TO_FILE = True                # Whether to save logs to a file
 LOG_FILE_PATH = "logs/requify_agent.log"  # Where to save log files if LOG_TO_FILE is True
 
 # Path Configuration
-RAW_INPUT_DIR = os.path.join("_01_input", "raw")
-OUTPUT_DIR_BASE = os.path.join("_03_output")
+RAW_INPUT_DIR = os.path.join("input", "raw")
+OUTPUT_DIR_BASE = os.path.join("output")
 
 # PDF Processing Configuration
 PDF_TO_IMAGE_DPI = 300

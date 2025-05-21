@@ -2,7 +2,7 @@ venv/
 __pycache__/
 *.pyc
 .env
-_01_input
+input
 src/parsing/output_images/
 src/parsing/parsed_content/
-_03_output/
+output/

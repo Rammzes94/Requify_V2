@@ -31,6 +31,9 @@ from sentence_transformers import SentenceTransformer
 import lancedb
 from lancedb.pydantic import LanceModel, Vector
 from typing import List, Optional, Dict, Any, Tuple
+from src import config
+from src import _00_utils
+_00_utils.setup_project_directory()
 
 # -------------------------------------------------------------------------------------
 # Project Setup
@@ -38,8 +41,6 @@ from typing import List, Optional, Dict, Any, Tuple
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-_00_utils.setup_project_directory()
 
 # Import deduplication and pipeline interaction modules
 from _03_docs_deduplication import pre_save_deduplication as dedup
@@ -56,14 +57,13 @@ logger = _00_utils.get_logger("Save_To_LanceDB")
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "_03_output" # Define base output directory
-PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from _03_output
-LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within _03_output
+OUTPUT_DIR_BASE = "output" # Define base output directory
+PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from output
+LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within output
 LANCEDB_TABLE_NAME = "documents"
 
 # Try to import config, but use default values if not available
 try:
-    import config # Import the config module directly
     EMBEDDING_MODEL_NAME = config.EMBEDDING_MODEL_NAME
     EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION
 except (ImportError, AttributeError):

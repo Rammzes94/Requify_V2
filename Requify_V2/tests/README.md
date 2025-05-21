@@ -88,8 +88,8 @@ python tests/run_tests.py subset
 
 Test results are stored in:
 
-- `_03_output/test_results/` - JSON result files and summary reports
-- `_03_output/test_results/reports/` - HTML reports
+- `output/test_results/` - JSON result files and summary reports
+- `output/test_results/reports/` - HTML reports
 
 ## Interpreting Results
 
@@ -103,7 +103,7 @@ Each test scenario verifies:
 
 To add a new test scenario:
 
-1. Add your test documents to `_01_input/raw/` or the appropriate test files directory
+1. Add your test documents to `input/raw/` or the appropriate test files directory
 2. For pipeline tests, define a new scenario in `tests/e2e/test_scenarios.py`
 3. For chunking tests, add new cases to `tests/chunking/test_consolidated_chunking.py`
 4. Update the relevant test lists and configuration

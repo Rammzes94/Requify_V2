@@ -27,7 +27,7 @@ logger = _00_utils.get_logger("TestReporter")
 
 # Constants
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 
-                          "_03_output", "test_results")
+                          "output", "test_results")
 REPORTS_DIR = os.path.join(RESULTS_DIR, "reports")
 
 def get_latest_test_results():

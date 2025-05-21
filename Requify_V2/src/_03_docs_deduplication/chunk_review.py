@@ -19,10 +19,7 @@ import pandas as pd
 import lancedb
 from typing import List, Dict, Tuple, Optional, Any
 from dotenv import load_dotenv
-
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -34,7 +31,7 @@ load_dotenv()
 logger = _00_utils.get_logger("Chunk_Review")
 
 # Constants
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 CHUNKS_TABLE_NAME = "document_chunks"
 SIMILARITY_THRESHOLD = 0.85  # Threshold for suggesting similar chunks

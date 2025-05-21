@@ -44,7 +44,7 @@ echo
 if [ -f "tools/test_utils/results_reporter.py" ]; then
   echo "Generating HTML report..."
   python tools/test_utils/results_reporter.py
-  echo "Report generated in _03_output/test_results/"
+  echo "Report generated in output/test_results/"
 fi
 
 echo "Test run completed at $(date)" 

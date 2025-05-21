@@ -37,7 +37,7 @@ logger = _00_utils.get_logger("Hash_Deduplication")
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 FILE_HASHES_TABLE = "file_hashes"
 BUFFER_SIZE = 65536  # Read file in 64kb chunks for hashing

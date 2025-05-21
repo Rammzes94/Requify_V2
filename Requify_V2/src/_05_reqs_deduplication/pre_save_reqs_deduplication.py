@@ -36,7 +36,7 @@ from agno.models.openai import OpenAIChat
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import _00_utils
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-import config  # Import config from src
+from src import config  # Import config from src
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -50,7 +50,7 @@ logger = _00_utils.get_logger("Reqs_Deduplication")
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 # Construct path relative to project root
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)

@@ -23,29 +23,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from collections import defaultdict
 import numpy as np
-
-# Import model configurations from config
-# Conditional import for config based on execution context
-if __name__ == "__main__" and not __package__:
-    # If running _00_utils.py directly or in a way that src is not seen as a package
-    # This typically happens when the script's directory is added to sys.path
-    # and _00_utils.py is the entry point.
-    try:
-        import config
-    except ModuleNotFoundError:
-        print("ModuleNotFoundError: config.py not found")
-        pass
-else:
-    # If imported as part of the src package (e.g., from project root)
-    from src import config
+# Move sys.path modification before importing config
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from src import config
 
 MODEL_PRICING = config.MODEL_PRICING
 MODEL_TIERS = config.MODEL_TIERS
-
-# Fallback definitions and complex try-except logic for config import have been removed
-# as per user request for simplification. If config.py is missing or
-# MODEL_PRICING/MODEL_TIERS are not defined within it,
-# an ImportError or AttributeError will be raised.
 
 # Initialize token counters as global variables
 total_input_tokens = 0
@@ -53,7 +36,7 @@ total_output_tokens = 0
 model_token_usage = defaultdict(lambda: {"input": 0, "output": 0})
 
 # Token tracking file paths
-TOKEN_TRACKING_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_03_output", "token_tracking")
+TOKEN_TRACKING_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "output", "token_tracking")
 DAILY_USAGE_FILE = os.path.join(TOKEN_TRACKING_DIR, "daily_token_usage.csv")
 MODEL_USAGE_FILE = os.path.join(TOKEN_TRACKING_DIR, "model_token_usage.json")
 REPORTS_DIR = os.path.join(TOKEN_TRACKING_DIR, "reports")
@@ -103,13 +86,10 @@ def update_token_counters(response, model_id="gpt-4o-mini"):
         # Try to get the global logger, but handle case where it's not configured
         try:
             logger = logging.getLogger()
-            if logger.handlers:  # Check if logger is configured
-                logger.info(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}", extra={"icon": "🔢"})
-            else:
-                print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
-        except Exception:
+            logger.info(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}", extra={"icon": "🔢"})
+        except Exception as e:
             # If there's any issue with logging, fall back to print
-            print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
+            print(f"Error with logging in token counting: {e}")
         
         # Save updated token usage to file
         save_token_usage(model_id)
@@ -634,17 +614,19 @@ class ScriptLogger(logging.LoggerAdapter):
 
 def setup_logging():
     """
-    Configures logging for the project based on .env settings.
+    Configures logging for the project based on src/config.py settings.
     Returns a logger instance with an IconAdapter.
+    All logging configuration is now sourced from config.py, not environment variables.
     """
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    from src import config
+    log_level = getattr(config, "LOG_LEVEL", "INFO").upper()
     # Make icons more prominent in log format by placing them at the start
-    log_format = os.getenv("LOG_FORMAT", '%(asctime)s [%(levelname)s] %(icon)s - %(message)s')
-    log_date_format = os.getenv("LOG_DATE_FORMAT", '%Y-%m-%d %H:%M:%S')
-    log_to_console = os.getenv("LOG_TO_CONSOLE", "True").lower() == "true"
-    log_to_file = os.getenv("LOG_TO_FILE", "False").lower() == "true"
-    log_file_path = os.getenv("LOG_FILE_PATH", "logs/requify_agent.log")
-    log_file_mode = os.getenv("LOG_FILE_MODE", "a")
+    log_format = getattr(config, "LOG_FORMAT", '%(asctime)s [%(levelname)s] %(icon)s - %(message)s')
+    log_date_format = getattr(config, "LOG_DATE_FORMAT", '%Y-%m-%d %H:%M:%S')
+    log_to_console = getattr(config, "LOG_TO_CONSOLE", True)
+    log_to_file = getattr(config, "LOG_TO_FILE", False)
+    log_file_path = getattr(config, "LOG_FILE_PATH", "logs/requify_agent.log")
+    log_file_mode = getattr(config, "LOG_FILE_MODE", "a")
 
     handlers = []
     ensure_icon_filter = EnsureIconFilter() # Create an instance of the filter

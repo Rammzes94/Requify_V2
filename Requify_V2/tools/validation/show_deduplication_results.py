@@ -40,7 +40,7 @@ logger = _00_utils.setup_logging()
 
 # Constants
 LANCEDB_SUBDIR = "lancedb"
-OUTPUT_DIR = "_03_output"
+OUTPUT_DIR = "output"
 CHUNKS_TABLE = "document_chunks"
 DOCUMENTS_TABLE = "documents"
 

@@ -3,14 +3,9 @@ description:
 globs: 
 alwaysApply: true
 ---
-put tools into the "tools" folder and tests into the "tests" folder. The 02_src folder can only be for the main project files that will be shipped to the customer later.
-Make smart suggestions to make code leaner (e.g. removing unused variables etc.).
-Also make suggestions on smarter file sorting into smart folder structure, if that makes sense.
-Dont ever edit the .env file yourself!
-Ask follow-up questions if you are unsure how to proceed.
-Any files you create only for some action you want to do once, such as cleaning the lancedb or inspecting it, save those kind of files in a "temp" folder in the root dir.
-I want to keep the codebase clean.
+Be proactive, but if you changed something that you werent directly prompted, explain the reason behind it.
 
+Ensure to dive deep into our codebase for anything non-trivial, I want you to really find root causes of bugs.
 
 add a rough description of what the script does to any script we have, even if its there already. Use """..."""
 
@@ -36,6 +31,11 @@ We generally dont use a "if name = main" protection - unless it is needed for th
 Any script must have a summary of what it does - keep up to date and add to scripts that dont have one.
 I want important parameters to be added to the script as constants.
 I want you to explain any changes to the code with detailed comments in the code.
+
+-------------------------
+TESTING:
+
+follow Dave Farley’s recommendations regarding how to write tests, and in particular, unit tests. Essentially, you should make sure the tests test some sort of outcome or functionality, NOT any particular implementation. 
 
 ---------------------------
 

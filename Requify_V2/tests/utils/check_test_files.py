@@ -3,7 +3,7 @@
 check_test_files.py
 
 This script verifies that all test files needed for the E2E test scenarios 
-are present in the _01_input/raw directory.
+are present in the input/raw directory.
 
 It ensures that all required files for the defined test scenarios exist, logs missing or extra files, and provides file size information. This helps maintain test coverage and input hygiene for E2E tests.
 """
@@ -95,7 +95,7 @@ except ImportError:
 
 def check_test_files():
     """Check if all test files needed for the scenarios are present"""
-    input_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "_01_input", "raw")
+    input_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "input", "raw")
     
     if not os.path.exists(input_dir):
         logger.error(f"Input directory not found: {input_dir}", extra={"icon": "❌"})

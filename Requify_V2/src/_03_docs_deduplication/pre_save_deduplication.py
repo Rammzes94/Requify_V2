@@ -28,11 +28,8 @@ import pandas as pd
 import lancedb
 from dotenv import load_dotenv
 from datetime import timedelta
-
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-import config  # Import config from src
+from src import config
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Setup logging with script prefix
@@ -46,8 +43,8 @@ load_dotenv()
 # -------------------------------------------------------------------------------------
 # Constants
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "_03_output"  # Define base output directory
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within _03_output
+OUTPUT_DIR_BASE = "output"  # Define base output directory
+LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within output
 LANCEDB_TABLE_NAME = "documents"
 CHUNKS_TABLE_NAME = "document_chunks"
 EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
@@ -591,29 +588,36 @@ def check_document_duplicates(
     new_doc_data: List[Dict], db_connection=None
 ) -> Tuple[Dict[int, Dict[str, object]], List[int], Dict[int, Dict[str, object]]]:
     """
-    Check if a newly parsed document has duplicate pages in the existing database.
+    Check if a newly parsed document has duplicate pages in the existing database
+    **and log the closest match (ID, page, cosine similarity) for every page**.
 
-    Returns:
-        duplicate_pages: dict mapping page idx -> {{'similar_id', 'similarity'}}
-        new_pages: list of new page indices
-        update_pages: dict mapping page idx -> {{'record_id', 'is_newer'}}
+    Returns
+    -------
+    duplicate_pages : dict
+        page-idx ➜ {"similar_id": "<pdf>_<page>", "similarity": float}
+    new_pages : list[int]
+        indices of pages that are completely new
+    update_pages : dict
+        page-idx ➜ {"record_id": <row-id>, "is_newer": bool}
     """
     start_time = time.time()
+
     if not new_doc_data:
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return {}, [], {}
 
-    doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
+    doc_id = new_doc_data[0].get("pdf_identifier", "unknown")
     logger.info(f"Checking for duplicates of document: {doc_id}", extra={"icon": "🔄"})
 
-    # Connect and index
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+    # ── DB set-up ────────────────────────────────────────────────────────────────
+    script_dir   = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
     lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+
     db = db_connection or connect_to_lancedb(lancedb_path)
     if not db or LANCEDB_TABLE_NAME not in db.table_names():
         logger.info(
-            f"No existing database or table found. All {len(new_doc_data)} pages are new.",
+            f"No existing database/table; all {len(new_doc_data)} pages are new.",
             extra={"icon": "✅"}
         )
         return {}, list(range(len(new_doc_data))), {}
@@ -621,15 +625,18 @@ def check_document_duplicates(
     ensure_index(db)
     table = db.open_table(LANCEDB_TABLE_NAME)
 
+    # ── result containers ───────────────────────────────────────────────────────
     duplicate_pages: Dict[int, Dict[str, object]] = {}
-    new_pages: List[int] = []
-    update_pages: Dict[int, Dict[str, object]] = {}
+    new_pages:      List[int]                     = []
+    update_pages:   Dict[int, Dict[str, object]] = {}
 
+    # ── main loop over pages ────────────────────────────────────────────────────
     for idx, page_data in enumerate(new_doc_data):
-        page_num = page_data.get('page_number', idx + 1)
-        embedding = page_data.get('embedding')
+        page_num   = page_data.get("page_number", idx + 1)
+        embedding  = page_data.get("embedding")
+
         if embedding is None:
-            logger.warning(f"Page {page_num} has no embedding. Marking as new.", extra={"icon": "⚠️"})
+            logger.warning(f"Page {page_num} has no embedding → new", extra={"icon": "⚠️"})
             new_pages.append(idx)
             continue
         if isinstance(embedding, list):
@@ -637,67 +644,83 @@ def check_document_duplicates(
 
         try:
             df = (
-                table.search(embedding)
+                table.search(embedding)           # brute-force scan if no ANN index
                      .metric("cosine")
                      .limit(MAX_PAGES_TO_SAMPLE)
-                     .nprobes(32)
-                     .refine_factor(5)
                      .to_df()
             )
             if df.empty:
-                logger.info(f"No similar pages found for page {page_num}. It's new.", extra={"icon": "✅"})
+                logger.info(f"No matches for page {page_num} → new", extra={"icon": "✅"})
                 new_pages.append(idx)
                 continue
 
+            # Compute cosine similarity column once
+            df["_sim"] = 1.0 - df["_distance"]
+            best_row   = df.iloc[df["_sim"].idxmax()]
+            best_sim   = float(best_row["_sim"])
+            best_id    = best_row["pdf_identifier"]
+            best_page  = best_row.get("page_number", "unknown")
+
+            # ── classification ────────────────────────────────────────────────
             found = False
-            for _, row in df.iterrows():
-                sim = 1.0 - row['_distance']
-                existing_id = row['pdf_identifier']
-                existing_page = row.get('page_number', 'unknown')
-
-                # Same-doc update check
-                if existing_id == doc_id and existing_page == page_num:
-                    exist_ts = pd.to_datetime(row.get('timestamp', None))
-                    new_ts = pd.to_datetime(page_data.get('timestamp', None))
-                    if new_ts and exist_ts and new_ts > exist_ts:
-                        update_pages[idx] = {'record_id': row.name, 'is_newer': True}
-                        logger.info(
-                            f"Page {page_num} is a newer version. Marked for update.",
-                            extra={"icon": "🔄"}
-                        )
-                    else:
-                        duplicate_pages[idx] = {'similar_id': f"{existing_id}_{existing_page}", 'similarity': sim}
-                        logger.info(
-                            f"Page {page_num} is an older version. Skipping.",
-                            extra={"icon": "⏩"}
-                        )
-                    found = True
-                    break
-
-                # Cross-doc duplicate
-                if sim >= DUPLICATE_THRESHOLD:
-                    duplicate_pages[idx] = {'similar_id': f"{existing_id}_{existing_page}", 'similarity': sim}
+            if best_id == doc_id and best_page == page_num:
+                # This page already exists in the *same* document
+                exist_ts = pd.to_datetime(best_row.get("timestamp"))
+                new_ts   = pd.to_datetime(page_data.get("timestamp"))
+                if new_ts and exist_ts and new_ts > exist_ts:
+                    update_pages[idx] = {"record_id": best_row.name, "is_newer": True}
                     logger.info(
-                        f"Page {page_num} duplicates {existing_id} page {existing_page} (sim={sim:.4f}). Skipping.",
-                        extra={"icon": "⏩"}
+                        f"Page {page_num} is a newer version of itself.",
+                        extra={"icon": "🔄"}
                     )
-                    found = True
-                    break
+                else:
+                    duplicate_pages[idx] = {
+                        "similar_id": f"{best_id}_{best_page}",
+                        "similarity": best_sim
+                    }
+                    logger.info(
+                        f"Page {page_num} already exists unchanged.",
+                        extra={"icon": "♻️"}
+                    )
+                found = True
+
+            elif best_sim >= DUPLICATE_THRESHOLD:
+                # Perfect / near-perfect duplicate in another document
+                duplicate_pages[idx] = {
+                    "similar_id": f"{best_id}_{best_page}",
+                    "similarity": best_sim
+                }
+                logger.info(
+                    f"Page {page_num} duplicates {best_id} page {best_page}.",
+                    extra={"icon": "♻️"}
+                )
+                found = True
+
+            # else: similarity < DUPLICATE_THRESHOLD  → keep as new
 
             if not found:
-                logger.info(f"Page {page_num} has no close matches. It's new.", extra={"icon": "✅"})
                 new_pages.append(idx)
 
+            # ── always emit closest-match log ──────────────────────────────────
+            logger.info(
+                f"🔍 Closest match for page {page_num}: "
+                f"{best_id} page {best_page} (cosine ≈ {best_sim:.4f})",
+                extra={"icon": "🔍"}
+            )
+
         except Exception as e:
-            logger.error(f"Error searching for page {page_num}: {e}", extra={"icon": "❌"})
+            logger.error(f"Search error on page {page_num}: {e}", extra={"icon": "❌"})
             new_pages.append(idx)
 
+    # ── summary ────────────────────────────────────────────────────────────────
     elapsed = time.time() - start_time
     logger.info(
-        f"Duplicate check completed in {elapsed:.2f}s: {len(new_pages)} new, {len(duplicate_pages)} dup, {len(update_pages)} updates",
+        f"Duplicate check done in {elapsed:.2f}s → "
+        f"{len(new_pages)} new, {len(duplicate_pages)} dup, {len(update_pages)} updates",
         extra={"icon": "📊"}
     )
     return duplicate_pages, new_pages, update_pages
+
 
 
 def get_document_pages_by_id(doc_id: str, db_connection=None) -> pd.DataFrame:

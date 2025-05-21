@@ -1,0 +1,4 @@
+$4e42a2ee-02a7-4c43-928c-9e41a9288daf²ó.requirement_id ÿÿÿÿÿÿÿÿÿ*string8Zdefault-document_id ÿÿÿÿÿÿÿÿÿ*string8Zdefault.page_number ÿÿÿÿÿÿÿÿÿ*int6408Zdefault)section ÿÿÿÿÿÿÿÿÿ*string8Zdefault'title ÿÿÿÿÿÿÿÿÿ*string8Zdefault-description ÿÿÿÿÿÿÿÿÿ*string8Zdefault7requirement_rationale ÿÿÿÿÿÿÿÿÿ*string8Zdefault3is_software_related ÿÿÿÿÿÿÿÿÿ*bool8Zdefault5software_confidence ÿÿÿÿÿÿÿÿÿ*double8Zdefault4software_rationale	 ÿÿÿÿÿÿÿÿÿ*string8Zdefault-source_text
+ ÿÿÿÿÿÿÿÿÿ*string8Zdefault1source_chunk_id ÿÿÿÿÿÿÿÿÿ*string8Zdefault3created_timestamp ÿÿÿÿÿÿÿÿÿ*string8ZdefaultA	embedding ÿÿÿÿÿÿÿÿÿ*fixed_size_list:float:102408Zdefault,is_duplicate ÿÿÿÿÿÿÿÿÿ*bool8Zdefault0duplicate_of ÿÿÿÿÿÿÿÿÿ*string08Zdefault"'
+lance.auto_cleanup.older_than14days"!
+lance.auto_cleanup.interval20

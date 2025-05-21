@@ -13,7 +13,7 @@ import numpy as np
 from typing import List, Dict, Any, Tuple
 
 # Path to LanceDB
-LANCEDB_PATH = "_03_output/lancedb"
+LANCEDB_PATH = "output/lancedb"
 SIMILARITY_THRESHOLD = 0.9  # Threshold for considering chunks similar
 
 def cosine_similarity(a, b):

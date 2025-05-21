@@ -16,7 +16,7 @@ import pandas as pd
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -26,7 +26,7 @@ load_dotenv()
 logger = _00_utils.setup_logging()
 
 # Constants
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 DOCUMENT_CHUNKS_TABLE = "document_chunks"
 DOCUMENTS_TABLE = "documents"

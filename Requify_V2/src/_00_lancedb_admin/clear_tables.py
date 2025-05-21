@@ -12,9 +12,8 @@ import logging
 import argparse
 from dotenv import load_dotenv
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Load environment variables
@@ -26,7 +25,7 @@ load_dotenv()
 logger = _00_utils.get_logger("LanceDB_Admin")
 
 # Constants
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
 

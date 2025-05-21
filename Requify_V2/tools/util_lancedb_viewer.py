@@ -15,13 +15,13 @@ separate sheet in an Excel file for easy viewing.
 """
 
 # Add the parent directory to the system path to allow importing modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
 # Load environment variables
 load_dotenv()
 
 # Define important constants
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 EXCEL_FILENAME = "lancedb_tables.xlsx"
 TEST_DB_PATH = os.path.join("tests", "e2e", OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 
 # Construct the absolute path to the main LanceDB directory
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
 test_lancedb_path = os.path.join(project_root, TEST_DB_PATH)
 

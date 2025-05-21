@@ -16,9 +16,9 @@ The testing framework has been organized into a clean, maintainable structure:
 
 ```
 Requify_V2/
-├── _01_input/raw/               # Test input documents
+├── input/raw/               # Test input documents
 ├── src/                     # Main product code (to be shipped)
-├── _03_output/                  # Output storage
+├── output/                  # Output storage
 │   ├── test_results/            # Test results storage
 │   └── visualizations/          # Visualization outputs
 ├── tests/                       # All test-related code
@@ -87,10 +87,10 @@ python tools/visualization/visualize_db_relationships.py --interactive
 ## Test Results and Reporting
 
 Results are saved in:
-- JSON files in `_03_output/test_results/`
+- JSON files in `output/test_results/`
 - Human-readable summary files
-- HTML reports in `_03_output/test_results/reports/`
-- Relationship visualizations in `_03_output/visualizations/`
+- HTML reports in `output/test_results/reports/`
+- Relationship visualizations in `output/visualizations/`
 
 To generate a report from the latest test run:
 
@@ -112,7 +112,7 @@ The test framework verifies each scenario by:
 
 To add a new test scenario:
 
-1. Add appropriate test files to `_01_input/raw/`
+1. Add appropriate test files to `input/raw/`
 2. Define a new scenario in `tests/e2e/test_scenarios.py`
 3. Specify the expected behavior for each step
 4. Update the total scenario count in `run_all_tests.sh`

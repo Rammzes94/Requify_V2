@@ -15,11 +15,8 @@ from lancedb.pydantic import LanceModel, Vector
 from typing import Optional, List
 from pydantic import Field
 from dotenv import load_dotenv
-import config # Import the config module
-
-# Add the parent directory (src) to the system path to allow importing _00_utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import config
+from src import _00_utils
 _00_utils.setup_project_directory() # Ensures working directory is project root
 
 # Load environment variables
@@ -32,7 +29,7 @@ logger = _00_utils.get_logger("LanceDB_Admin")
 
 # --- Constants ---
 # These should align with constants used in other scripts that access these tables
-OUTPUT_DIR_BASE = "_03_output"
+OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Relative to project root
 DOCUMENTS_TABLE_NAME = "documents"

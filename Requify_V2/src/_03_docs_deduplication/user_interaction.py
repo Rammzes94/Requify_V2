@@ -20,7 +20,7 @@ from typing import Dict, List, Tuple, Optional, Any
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
+from src import _00_utils
 _00_utils.setup_project_directory()
 
 # Setup logging with script prefix

@@ -56,8 +56,8 @@ from src._02_parsing import stable_save_to_lancedb
 from src._04_extract_reqs import extract_requirements
 
 # Constants
-DEFAULT_DOC_PATH = os.path.join("_01_input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
-DEFAULT_OUTPUT_DIR = "_03_output"
+DEFAULT_DOC_PATH = os.path.join("input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
+DEFAULT_OUTPUT_DIR = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"  # Added to ensure consistency
 
 # Pipeline step constants
@@ -437,17 +437,6 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                             similar_document_id = most_similar_doc_id
                             similarity_score = highest_similarity
             
-            # Additional special case for testing
-            if not similar_document_detected and document_id == "fighter_jet_rocket_launcher_spec_2_changed_values.pdf":
-                # Check if the original document exists in chunks
-                if db and "document_chunks" in db.table_names():
-                    chunks_table = db.open_table("document_chunks")
-                    chunks_df = chunks_table.to_pandas()
-                    if not chunks_df.empty and "fighter_jet_rocket_launcher_spec_2.pdf" in chunks_df['document_id'].values:
-                        logger.info(f"📊 Test document detected! Using context-aware chunking for test document with reference to fighter_jet_rocket_launcher_spec_2.pdf", extra={"icon": "🧪"})
-                        similar_document_detected = True
-                        similar_document_id = "fighter_jet_rocket_launcher_spec_2.pdf"
-                        similarity_score = 0.9
             
         except Exception as e:
             logger.warning(f"⚠️ Error checking document similarity: {str(e)}. Will process as new document.", extra={"icon": "⚠️"})
