@@ -382,12 +382,12 @@ def save_document_to_lancedb(document_path):
     # Create an index if we have enough data
     try:
         record_count = len(table.to_pandas())
-        if record_count > 100:  # Only create index with sufficient data
+        if record_count > 256:  # Only create index with sufficient data
             logger.info("Creating vector search index", extra={"icon": "🔍"})
             table.create_index(vector_column_name="embedding", replace=True)
             logger.info("Index created successfully", extra={"icon": "✅"})
         else:
-            logger.info(f"Not creating index: {LANCEDB_TABLE_NAME} has only {record_count} rows, minimum 100 required", extra={"icon": "⚠️"})
+            logger.info(f"Not creating index: {LANCEDB_TABLE_NAME} has only {record_count} rows, minimum 256 required", extra={"icon": "⚠️"})
     except Exception as e:
         logger.error(f"Error creating index: {e}", extra={"icon": "❌"})
         # Index failure is not critical, continue

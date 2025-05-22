@@ -14,7 +14,7 @@ The testing framework focuses on validating the document processing pipeline, pa
 ## Test Structure
 
 - `chunking/` - Tests for the document chunking implementation
-  - `test_consolidated_chunking.py` - Tests for the consolidated chunking module
+  - `test_agentic_chunking.py` - Tests for the consolidated chunking module
   - `test_files/` - Sample documents for chunking tests
 - `e2e/` - End-to-end tests that validate the entire pipeline
   - `test_scenarios.py` - Main script with test scenarios and execution logic
@@ -38,7 +38,7 @@ The chunking tests validate the core document chunking functionality:
 To run chunking tests:
 
 ```bash
-python tests/chunking/test_consolidated_chunking.py
+python tests/chunking/test_agentic_chunking.py
 ```
 
 ### End-to-End Pipeline Tests
@@ -105,7 +105,7 @@ To add a new test scenario:
 
 1. Add your test documents to `input/raw/` or the appropriate test files directory
 2. For pipeline tests, define a new scenario in `tests/e2e/test_scenarios.py`
-3. For chunking tests, add new cases to `tests/chunking/test_consolidated_chunking.py`
+3. For chunking tests, add new cases to `tests/chunking/test_agentic_chunking.py`
 4. Update the relevant test lists and configuration
 
 ## Verification Logic

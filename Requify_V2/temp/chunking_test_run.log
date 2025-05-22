@@ -1,61 +1,61 @@
-2025-05-21 13:23:17 [INFO] 🧠 - [Consolidated_Chunking] Using OpenAI model for chunking: gpt-4.1-mini
-2025-05-21 13:23:17 [INFO] 🧪 - [Consolidated_Chunking] Testing chunking with document length: 3425 characters
-2025-05-21 13:23:17 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Chunking markdown text of 3425 characters using standard approach
-2025-05-21 13:23:17 [INFO] 🔄 - [Consolidated_Chunking] 🔄 Processing section 1/1
-2025-05-21 13:23:17 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 3425 characters
+2025-05-21 13:23:17 [INFO] 🧠 - [agentic_chunking] Using OpenAI model for chunking: gpt-4.1-mini
+2025-05-21 13:23:17 [INFO] 🧪 - [agentic_chunking] Testing chunking with document length: 3425 characters
+2025-05-21 13:23:17 [INFO] 🔄 - [agentic_chunking] 🔄 Chunking markdown text of 3425 characters using standard approach
+2025-05-21 13:23:17 [INFO] 🔄 - [agentic_chunking] 🔄 Processing section 1/1
+2025-05-21 13:23:17 [INFO] 🧩 - [agentic_chunking] 🔄 Asking LLM to chunk text of 3425 characters
 2025-05-21 13:23:32 [INFO] ℹ️ - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-05-21 13:23:32 [INFO] ℹ️ - HTTP Request: POST https://api.agno.com/v1/telemetry/agent/run/create "HTTP/1.1 200 OK"
 2025-05-21 13:23:32 [INFO] 📊 - Loaded token usage data for 3 models
 2025-05-21 13:23:32 [INFO] 🔢 - Token counters updated: 966 input, 706 output for gpt-4.1-mini
-2025-05-21 13:23:32 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 5 chunks
-2025-05-21 13:23:32 [INFO] ⚠️ - [Consolidated_Chunking] ⚠️ Found 1 oversized chunks, re-chunking them
-2025-05-21 13:23:32 [INFO] ⚠️ - [Consolidated_Chunking] ⚠️ Oversized chunk #4: 1096 chars (limit: 900)
-2025-05-21 13:23:32 [INFO] 🧩 - [Consolidated_Chunking] 🔄 Asking LLM to chunk text of 1096 characters
+2025-05-21 13:23:32 [INFO] ✅ - [agentic_chunking] ✅ LLM provided 5 chunks
+2025-05-21 13:23:32 [INFO] ⚠️ - [agentic_chunking] ⚠️ Found 1 oversized chunks, re-chunking them
+2025-05-21 13:23:32 [INFO] ⚠️ - [agentic_chunking] ⚠️ Oversized chunk #4: 1096 chars (limit: 900)
+2025-05-21 13:23:32 [INFO] 🧩 - [agentic_chunking] 🔄 Asking LLM to chunk text of 1096 characters
 2025-05-21 13:23:36 [INFO] ℹ️ - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-05-21 13:23:37 [INFO] ℹ️ - HTTP Request: POST https://api.agno.com/v1/telemetry/agent/run/create "HTTP/1.1 200 OK"
 2025-05-21 13:23:37 [INFO] 🔢 - Token counters updated: 527 input, 246 output for gpt-4.1-mini
-2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ LLM provided 3 chunks
-2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ After re-chunking oversized chunks, we now have 7 chunks
-2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] ✅ Completed chunking. Total chunks: 7
-2025-05-21 13:23:37 [INFO] ✅ - [Consolidated_Chunking] Generated 7 chunks
-2025-05-21 13:23:37 [INFO] 📊 - [Consolidated_Chunking] Min/Max/Avg chars: 219/869/487.3
-2025-05-21 13:23:37 [INFO] 📊 - [Consolidated_Chunking] Min/Max/Avg tokens: 54/217/121.3
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] ✅ - [agentic_chunking] ✅ LLM provided 3 chunks
+2025-05-21 13:23:37 [INFO] ✅ - [agentic_chunking] ✅ After re-chunking oversized chunks, we now have 7 chunks
+2025-05-21 13:23:37 [INFO] ✅ - [agentic_chunking] ✅ Completed chunking. Total chunks: 7
+2025-05-21 13:23:37 [INFO] ✅ - [agentic_chunking] Generated 7 chunks
+2025-05-21 13:23:37 [INFO] 📊 - [agentic_chunking] Min/Max/Avg chars: 219/869/487.3
+2025-05-21 13:23:37 [INFO] 📊 - [agentic_chunking] Min/Max/Avg tokens: 54/217/121.3
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 1 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] # Test Document
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] # Test Document
 
 ## Introduction
 This is a test document for the Requify chunking system. It should be processed and chunked properly according to sem...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 2 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Technical Details
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] ## Technical Details
 The consolidated chunking implementation combines the strengths of:
 1. context_aware_chunking.py - For handling document versions...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 3 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Conclusion
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] ## Conclusion
 This document should be long enough to be split into multiple chunks. The chunking system should identify semantically coherent boundari...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 4 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] Proin aliquet metus vel magna lacinia, ut faucibus metus facilisis. Suspendisse potenti. Integer sed lacus ac augue hendrerit placerat. Curabitur temp...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] Proin aliquet metus vel magna lacinia, ut faucibus metus facilisis. Suspendisse potenti. Integer sed lacus ac augue hendrerit placerat. Curabitur temp...
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 5 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ### Additional Requirements
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] ### Additional Requirements
 
 1. The system should handle edge cases gracefully
 2. Performance should be optimized for large documents
 3. Memory usage ...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 6 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] #### Edge Cases
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] #### Edge Cases
 
 Some edge cases to consider:
 - Empty documents
 - Very large documents (millions of characters)
 - Documents with unusual formatting
 - ...
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] 
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] 
 --- Chunk 7 ---
-2025-05-21 13:23:37 [INFO] 📄 - [Consolidated_Chunking] ## Final Thoughts
+2025-05-21 13:23:37 [INFO] 📄 - [agentic_chunking] ## Final Thoughts
 
 This test document should provide sufficient material to evaluate the chunking system's ability to create semantically meaningful c...

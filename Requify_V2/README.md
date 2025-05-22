@@ -165,7 +165,7 @@ Comprehensive testing is available in the `tests/` directory:
 
 ```bash
 # Run chunking tests
-python tests/chunking/test_consolidated_chunking.py
+python tests/chunking/test_agentic_chunking.py
 
 # Run end-to-end pipeline tests
 python tests/run_tests.py all

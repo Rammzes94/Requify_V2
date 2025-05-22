@@ -50,7 +50,7 @@ setup_project_directory()
 load_dotenv()
 
 # Import the consolidated chunking module
-from src._02_parsing import consolidated_chunking
+from src._02_parsing import agentic_chunking
 
 # Setup logging with script prefix
 logger = get_logger("Test_Chunking")
@@ -399,14 +399,14 @@ class TestChunking(unittest.TestCase):
             document_text = f.read()
         
         # Perform chunking
-        chunks = consolidated_chunking.chunk_markdown(document_text)
+        chunks = agentic_chunking.chunk_markdown(document_text)
         
         # Verify results
         self.assertIsNotNone(chunks, "Chunks should not be None")
         self.assertGreater(len(chunks), 0, "Should generate at least one chunk")
         
         # Report stats
-        stats = consolidated_chunking.analyze_chunks(chunks)
+        stats = agentic_chunking.analyze_chunks(chunks)
         logger.info(f"Generated {len(chunks)} chunks from small document", extra={"icon": "📊"})
         logger.info(f"Avg chunk size: {stats['char_sizes']['avg']:.1f} chars / {stats['token_sizes']['avg']:.1f} tokens", extra={"icon": "📏"})
     
@@ -418,20 +418,20 @@ class TestChunking(unittest.TestCase):
             document_text = f.read()
         
         # Perform chunking
-        chunks = consolidated_chunking.chunk_markdown(document_text)
+        chunks = agentic_chunking.chunk_markdown(document_text)
         
         # Verify results
         self.assertIsNotNone(chunks, "Chunks should not be None")
         self.assertGreater(len(chunks), 1, "Should generate multiple chunks for larger document")
         
         # Report stats
-        stats = consolidated_chunking.analyze_chunks(chunks)
+        stats = agentic_chunking.analyze_chunks(chunks)
         logger.info(f"Generated {len(chunks)} chunks from standard document", extra={"icon": "📊"})
         logger.info(f"Avg chunk size: {stats['char_sizes']['avg']:.1f} chars / {stats['token_sizes']['avg']:.1f} tokens", extra={"icon": "📏"})
         
         # Verify chunk sizes
         for i, chunk in enumerate(chunks):
-            self.assertLessEqual(len(chunk), consolidated_chunking.MAX_CHAR_SIZE, 
+            self.assertLessEqual(len(chunk), agentic_chunking.MAX_CHAR_SIZE, 
                                 f"Chunk {i} exceeds maximum size")
     
     def test_context_aware_chunking(self):
@@ -447,7 +447,7 @@ class TestChunking(unittest.TestCase):
             updated_text = f.read()
             
         # Generate chunks for original document
-        original_chunks = consolidated_chunking.chunk_markdown(original_text)
+        original_chunks = agentic_chunking.chunk_markdown(original_text)
         
         # Convert to format expected by context-aware chunking
         context_chunks = []
@@ -460,7 +460,7 @@ class TestChunking(unittest.TestCase):
             })
         
         # Generate chunks for updated document with context
-        updated_chunks = consolidated_chunking.chunk_markdown(updated_text, context_chunks)
+        updated_chunks = agentic_chunking.chunk_markdown(updated_text, context_chunks)
         
         # Verify results
         self.assertIsNotNone(updated_chunks, "Updated chunks should not be None")
@@ -489,7 +489,7 @@ class TestChunking(unittest.TestCase):
             original_doc_id = f"test_{scenario_name}_original"
             
             # Generate chunks for original document
-            original_chunks = consolidated_chunking.chunk_markdown(scenario_data['original'])
+            original_chunks = agentic_chunking.chunk_markdown(scenario_data['original'])
             
             # Convert to format expected by context-aware chunking
             context_chunks = []
@@ -503,7 +503,7 @@ class TestChunking(unittest.TestCase):
             
             # Generate chunks for modified document with context
             modified_doc_id = f"test_{scenario_name}_modified"
-            modified_chunks = consolidated_chunking.chunk_markdown(scenario_data['modified'], context_chunks)
+            modified_chunks = agentic_chunking.chunk_markdown(scenario_data['modified'], context_chunks)
             
             # Verify results
             self.assertIsNotNone(modified_chunks, f"Chunks should not be None for scenario: {scenario_name}")
@@ -529,7 +529,7 @@ def run_tests(batch_size=None):
     """Run the tests."""
     # Override batch size if specified
     if batch_size:
-        consolidated_chunking.EMBEDDING_BATCH_SIZE = batch_size
+        agentic_chunking.EMBEDDING_BATCH_SIZE = batch_size
         logger.info(f"Setting embedding batch size to {batch_size}", extra={"icon": "🔧"})
     
     unittest.main(argv=['first-arg-is-ignored'], exit=False)

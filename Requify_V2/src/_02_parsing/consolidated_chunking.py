@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-consolidated_chunking.py
+agentic_chunking.py
 
 This script implements a comprehensive approach to document chunking that:
 1. Uses existing chunks from similar documents as context for the LLM (from context_aware_chunking)
@@ -44,7 +44,7 @@ _00_utils.setup_project_directory()
 from _03_docs_deduplication import pre_save_deduplication as dedup
 
 # Setup logging with script prefix
-logger = _00_utils.get_logger("Consolidated_Chunking")
+logger = _00_utils.get_logger("agentic_chunking")
 
 # Constants
 MAX_CHAR_SIZE = 900  # Maximum allowed character size for a chunk
