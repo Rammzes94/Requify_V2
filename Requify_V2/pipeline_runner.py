@@ -18,12 +18,18 @@ import sys
 import argparse
 import subprocess
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from src import config
-import _00_utils
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+from src.utils import setup_project_directory, get_logger
+
+# Set up project directory
+setup_project_directory()
+
+# Load environment variables
+load_dotenv()
 
 # Import main pipeline controller and its step constants
 # These are the constants pipeline_controller.process_document expects.
@@ -38,7 +44,7 @@ from pipeline_controller import (
 )
 
 # Setup centralized logging with script prefix
-logger = _00_utils.get_logger("Pipeline_Runner")
+logger = get_logger("Pipeline_Runner")
 
 # UI step constants for pipeline_runner.py interface
 # These are distinct from the controller's step constants to avoid conflicts.
@@ -238,11 +244,18 @@ def main() -> None:
     parser.add_argument("--show-dedup", action="store_true", help="Show deduplication results after processing")
     parser.add_argument("--verbose", action="store_true", default=True, 
                        help="Enable verbose output (default: True)")
+    parser.add_argument("--skip_hash_check", action="store_true", help="Skip the hash-based duplicate check")
+    parser.add_argument("--test", action="store_true", help="Run the pipeline with a test file")
     args = parser.parse_args()
     
     # If verbose argument is provided, we could update the config values if needed
     # But we'll rely on the values already loaded from config
     
+    if args.test:
+        # Run the test with options
+        test_with_hardcoded_file(skip_hash_check=args.skip_hash_check)
+        return
+        
     if args.interactive or not (args.input and args.max_step is not None):
         run_pipeline_interactive()
         return
@@ -264,7 +277,7 @@ def main() -> None:
 
     logger.info(f"Running pipeline on {args.input} up to UI step {max_step_ui} ({STEP_DESCRIPTIONS[max_step_ui]}), mapped to controller step {controller_max_step}", extra={"icon": "🚀"})
     try:
-        success = process_document(args.input, max_step=controller_max_step, dry_run=False)
+        success = process_document(args.input, max_step=controller_max_step, dry_run=False, skip_hash_check=args.skip_hash_check)
         if success:
             logger.info("Pipeline completed successfully.", extra={"icon": "✅"})
             
@@ -278,7 +291,7 @@ def main() -> None:
         logger.error(f"Pipeline error: {e}", extra={"icon": "💥"})
         raise
 
-def test_with_hardcoded_file():
+def test_with_hardcoded_file(skip_hash_check=False):
     """Test the pipeline with a hardcoded file."""
     logger.info("=== Running Pipeline Test with Hardcoded File ===", extra={"icon": "🧪"})
     
@@ -293,13 +306,10 @@ def test_with_hardcoded_file():
         # For the test, we run the complete pipeline, so we use the controller's STEP_EXTRACT_REQS directly.
         controller_max_step_for_test = CTRL_STEP_EXTRACT_REQS
         logger.info(f"Test will run up to controller step: {controller_max_step_for_test} (Requirements Extraction)")
-        return process_document(test_file, max_step=controller_max_step_for_test, dry_run=False)
+        return process_document(test_file, max_step=controller_max_step_for_test, dry_run=False, skip_hash_check=skip_hash_check)
     except Exception as e:
         logger.error(f"Pipeline test error: {e}", extra={"icon": "💥"})
         return False
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "--test":
-        test_with_hardcoded_file()
-    else:
-        main()
+    main()

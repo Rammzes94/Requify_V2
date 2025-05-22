@@ -25,14 +25,14 @@ from dotenv import load_dotenv
 
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+setup_project_directory()
 
 # Load environment variables
 load_dotenv()
 
 # Setup logging with script prefix
-logger = _00_utils.get_logger("Hash_Deduplication")
+logger = get_logger("Hash_Deduplication")
 
 # -------------------------------------------------------------------------------------
 # Constants

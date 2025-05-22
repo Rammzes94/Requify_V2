@@ -26,17 +26,15 @@ from typing import Optional, Dict, List, Tuple, Any
 from dotenv import load_dotenv
 import numpy as np
 
-# _00_utils will be imported using an absolute path assuming project root is in sys.path
-# The setup_project_directory call should ideally be done once at the entry point (e.g. test_scenarios.py or main script)
-# For now, we keep it, but use absolute import for _00_utils.
-from src import _00_utils
-_00_utils.setup_project_directory() # This might still be problematic if it assumes CWD.
+# Import utilities
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+setup_project_directory() # This might still be problematic if it assumes CWD.
 
 # Load environment variables
 load_dotenv()
 
 # Setup logging with script prefix
-logger = _00_utils.get_logger("Pipeline_Controller")
+logger = get_logger("Pipeline_Controller")
 
 # Import Hash-based deduplication
 from src._01_ingestion import file_hash_deduplication

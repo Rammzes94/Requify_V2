@@ -21,8 +21,8 @@ init()
 # Add the parent directory to the system path to allow importing modules from it
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.append(project_root)
-import src._00_utils as _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_project_directory, setup_logging
+setup_project_directory()
 
 # Import constants directly from pre_save_deduplication
 from src._03_docs_deduplication.pre_save_deduplication import (
@@ -36,7 +36,7 @@ from src._03_docs_deduplication.pre_save_deduplication import (
 load_dotenv()
 
 # Setup logging
-logger = _00_utils.setup_logging()
+logger = setup_logging()
 
 # Constants
 LANCEDB_SUBDIR = "lancedb"
@@ -129,7 +129,7 @@ def show_deduplication_stats(db, target_doc=None, show_text=False):
         
         if not duplicate_hashes.empty:
             print(f"\n{Fore.CYAN}=== Chunks with Same Hash ({len(duplicate_hashes)} hashes) ==={Style.RESET_ALL}")
-            for hash_val, count in duplicate_hashes.items()[:10]:  # Show top 10
+            for hash_val, count in list(duplicate_hashes.items())[:10]:  # Show top 10
                 print(f"Hash {hash_val[:8]}...: {count} chunks")
                 if count > 5:
                     print("  (showing first 5 chunks)")

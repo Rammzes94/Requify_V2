@@ -19,8 +19,8 @@ import pandas as pd
 import lancedb
 from typing import List, Dict, Tuple, Optional, Any
 from dotenv import load_dotenv
-from src import _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+setup_project_directory()
 
 # Load environment variables
 load_dotenv()
@@ -28,7 +28,7 @@ load_dotenv()
 # Setup logging with script prefix
 
 
-logger = _00_utils.get_logger("Chunk_Review")
+logger = get_logger("Chunk_Review")
 
 # Constants
 OUTPUT_DIR_BASE = "output"

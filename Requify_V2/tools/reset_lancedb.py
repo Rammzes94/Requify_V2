@@ -16,8 +16,8 @@ project_root = os.path.abspath(os.path.join(script_dir, ".."))
 if sys.path[0] != project_root:
     sys.path.insert(0, project_root)
 
-from src import _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+setup_project_directory()
 
 # Load environment variables
 load_dotenv()
@@ -25,7 +25,7 @@ load_dotenv()
 import lancedb
 
 # Set up logging with script prefix
-logger = _00_utils.get_logger("Reset_LanceDB")
+logger = get_logger("Reset_LanceDB")
 
 # Constants
 OUTPUT_DIR_BASE = "output"

@@ -40,15 +40,15 @@ from agno.models.groq import Groq
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
-from src import _00_utils
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-_00_utils.setup_project_directory()
+setup_project_directory()
 
 # Setup centralized logging with script prefix
-logger = _00_utils.setup_logging()
+logger = setup_logging()
 
 # Create a consistent logger with prefix for better visibility
-logger = _00_utils.get_logger("PDF_Parsing")
+logger = get_logger("PDF_Parsing")
 
 # ---------------------------------------------------------------------
 # Section 2: Configuration Constants
@@ -245,7 +245,7 @@ class PDFProcessor:
                     logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.structured_agent.description[:2000]}{'... [truncated]' if len(self.structured_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
                     response = self.structured_agent.run(prompt)
                     logger.debug(f"[LLM_CALL] Output from structured_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
-                    _00_utils.update_token_counters(response, text_model_name) # Added token counting
+                    update_token_counters(response, text_model_name) # Added token counting
                     summary = response.content
                     if isinstance(summary, str):
                         page_summaries.append(summary)
@@ -274,7 +274,7 @@ class PDFProcessor:
             logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.document_title_agent.description[:2000]}{'... [truncated]' if len(self.document_title_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
             response = self.document_title_agent.run(prompt)
             logger.debug(f"[LLM_CALL] Output from document_title_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
-            _00_utils.update_token_counters(response, text_model_name) # Added token counting
+            update_token_counters(response, text_model_name) # Added token counting
             document_title = response.content.strip()
             logger.info(f"Generated document title from summaries: {document_title}")
             
@@ -405,7 +405,7 @@ class PDFProcessor:
                     logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.structured_agent.description[:2000]}{'... [truncated]' if len(self.structured_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
                     response_structured = self.structured_agent.run(prompt)
                     logger.debug(f"[LLM_CALL] Output from structured_agent: {str(response_structured.content)[:2000]}{'... [truncated]' if len(str(response_structured.content)) > 2000 else ''}")
-                    _00_utils.update_token_counters(response_structured, text_model_name) # Added token counting
+                    update_token_counters(response_structured, text_model_name) # Added token counting
                     processing_duration = time.time() - start_time
                     
                     json_output = response_structured.content

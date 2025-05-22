@@ -32,8 +32,9 @@ import lancedb
 from lancedb.pydantic import LanceModel, Vector
 from typing import List, Optional, Dict, Any, Tuple
 from src import config
-from src import _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+from src.utils.logging_utils import ScriptLogger
+setup_project_directory()
 
 # -------------------------------------------------------------------------------------
 # Project Setup
@@ -51,8 +52,7 @@ load_dotenv()
 
 # Setup logging with script prefix
 
-
-logger = _00_utils.get_logger("Save_To_LanceDB")
+logger = get_logger("Save_To_LanceDB")
 
 # -------------------------------------------------------------------------------------
 # Constants
@@ -308,7 +308,7 @@ def save_document_to_lancedb(document_path):
         st_logger.addHandler(logging.StreamHandler())
         st_logger.setLevel(logging.INFO)
         # Wrap the sentence-transformers logger with our ScriptLogger
-        st_logger = _00_utils.ScriptLogger(st_logger, "[Save_To_LanceDB] ")
+        st_logger = ScriptLogger(st_logger, "[Save_To_LanceDB] ")
         
         text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
         logger.info("Model loaded successfully", extra={"icon": "✅"})

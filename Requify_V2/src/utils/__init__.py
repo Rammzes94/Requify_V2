@@ -14,7 +14,11 @@ from .token_tracking import (
     get_token_usage, 
     print_token_usage, 
     reset_token_counters,
-    display_token_usage_status
+    display_token_usage_status,
+    generate_token_usage_report,
+    check_token_limits,
+    load_token_tracking_data,
+    save_token_usage
 )
 from .directory_utils import setup_project_directory
 from .general_utils import generate_timestamp
@@ -28,5 +32,9 @@ __all__ = [
     'reset_token_counters',
     'setup_project_directory',
     'generate_timestamp',
-    'display_token_usage_status'
+    'display_token_usage_status',
+    'generate_token_usage_report',
+    'check_token_limits',
+    'load_token_tracking_data',
+    'save_token_usage'
 ]

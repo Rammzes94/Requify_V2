@@ -13,9 +13,10 @@ from lancedb.pydantic import LanceModel, Vector
 from dotenv import load_dotenv
 import traceback
 from src import config
-from src import _00_utils
-from _00_utils import update_token_counters, print_token_usage
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+from src.utils import update_token_counters, print_token_usage
+from src.utils.logging_utils import ScriptLogger
+setup_project_directory()
 load_dotenv()
 
 """
@@ -41,9 +42,9 @@ requirements from identical chunks while processing only new or modified content
 # -------------------------------------------------------------------------------------
 
 # Configure logging with script prefix first
-logger = _00_utils.setup_logging()
+logger = setup_logging()
 
-logger = _00_utils.get_logger("Extract_Requirements")
+logger = get_logger("Extract_Requirements")
 
 # Import the deduplication module for requirements
 try:

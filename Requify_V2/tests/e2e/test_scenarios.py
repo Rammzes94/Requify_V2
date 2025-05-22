@@ -27,8 +27,8 @@ import io
 # Add the parent directories to the system path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 # Import _00_utils from the correct location
-from src import _00_utils
-_00_utils.setup_project_directory()
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+setup_project_directory()
 
 # Import database utilities
 from tools import reset_lancedb
@@ -37,7 +37,7 @@ from tools import reset_lancedb
 from src import pipeline_controller
 
 # Set up logging
-logger = _00_utils.get_logger("E2E_Tests")
+logger = get_logger("E2E_Tests")
 
 # Constants
 INPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "input", "raw")

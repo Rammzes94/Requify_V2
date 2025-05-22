@@ -36,15 +36,15 @@ import torch
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src import config
-from src import _00_utils
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 # sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-_00_utils.setup_project_directory()
+setup_project_directory()
 
 # Import deduplication module
 from _03_docs_deduplication import pre_save_deduplication as dedup
 
 # Setup logging with script prefix
-logger = _00_utils.get_logger("agentic_chunking")
+logger = get_logger("agentic_chunking")
 
 # Constants
 MAX_CHAR_SIZE = 900  # Maximum allowed character size for a chunk
@@ -325,7 +325,7 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
             logger.debug(f"[LLM_CALL] Description / System prompt:\n{agent.description[:2000]}{'... [truncated]' if len(agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{full_prompt[:2000]}{'... [truncated]' if len(full_prompt) > 2000 else ''}")
             response = agent.run(full_prompt)
             logger.debug(f"[LLM_CALL] Output from chunking agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
-            _00_utils.update_token_counters(response, chunking_model_name)
+            update_token_counters(response, chunking_model_name)
             
             data = response.content
             
@@ -645,7 +645,7 @@ Remember: The differences field is REQUIRED and must contain SPECIFIC, CONCRETE 
         
         try:
             response = decision_agent.run("")
-            _00_utils.update_token_counters(response, chunking_model_name)
+            update_token_counters(response, chunking_model_name)
             
             data = response.content
             decision_info["decision"] = data.decision
@@ -1006,7 +1006,7 @@ def process_document_with_context(
         previous_chunk_id = ""
         
         # Store the chunk data
-        timestamp = _00_utils.generate_timestamp()
+        timestamp = generate_timestamp()
         
         # Compare against all reference chunks from the similar document
         if similar_chunks:

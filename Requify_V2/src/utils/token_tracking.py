@@ -9,8 +9,11 @@ import os
 import logging
 import json
 import csv
-from datetime import date
+from datetime import date, datetime
 from collections import defaultdict
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
 # Import configuration from parent directory
 from src import config
@@ -25,12 +28,14 @@ model_token_usage = defaultdict(lambda: {"input": 0, "output": 0})
 
 # Token tracking file paths
 TOKEN_TRACKING_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
-                                "_03_output", "token_tracking")
+                                "output", "token_tracking")
 DAILY_USAGE_FILE = os.path.join(TOKEN_TRACKING_DIR, "daily_token_usage.csv")
 MODEL_USAGE_FILE = os.path.join(TOKEN_TRACKING_DIR, "model_token_usage.json")
+REPORTS_DIR = os.path.join(TOKEN_TRACKING_DIR, "reports")
 
 # Ensure directories exist
 os.makedirs(TOKEN_TRACKING_DIR, exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
 
 def update_token_counters(response, model_id="gpt-4o-mini"):
     """
@@ -224,6 +229,346 @@ def load_token_tracking_data():
             writer = csv.writer(f)
             writer.writerow(['date', 'model', 'input_tokens', 'output_tokens', 'total_tokens', 'cost'])
 
+def should_generate_report():
+    """
+    Check if we should generate a new report based on time or usage patterns.
+    For simplicity, we'll generate a report once per day when token usage is saved.
+    
+    Returns:
+        bool: True if a report should be generated
+    """
+    today = date.today().isoformat()
+    html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
+    
+    # Generate a report if we haven't generated one today
+    return not os.path.exists(html_report_file)
+
+def check_token_limits():
+    """
+    Check if token usage is approaching OpenAI limits.
+    
+    Returns:
+        dict: Dictionary with limit status for high and low tier models
+    """
+    today = date.today().isoformat()
+    high_tier_usage = 0
+    low_tier_usage = 0
+    
+    if os.path.exists(DAILY_USAGE_FILE):
+        try:
+            with open(DAILY_USAGE_FILE, 'r', newline='') as f:
+                reader = csv.reader(f)
+                header = next(reader)  # Skip header
+                for row in reader:
+                    if len(row) >= 5:  # Ensure row has enough columns
+                        row_date = row[0]
+                        row_model = row[1]
+                        
+                        if row_date == today:
+                            total_tokens = int(row[4])  # total_tokens column
+                            
+                            # Use the MODEL_TIERS constant to determine tier
+                            if row_model in MODEL_TIERS["high_tier"]["models"]:
+                                high_tier_usage += total_tokens
+                            elif row_model in MODEL_TIERS["low_tier"]["models"]:
+                                low_tier_usage += total_tokens
+                            # For unknown models, try to check if we have pricing data with tier info
+                            elif row_model in MODEL_PRICING and MODEL_PRICING[row_model].get("tier") == "high":
+                                high_tier_usage += total_tokens
+                            else:
+                                # Default to low tier for unknown models
+                                low_tier_usage += total_tokens
+        except Exception as e:
+            logger = logging.getLogger()
+            if logger.handlers:
+                logger.warning(f"Error checking token limits: {str(e)}", extra={"icon": "⚠️"})
+            else:
+                print(f"Error checking token limits: {str(e)}")
+    
+    high_tier_limit = MODEL_TIERS["high_tier"]["limit"]
+    low_tier_limit = MODEL_TIERS["low_tier"]["limit"]
+    
+    high_tier_percentage = (high_tier_usage / high_tier_limit) * 100 if high_tier_limit > 0 else 0
+    low_tier_percentage = (low_tier_usage / low_tier_limit) * 100 if low_tier_limit > 0 else 0
+    
+    return {
+        "high_tier": {
+            "usage": high_tier_usage,
+            "limit": high_tier_limit,
+            "percentage": high_tier_percentage,
+            "warning": high_tier_percentage > 80
+        },
+        "low_tier": {
+            "usage": low_tier_usage,
+            "limit": low_tier_limit,
+            "percentage": low_tier_percentage,
+            "warning": low_tier_percentage > 80
+        }
+    }
+
+def generate_token_usage_report():
+    """
+    Generate a comprehensive report of token usage in HTML format.
+    Saves the report in the reports directory.
+    """
+    today = date.today().isoformat()
+    html_report_file = os.path.join(REPORTS_DIR, f"token_summary_{today}.html")
+    
+    # Skip if report already exists
+    if os.path.exists(html_report_file):
+        return
+    
+    try:
+        if not os.path.exists(DAILY_USAGE_FILE):
+            return
+        
+        # Load the data
+        data = []
+        models = set()
+        with open(DAILY_USAGE_FILE, 'r', newline='') as f:
+            reader = csv.reader(f)
+            header = next(reader)  # Skip header
+            for row in reader:
+                if len(row) >= 6:  # Ensure row has enough columns
+                    data.append({
+                        'date': row[0],
+                        'model': row[1],
+                        'input_tokens': int(row[2]),
+                        'output_tokens': int(row[3]),
+                        'total_tokens': int(row[4]),
+                        'cost': float(row[5])
+                    })
+                    models.add(row[1])
+        
+        # Skip if no data
+        if not data:
+            return
+        
+        # Get limits
+        limits = check_token_limits()
+        
+        # Summary for today
+        today_data = [item for item in data if item['date'] == today]
+        today_total_tokens = sum(item['total_tokens'] for item in today_data)
+        today_total_cost = sum(item['cost'] for item in today_data)
+        
+        # Create HTML report with properly formatted CSS
+        with open(html_report_file, 'w') as f:
+            f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Usage Report - {0}</title>
+    <style>
+        body {{ 
+            font-family: Arial, sans-serif; 
+            margin: 20px;
+            line-height: 1.6;
+        }}
+        h1, h2, h3 {{ 
+            color: #333366; 
+        }}
+        table {{ 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin-bottom: 20px; 
+        }}
+        th, td {{ 
+            padding: 10px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }}
+        th {{ 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+        }}
+        tr:hover {{ 
+            background-color: #f5f5f5; 
+        }}
+        .warning {{ 
+            color: red; 
+            font-weight: bold; 
+        }}
+        .progress-container {{ 
+            width: 100%; 
+            background-color: #f1f1f1; 
+            border-radius: 5px; 
+            margin-bottom: 20px;
+        }}
+        .progress-bar {{ 
+            height: 24px; 
+            border-radius: 5px; 
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 24px;
+        }}
+        .progress-bar.high {{ 
+            background-color: #4CAF50; 
+        }}
+        .progress-bar.medium {{ 
+            background-color: #FFEB3B; 
+            color: #333;
+        }}
+        .progress-bar.critical {{ 
+            background-color: #F44336; 
+        }}
+        .report-footer {{
+            margin-top: 30px;
+            color: #666;
+            font-style: italic;
+        }}
+        .model-stats {{
+            margin-bottom: 30px;
+        }}
+    </style>
+</head>
+<body>
+    <h1>Token Usage Summary - {0}</h1>
+    
+    <h2>Today's Summary</h2>
+    <table>
+        <tr>
+            <th>Total Tokens</th>
+            <th>Total Cost</th>
+        </tr>
+        <tr>
+            <td>{1:,}</td>
+            <td>${2:.4f}</td>
+        </tr>
+    </table>
+    
+    <h2>Model Breakdown</h2>
+    <table>
+        <tr>
+            <th>Model</th>
+            <th>Input Tokens</th>
+            <th>Output Tokens</th>
+            <th>Total Tokens</th>
+            <th>Cost</th>
+        </tr>
+""".format(today, today_total_tokens, today_total_cost))
+            
+            # Add model breakdown rows
+            for model in sorted(models):
+                model_data = [item for item in today_data if item['model'] == model]
+                if model_data:
+                    model_input_tokens = sum(item['input_tokens'] for item in model_data)
+                    model_output_tokens = sum(item['output_tokens'] for item in model_data)
+                    model_total_tokens = sum(item['total_tokens'] for item in model_data)
+                    model_cost = sum(item['cost'] for item in model_data)
+                    f.write(f"""        <tr>
+            <td>{model}</td>
+            <td>{model_input_tokens:,}</td>
+            <td>{model_output_tokens:,}</td>
+            <td>{model_total_tokens:,}</td>
+            <td>${model_cost:.4f}</td>
+        </tr>
+""")
+            f.write("    </table>\n")
+            
+            # Historical token usage section
+            f.write("""
+    <h2>Historical Token Usage</h2>
+    <table>
+        <tr>
+            <th>Date</th>
+            <th>Model</th>
+            <th>Input Tokens</th>
+            <th>Output Tokens</th>
+            <th>Total Tokens</th>
+            <th>Cost</th>
+        </tr>
+""")
+            # Group by date and model
+            date_model_data = {}
+            for item in data:
+                date_key = item['date']
+                model_key = item['model']
+                if date_key not in date_model_data:
+                    date_model_data[date_key] = {}
+                if model_key not in date_model_data[date_key]:
+                    date_model_data[date_key][model_key] = {
+                        'input_tokens': 0,
+                        'output_tokens': 0,
+                        'total_tokens': 0,
+                        'cost': 0.0
+                    }
+                date_model_data[date_key][model_key]['input_tokens'] += item['input_tokens']
+                date_model_data[date_key][model_key]['output_tokens'] += item['output_tokens']
+                date_model_data[date_key][model_key]['total_tokens'] += item['total_tokens']
+                date_model_data[date_key][model_key]['cost'] += item['cost']
+            
+            # Sort by date (newest first)
+            for date_key in sorted(date_model_data.keys(), reverse=True):
+                for model_key in sorted(date_model_data[date_key].keys()):
+                    stats = date_model_data[date_key][model_key]
+                    f.write(f"""        <tr>
+            <td>{date_key}</td>
+            <td>{model_key}</td>
+            <td>{stats['input_tokens']:,}</td>
+            <td>{stats['output_tokens']:,}</td>
+            <td>{stats['total_tokens']:,}</td>
+            <td>${stats['cost']:.4f}</td>
+        </tr>
+""")
+            f.write("    </table>\n")
+            
+            # Limits
+            f.write("""
+    <h2>Token Limits</h2>
+""")
+            
+            # High-tier models
+            high_pct = limits['high_tier']['percentage']
+            high_class = "critical" if high_pct > 80 else "medium" if high_pct > 50 else "high"
+            
+            f.write(f"""    <h3>High-Tier Models (GPT-4o, GPT-4.1, O1, O3)</h3>
+    <p>{limits['high_tier']['usage']:,} / {limits['high_tier']['limit']:,} tokens ({high_pct:.1f}%)</p>
+    <div class='progress-container'>
+        <div class='progress-bar {high_class}' style='width:{min(100, high_pct)}%'>{high_pct:.1f}%</div>
+    </div>
+""")
+            if limits['high_tier']['warning']:
+                f.write("    <p class='warning'>WARNING: Approaching daily limit!</p>\n")
+            
+            # Low-tier models
+            low_pct = limits['low_tier']['percentage']
+            low_class = "critical" if low_pct > 80 else "medium" if low_pct > 50 else "high"
+            
+            f.write(f"""    <h3>Low-Tier Models (GPT-4o-mini, etc.)</h3>
+    <p>{limits['low_tier']['usage']:,} / {limits['low_tier']['limit']:,} tokens ({low_pct:.1f}%)</p>
+    <div class='progress-container'>
+        <div class='progress-bar {low_class}' style='width:{min(100, low_pct)}%'>{low_pct:.1f}%</div>
+    </div>
+""")
+            if limits['low_tier']['warning']:
+                f.write("    <p class='warning'>WARNING: Approaching daily limit!</p>\n")
+            
+            # Footer
+            f.write(f"""
+    <div class="report-footer">
+        <p>Report generated at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+    </div>
+</body>
+</html>
+""")
+        
+        logger = logging.getLogger()
+        if logger.handlers:
+            logger.info(f"Generated token summary: {html_report_file}", extra={"icon": "✅"})
+        else:
+            print(f"Generated token summary: {html_report_file}")
+        
+    except Exception as e:
+        logger = logging.getLogger()
+        if logger.handlers:
+            logger.error(f"Failed to generate token usage report: {str(e)}", extra={"icon": "❌"})
+        else:
+            print(f"Failed to generate token usage report: {str(e)}")
+
+# Add check if report generation is needed when saving token usage
 def save_token_usage(model_id="gpt-4o-mini"):
     """
     Save current token usage to tracking files and update daily usage.
@@ -307,66 +652,17 @@ def save_token_usage(model_id="gpt-4o-mini"):
         if logger.handlers:
             logger.warning(f"Failed to update daily token usage: {str(e)}")
 
-def check_token_limits():
-    """
-    Check if token usage is approaching OpenAI limits.
-    
-    Returns:
-        dict: Dictionary with limit status for high and low tier models
-    """
-    today = date.today().isoformat()
-    high_tier_usage = 0
-    low_tier_usage = 0
-    
-    if os.path.exists(DAILY_USAGE_FILE):
+    # Check if we should generate a report
+    should_generate = should_generate_report()
+    if should_generate:
         try:
-            with open(DAILY_USAGE_FILE, 'r', newline='') as f:
-                reader = csv.reader(f)
-                header = next(reader)  # Skip header
-                for row in reader:
-                    if len(row) >= 5:  # Ensure row has enough columns
-                        row_date = row[0]
-                        row_model = row[1]
-                        
-                        if row_date == today:
-                            total_tokens = int(row[4])  # total_tokens column
-                            
-                            # Use the MODEL_TIERS constant to determine tier
-                            if row_model in MODEL_TIERS["high_tier"]["models"]:
-                                high_tier_usage += total_tokens
-                            elif row_model in MODEL_TIERS["low_tier"]["models"]:
-                                low_tier_usage += total_tokens
-                            # For unknown models, try to check if we have pricing data with tier info
-                            elif row_model in MODEL_PRICING and MODEL_PRICING[row_model].get("tier") == "high":
-                                high_tier_usage += total_tokens
-                            else:
-                                # Default to low tier for unknown models
-                                low_tier_usage += total_tokens
-        except Exception as e:
+            generate_token_usage_report()
+        except ImportError:
             logger = logging.getLogger()
             if logger.handlers:
-                logger.warning(f"Error checking token limits: {str(e)}")
-    
-    high_tier_limit = MODEL_TIERS["high_tier"]["limit"]
-    low_tier_limit = MODEL_TIERS["low_tier"]["limit"]
-    
-    high_tier_percentage = (high_tier_usage / high_tier_limit) * 100 if high_tier_limit > 0 else 0
-    low_tier_percentage = (low_tier_usage / low_tier_limit) * 100 if low_tier_limit > 0 else 0
-    
-    return {
-        "high_tier": {
-            "usage": high_tier_usage,
-            "limit": high_tier_limit,
-            "percentage": high_tier_percentage,
-            "warning": high_tier_percentage > 80
-        },
-        "low_tier": {
-            "usage": low_tier_usage,
-            "limit": low_tier_limit,
-            "percentage": low_tier_percentage,
-            "warning": low_tier_percentage > 80
-        }
-    }
+                logger.warning("Could not generate token usage report: matplotlib or pandas not available", extra={"icon": "⚠️"})
+            else:
+                print("Could not generate token usage report: matplotlib or pandas not available")
 
 def display_token_usage_status():
     """
