@@ -55,6 +55,10 @@ from src._02_parsing import stable_save_to_lancedb
 # Import requirements extraction module
 from src._04_extract_reqs import extract_requirements
 
+# Import SentenceTransformer for on-the-fly embedding generation in Step 5
+from sentence_transformers import SentenceTransformer
+from src import config as pipeline_config # For embedding model config
+
 # Constants
 DEFAULT_DOC_PATH = os.path.join("input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
 DEFAULT_OUTPUT_DIR = "output"
@@ -305,6 +309,14 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             )
             import numpy as np
             
+            # Initialize SentenceTransformer model for on-the-fly embedding if needed
+            text_embedder = None
+            try:
+                EMBEDDING_MODEL_NAME = pipeline_config.EMBEDDING_MODEL_NAME
+            except AttributeError:
+                logger.warning("EMBEDDING_MODEL_NAME not found in config, using default.", extra={"icon": "⚠️"})
+                EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
+
             # Connect to database
             script_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.abspath(os.path.join(script_dir, '..'))
@@ -332,17 +344,44 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                             doc_content += page_info.get('md_content', '') + "\n\n"
                     
                     current_embedding = None
+                    embedding_source = "None"
+
+                    # Try to get embedding from the document itself (e.g. if it's a single processed page/doc)
+                    if 'embedding' in doc_data and doc_data.get('embedding'):
+                        # Validate embedding
+                        temp_emb = np.array(doc_data.get('embedding', []))
+                        if temp_emb.size > 0 and not np.all(temp_emb == 0) and not np.isnan(temp_emb).any():
+                            current_embedding = temp_emb
+                            embedding_source = "doc_data['embedding']"
                     
-                    # Try to get embedding from the document itself
-                    if 'embedding' in doc_data:
-                        current_embedding = np.array(doc_data.get('embedding', []))
                     # Or from the first page for multi-page docs
-                    elif 'pages' in doc_data and len(doc_data.get('pages', {})) > 0:
+                    if current_embedding is None and 'pages' in doc_data and len(doc_data.get('pages', {})) > 0:
                         first_page_key = list(sorted(doc_data.get('pages', {}).keys()))[0]
                         first_page = doc_data.get('pages', {}).get(first_page_key, {})
-                        current_embedding = np.array(first_page.get('embedding', []))
+                        if first_page.get('embedding'):
+                            temp_emb = np.array(first_page.get('embedding', []))
+                            if temp_emb.size > 0 and not np.all(temp_emb == 0) and not np.isnan(temp_emb).any():
+                                current_embedding = temp_emb
+                                embedding_source = f"doc_data['pages']['{first_page_key}']['embedding']"
+
+                    # If no valid pre-existing embedding, generate one from doc_content
+                    if current_embedding is None:
+                        if doc_content.strip():
+                            logger.info("No valid pre-existing embedding found in JSON. Generating on-the-fly for similarity check.", extra={"icon": "⚙️"})
+                            if text_embedder is None:
+                                text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
+                            current_embedding = text_embedder.encode(doc_content, normalize_embeddings=True)
+                            embedding_source = "on-the-fly generation"
+                        else:
+                            logger.warning("No content available to generate on-the-fly embedding.", extra={"icon": "⚠️"})
                     
+                    logger.info(f"Using embedding for similarity check. Source: {embedding_source}", extra={"icon": "ℹ️"})
+
                     if current_embedding is not None and len(current_embedding) > 0:
+                        # Ensure current_embedding is a NumPy array
+                        if isinstance(current_embedding, list):
+                            current_embedding = np.array(current_embedding)
+                            
                         # Get unique document IDs from the database
                         unique_doc_ids = doc_df['pdf_identifier'].unique()
                         highest_similarity = 0.0
@@ -404,14 +443,21 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                         doc_chunks = chunks_df[chunks_df['document_id'] == other_doc_id]
                         
                         # Use this document's content to compare against chunks
-                        content_text = doc_content if doc_content else document_text
-                        
+                        # Ensure doc_content is populated if not already
+                        if not doc_content and 'pages' in doc_data: # Re-calculate if empty and pages exist
+                             for _, page_info in sorted(doc_data.get('pages', {}).items()):
+                                doc_content += page_info.get('md_content', '') + "\n\n"
+                        elif not doc_content and 'md_content' in doc_data: # Re-calculate if empty from top-level md_content
+                            doc_content = doc_data.get('md_content', '')
+
+                        content_text = doc_content if doc_content else document_text # document_text is from page iteration below
+
                         # If we have content to compare and there are chunks
-                        if content_text and not doc_chunks.empty:
+                        if content_text.strip() and not doc_chunks.empty:
                             # Count how many chunks have similar content
-                            similar_chunks = 0
-                            total_chunks = len(doc_chunks)
-                            
+                            similar_chunks_count = 0 # Renamed from similar_chunks to avoid conflict
+                            total_chunks_in_other_doc = len(doc_chunks) # Renamed from total_chunks
+
                             for _, chunk in doc_chunks.iterrows():
                                 chunk_text = chunk.get('chunk_text', '')
                                 if chunk_text:
@@ -420,11 +466,11 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                                     similarity = SequenceMatcher(None, content_text, chunk_text).ratio()
                                     
                                     if similarity >= 0.7:  # Direct text similarity threshold
-                                        similar_chunks += 1
+                                        similar_chunks_count += 1
                             
                             # Calculate percentage of similar chunks
-                            if total_chunks > 0:
-                                similarity_percentage = similar_chunks / total_chunks
+                            if total_chunks_in_other_doc > 0:
+                                similarity_percentage = similar_chunks_count / total_chunks_in_other_doc
                                 doc_similarity_map[other_doc_id] = similarity_percentage
                     
                     # Find the document with highest chunk similarity

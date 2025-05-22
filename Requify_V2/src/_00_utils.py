@@ -614,39 +614,40 @@ class ScriptLogger(logging.LoggerAdapter):
 
 def setup_logging():
     """
-    Configures logging for the project based on src/config.py settings.
-    Returns a logger instance with an IconAdapter.
-    All logging configuration is now sourced from config.py, not environment variables.
+    Configures logging for the project with two handlers:
+    - Console (config.LOG_LEVEL_CONSOLE)
+    - File (config.LOG_LEVEL_FILE) to config.LOG_FILE_PATH
+    All logs go to file, only info and above to console by default.
     """
+    import logging
+    import sys
     from src import config
-    log_level = getattr(config, "LOG_LEVEL", "INFO").upper()
-    # Make icons more prominent in log format by placing them at the start
-    log_format = getattr(config, "LOG_FORMAT", '%(asctime)s [%(levelname)s] %(icon)s - %(message)s')
-    log_date_format = getattr(config, "LOG_DATE_FORMAT", '%Y-%m-%d %H:%M:%S')
-    log_to_console = getattr(config, "LOG_TO_CONSOLE", True)
-    log_to_file = getattr(config, "LOG_TO_FILE", False)
+    log_format = '%(asctime)s [%(levelname)s] %(icon)s - %(message)s'
+    log_date_format = '%Y-%m-%d %H:%M:%S'
     log_file_path = getattr(config, "LOG_FILE_PATH", "logs/requify_agent.log")
-    log_file_mode = getattr(config, "LOG_FILE_MODE", "a")
-
-    handlers = []
-    ensure_icon_filter = EnsureIconFilter() # Create an instance of the filter
-
-    if log_to_console:
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.addFilter(ensure_icon_filter) # Add filter to handler
-        handlers.append(console_handler)
+    log_level_console = getattr(config, "LOG_LEVEL_CONSOLE", "INFO").upper()
+    log_level_file = getattr(config, "LOG_LEVEL_FILE", "DEBUG").upper()
+    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
     
-    if log_to_file:
-        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
-        file_handler = logging.FileHandler(log_file_path, mode=log_file_mode)
-        file_handler.addFilter(ensure_icon_filter) # Add filter to handler
-        handlers.append(file_handler)
-
+    # Remove all handlers if already set (avoid duplicate logs)
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+    
+    # Console handler (configurable level)
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(getattr(logging, log_level_console, logging.INFO))
+    console_handler.setFormatter(logging.Formatter(log_format, log_date_format))
+    console_handler.addFilter(EnsureIconFilter())
+    
+    # File handler (configurable level)
+    file_handler = logging.FileHandler(log_file_path, mode="a")
+    file_handler.setLevel(getattr(logging, log_level_file, logging.DEBUG))
+    file_handler.setFormatter(logging.Formatter(log_format, log_date_format))
+    file_handler.addFilter(EnsureIconFilter())
+    
     logging.basicConfig(
-        level=getattr(logging, log_level, logging.INFO),
-        format=log_format,
-        datefmt=log_date_format,
-        handlers=handlers
+        level=logging.DEBUG,
+        handlers=[console_handler, file_handler]
     )
     
     # Suppress INFO logs from specific modules
@@ -654,7 +655,7 @@ def setup_logging():
     for logger_name in logging.root.manager.loggerDict:
         if logger_name.startswith("agno") or logger_name.startswith("groq"):
             logging.getLogger(logger_name).setLevel(logging.WARNING)
-
+    
     logger_name = os.path.splitext(os.path.basename(sys.argv[0]))[0] if sys.argv[0] else "interactive"
     base_logger = logging.getLogger(logger_name)
     icon_logger = IconAdapter(base_logger, {})

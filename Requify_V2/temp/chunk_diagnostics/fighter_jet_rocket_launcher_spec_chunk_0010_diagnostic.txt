@@ -1,0 +1,9 @@
+CHUNK 10 (not found verbatim):
+----------------------------------------
+The bottom view reveals the jet's engine exhaust, vent locations, and armament dispenser placements, along with landing gear door contours.
+
+Annotations in red circles pinpoint critical components like vents at multiple locations for airflow management and heat dissipation, antennas positioned near the cockpit for communication, and the specific Pratt & Whitney F100-PW-229 engine which powers this model.
+
+Document slice around current_offset=3952:
+----------------------------------------
+ external profile, with emphasis on the intake vent locations, undercarriage bulges, and fin angles. The bottom view reveals the jet's engine exhaust, vent locations, and armament dispenser placements

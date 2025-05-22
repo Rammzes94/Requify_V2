@@ -503,6 +503,7 @@ def run_scenario(scenario_id: int) -> bool:
         logger.error(f"Scenario {scenario_id} not found", extra={"icon": "❌"})
         return False
     
+    logger.info(f"\n{'='*80}\nStarting Scenario {scenario_id}: {scenario['name']}\n{'='*80}", extra={"icon": "🧪"})
     logger.info(f"Starting Scenario {scenario_id}: {scenario['name']}", extra={"icon": "🚀"})
     
     # Clear the database before running the scenario
@@ -522,6 +523,7 @@ def run_scenario(scenario_id: int) -> bool:
     step_results = []  # Store PipelineResult objects for actual values
     
     for i, step in enumerate(scenario["steps"]):
+        logger.info(f"\n{'-'*60}\nScenario {scenario_id} Step {i+1}: {step['file']}\nExpected: {step['expected'].get('description', '')}\n{'-'*60}", extra={"icon": "🧪"})
         logger.info(f"  Step {i+1}: Processing {step['file']}", extra={"icon": "📄"})
         logger.info(f"  Expected: {step['expected']['description']}", extra={"icon": "🎯"})
         
