@@ -242,7 +242,9 @@ class PDFProcessor:
                 # Generate a quick summary for each page
                 try:
                     prompt = f"Summarize this page content in 1-2 sentences:\n\n{content[:1000]}"  # Limit content size
+                    logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.structured_agent.description[:2000]}{'... [truncated]' if len(self.structured_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
                     response = self.structured_agent.run(prompt)
+                    logger.debug(f"[LLM_CALL] Output from structured_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
                     _00_utils.update_token_counters(response, text_model_name) # Added token counting
                     summary = response.content
                     if isinstance(summary, str):
@@ -269,7 +271,9 @@ class PDFProcessor:
                 f"Page summaries:\n{combined_summaries}"
             )
             
+            logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.document_title_agent.description[:2000]}{'... [truncated]' if len(self.document_title_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
             response = self.document_title_agent.run(prompt)
+            logger.debug(f"[LLM_CALL] Output from document_title_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
             _00_utils.update_token_counters(response, text_model_name) # Added token counting
             document_title = response.content.strip()
             logger.info(f"Generated document title from summaries: {document_title}")
@@ -320,6 +324,7 @@ class PDFProcessor:
                     if VERBOSE_PDF_PARSING_OUTPUT:
                         logger.info(f"Extracting content from page {i+1}/{len(image_data_list)}", extra={"icon": "🔍"})
                         
+                    logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.plain_agent.description[:2000]}{'... [truncated]' if len(self.plain_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\nExtract the image contents... [see code for full prompt]")
                     response = self.plain_agent.run(
                         "Extract the image contents. Do not say anything extra, such as 'Here is the content:'. "
                         "First, decide which elements are text only - here you will just extract it exactly as it is. "
@@ -330,7 +335,7 @@ class PDFProcessor:
                         "Text will be used as input for further processing, so structure it as well as possible.",
                         images=[Image(filepath=image_path)]
                     )
-                    _00_utils.update_token_counters(response, vision_model_name) # Added token counting
+                    logger.debug(f"[LLM_CALL] Output from plain_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
 
                     tokens_metrics = response.metrics if hasattr(response, 'metrics') else {}
                     page_input_tokens = tokens_metrics.get('input_tokens', [0])[0] if tokens_metrics.get('input_tokens') else 0
@@ -397,8 +402,9 @@ class PDFProcessor:
                         "and hashtags (a list of key search words without the '#' symbol). The Hashtags shall focus on the technical details, not highlevel."
                         "Markdown Input:\n" + page_md_content
                     )
-                    
+                    logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.structured_agent.description[:2000]}{'... [truncated]' if len(self.structured_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
                     response_structured = self.structured_agent.run(prompt)
+                    logger.debug(f"[LLM_CALL] Output from structured_agent: {str(response_structured.content)[:2000]}{'... [truncated]' if len(str(response_structured.content)) > 2000 else ''}")
                     _00_utils.update_token_counters(response_structured, text_model_name) # Added token counting
                     processing_duration = time.time() - start_time
                     

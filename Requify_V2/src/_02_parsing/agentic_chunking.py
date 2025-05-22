@@ -322,8 +322,9 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
             # If this is a retry, log it
             if retry_count > 0:
                 logger.info(f"🔄 Retry #{retry_count} - Asking LLM to chunk text again")
-            
+            logger.debug(f"[LLM_CALL] Description / System prompt:\n{agent.description[:2000]}{'... [truncated]' if len(agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{full_prompt[:2000]}{'... [truncated]' if len(full_prompt) > 2000 else ''}")
             response = agent.run(full_prompt)
+            logger.debug(f"[LLM_CALL] Output from chunking agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
             _00_utils.update_token_counters(response, chunking_model_name)
             
             data = response.content

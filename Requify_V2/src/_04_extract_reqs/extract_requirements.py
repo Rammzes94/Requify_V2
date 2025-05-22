@@ -231,9 +231,11 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
     try:
         # Format the prompt without printing it
         prompt = EXTRACT_REQUIREMENTS_PROMPT.format(text=text)
+        logger.debug(f"[LLM_CALL] Description / System prompt:\n{requirements_agent.description[:2000]}{'... [truncated]' if len(requirements_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
         
         # Extract requirements using the agent
         response = requirements_agent.run(prompt)
+        logger.debug(f"[LLM_CALL] Output from requirements agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")
         update_token_counters(response, req_extraction_model_name)
         
         # Ensure the response is a RequirementsExtractor object

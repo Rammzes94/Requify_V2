@@ -156,7 +156,7 @@ def get_model_for_task(task, sub_task=None):
 # Logging Configuration
 VERBOSE_PDF_PARSING_OUTPUT = True  # Controls detailed logging during PDF parsing
 VERBOSE_CHUNKING_OUTPUT = True     # Controls detailed logging during document chunking
-LOG_LEVEL = "INFO"                 # Sets minimum message level to display (INFO, DEBUG, WARNING, ERROR)
+LOG_LEVEL = "DEBUG"                 # Sets minimum message level to display (INFO, DEBUG, WARNING, ERROR)
 LOG_TO_CONSOLE = True              # Whether to show logs in terminal/console
 LOG_TO_FILE = True                # Whether to save logs to a file
 LOG_FILE_PATH = "logs/requify_agent.log"  # Where to save log files if LOG_TO_FILE is True

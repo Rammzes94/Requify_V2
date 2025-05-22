@@ -51,3 +51,10 @@ git diff                     # Show unstaged changes
 git restore <file>           # Restore file from last commit
 git reset --hard HEAD        # Reset all to last commit
 ```
+
+
+## Hard overwrite from github:
+# WARNING: This deletes untracked files and resets everything
+git fetch origin
+git reset --hard origin/main  # Replace `main` with your branch name
+git clean -fd                 # Removes untracked files and directories

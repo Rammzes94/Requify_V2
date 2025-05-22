@@ -188,7 +188,7 @@ def deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection=
     print("\nWhat would you like to do?")
     print("1. Keep only the existing document (discard new)")
     print("2. Replace with the new document (discard old)")
-    print("3. Keep both as separate documents")
+    print("3. Keep both as separate documents (not recommended due to their high similarity)")
     print("4. Perform detailed chunk-level analysis")
     
     while True:

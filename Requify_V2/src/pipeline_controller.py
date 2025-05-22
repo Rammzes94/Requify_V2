@@ -43,7 +43,7 @@ from src._01_ingestion import file_hash_deduplication
 
 # Import PDF parsing module
 from src._02_parsing import stable_pdf_parsing
-from src._02_parsing import consolidated_chunking # Assuming this is also in _02_parsing
+from src._02_parsing import agentic_chunking # Assuming this is also in _02_parsing
 
 # Import document deduplication modules
 from src._03_docs_deduplication import pre_save_deduplication
@@ -478,7 +478,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                 logger.info(f"🔄 Using context-aware chunking with reference document: {similar_document_id} (similarity: {similarity_score:.4f})", extra={"icon": "🔍"})
                 
                 # Process document with consolidated chunking using similar document ID
-                chunk_success = consolidated_chunking.process_document(
+                chunk_success = agentic_chunking.process_document(
                     document_text, 
                     document_id, 
                     similar_document_id
@@ -487,7 +487,7 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
                 # Use standard chunking for new documents
                 logger.info(f"🔄 Using standard chunking for new document", extra={"icon": "🔄"})
                 # Process document with consolidated chunking, no similar document needed
-                chunk_success = consolidated_chunking.process_document(document_text, document_id)
+                chunk_success = agentic_chunking.process_document(document_text, document_id)
             
             if not chunk_success:
                 logger.error(f"❌ Chunking failed for {doc_name}", extra={"icon": "❌"})
