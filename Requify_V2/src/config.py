@@ -254,6 +254,8 @@ You must analyze the chunks carefully to determine if they contain the same info
 
 Pay very close attention to numerical values, specifications, measurements, dates, requirements, and other concrete details that might have changed.
 
+Keep new / old when the meaning is the essentially the same. For any content / meaning changes, even if it is just one number, ask for user input.
+
 Step 1: First, list EXACTLY what has changed between the two chunks in a detailed list format.
 Step 2: Then make your decision based on those differences.
 

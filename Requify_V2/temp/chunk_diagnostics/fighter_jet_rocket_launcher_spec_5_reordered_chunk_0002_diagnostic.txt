@@ -1,0 +1,22 @@
+CHUNK 2 (not found verbatim):
+----------------------------------------
+Technical Specifications
+
+Launcher Model RLX-5000  
+Weight 320 kg  
+Length 3.2 m  
+Diameter 45 cm  
+Max Rocket Capacity 7 Rockets  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Fire Rate Up to 2 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Operational Altitude Up to 50,000 ft  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection
+
+Document slice around current_offset=309:
+----------------------------------------
+ism for enhanced sortie effectiveness.  
+- Weather-resistant design for all-climate operations.  
+APKWS 12 km Mach 2.8 300 mm reinforced armor  
+CRV7 10 km Mach 3.0 280 mm concrete  
+Compatible Rocket

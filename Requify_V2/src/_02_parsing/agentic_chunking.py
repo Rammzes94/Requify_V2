@@ -558,24 +558,6 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any], actual_new_do
     
     # For medium similarity, use LLM to decide
     if similarity >= SIMILARITY_THRESHOLD:
-        # Check if we're in test scenario 2 with changed values document
-        if "_changed_values.pdf" in actual_new_doc_id:
-            # For testing, in scenario 2, always request user input for changed values docs
-            logger.info(f"LLM suggested getting user input for chunk comparison (detected test scenario for '{actual_new_doc_id}')", extra={"icon": "👨‍💻"})
-            decision_info["decision"] = "need_user_input"
-            # Fix the reason string to use f-string for similarity
-            decision_info["reason"] = f"Chunks are similar but may contain important changes (similarity: {similarity:.4f})"
-            # Get user decision
-            user_decision = prompt_user_for_chunk_decision(
-                new_chunk=new_chunk,
-                old_chunk=old_chunk,
-                new_doc_id=actual_new_doc_id,
-                decision_info=decision_info
-            )
-            decision_info["decision"] = user_decision
-            decision_info["reason"] += " (User decision: " + user_decision + ")"
-            return decision_info
-            
         # Set up the decision prompt
         decision_prompt = project_config.CHUNK_COMPARISON_PROMPT
         

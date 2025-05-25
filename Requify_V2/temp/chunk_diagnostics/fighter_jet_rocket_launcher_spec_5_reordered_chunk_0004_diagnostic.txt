@@ -1,0 +1,17 @@
+CHUNK 4 (not found verbatim):
+----------------------------------------
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.
+
+Document slice around current_offset=901:
+----------------------------------------
+er System for Fighter Jets  
+Rocket Type Max Range Speed Penetration Depth  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  
+Technical Specifications  
+The RLX-5000 rocket launcher 

@@ -1,0 +1,12 @@
+CHUNK 1 (not found verbatim):
+----------------------------------------
+Fighter Jet Rocket Launcher Specification
+
+Rocket Launcher System for Fighter Jets
+
+This document provides detailed specifications for the advanced rocket launcher system integrated into modern fighter jets. It covers technical parameters, performance metrics, operational features, and safety considerations.
+
+Document slice around current_offset=0:
+----------------------------------------
+- Advanced thermal shielding for high-speed flight integration.  
+- Automatic target recognition for
