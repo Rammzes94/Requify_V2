@@ -23,7 +23,7 @@ setup_project_directory()
 load_dotenv()
 
 # Setup logging
-logger = setup_logging()
+logger = get_logger("Inspect_Chunks")
 
 # Constants
 OUTPUT_DIR_BASE = "output"

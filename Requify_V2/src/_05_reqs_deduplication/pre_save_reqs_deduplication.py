@@ -43,9 +43,7 @@ setup_project_directory()
 load_dotenv()
 
 # Setup logging with script prefix
-
-
-logger = get_logger("Reqs_Deduplication")
+logger = get_logger("Pre_Save_Reqs_Deduplication")
 
 # -------------------------------------------------------------------------------------
 # Constants

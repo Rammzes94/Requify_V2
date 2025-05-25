@@ -5,13 +5,36 @@ test_scenarios.py
 This script runs end-to-end test scenarios for the document processing pipeline.
 It verifies various deduplication and version handling scenarios using test documents.
 
-The script:
+This script:
 1. Runs predefined scenarios with multiple documents in sequence
 2. Clears the database between scenarios
 3. Verifies expected outcomes for each step
 4. Reports successes/failures for each scenario
+
+How to Use:
+-----------
+- Run all scenarios:
+    $ python tests/e2e/test_scenarios.py
+
+- Run a specific scenario by number:
+    $ python tests/e2e/test_scenarios.py --scenario 2
+
+- Run multiple scenarios by number:
+    $ python tests/e2e/test_scenarios.py --scenario 1 3 5
+
+- Show help:
+    $ python tests/e2e/test_scenarios.py --help
+
+Notes:
+------
+- Make sure all required test files are present in the input/raw directory before running tests.
+- Test results and logs will be saved in the output/test_results directory.
+- This script is intended to be run from the project root or the tests/ directory.
+
 """
 
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 import os
 import sys
 import json

@@ -13,7 +13,6 @@ providing a unified interface for both automated and interactive decisions.
 """
 
 import os
-import sys
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 import pandas as pd
@@ -21,17 +20,15 @@ import numpy as np
 import lancedb
 from dotenv import load_dotenv
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 setup_project_directory()
 
 # Import user interaction utilities
-from _03_docs_deduplication import user_interaction
+from src._03_docs_deduplication import user_interaction
 
 # Setup logging with script prefix
-
-
 logger = get_logger("Pipeline_Interaction")
 
 # Load environment variables
@@ -177,6 +174,20 @@ def deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection=
     Returns:
         str: The action to take ('keep_old', 'keep_new', 'keep_both', or 'detailed')
     """
+    # Check if REQUIFY_AUTO_CHOICE environment variable is set for testing
+    auto_choice = os.environ.get("REQUIFY_AUTO_CHOICE")
+    if auto_choice:
+        logger.info(f"Using auto choice from environment: {auto_choice}", extra={"icon": "🤖"})
+        
+        # Set environment variables for pipeline controller based on auto choice
+        if auto_choice == "detailed":
+            os.environ["REQUIFY_DETAILED_ANALYSIS"] = "true"
+            os.environ["REQUIFY_SIMILAR_DOC_ID"] = existing_doc_id
+            os.environ["REQUIFY_SIMILARITY_SCORE"] = str(similarity)
+            logger.info(f"Auto-selected detailed analysis for {new_doc_id} vs {existing_doc_id}", extra={"icon": "🤖"})
+        
+        return auto_choice
+    
     print("\n" + "="*60)
     print("🔍 DOCUMENT SIMILARITY DETECTED")
     print("="*60)
@@ -201,6 +212,12 @@ def deduplication_prompt(new_doc_id, existing_doc_id, similarity, db_connection=
             elif choice == '3':
                 return "keep_both"
             elif choice == '4':
+                # Set environment variables for pipeline controller
+                os.environ["REQUIFY_DETAILED_ANALYSIS"] = "true"
+                os.environ["REQUIFY_SIMILAR_DOC_ID"] = existing_doc_id
+                os.environ["REQUIFY_SIMILARITY_SCORE"] = str(similarity)
+                
+                logger.info(f"User chose detailed analysis for {new_doc_id} vs {existing_doc_id}", extra={"icon": "👤"})
                 return "detailed"
             else:
                 print("❌ Invalid choice. Please enter 1, 2, 3, or 4.")

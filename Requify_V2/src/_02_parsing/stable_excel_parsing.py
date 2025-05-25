@@ -1,20 +1,14 @@
 import os
-import sys
 import re
 from openpyxl import load_workbook
 import logging
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 setup_project_directory()
 
 # Set up logging
-logger = setup_logging()
-
-# Create a consistent logger with prefix for better visibility
-
-
 logger = get_logger("Stable_Excel_Parsing")
 
 def sanitize(cell):

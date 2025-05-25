@@ -24,11 +24,32 @@ import logging
 import argparse
 from typing import Optional, Dict, List, Tuple, Any
 from dotenv import load_dotenv
-import numpy as np
 
-# Import utilities
+# --- Start of sys.path modification ---
+# Get the absolute path of the directory containing the current script (src)
+_current_script_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the absolute path of the project root (parent of src)
+_project_root = os.path.abspath(os.path.join(_current_script_dir, '..'))
+
+# Add the project root to sys.path if it's not already there
+# This allows imports like `from src.module import ...`
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+# --- End of sys.path modification ---
+
+# Now project-specific imports can be done
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
-setup_project_directory() # This might still be problematic if it assumes CWD.
+import src.config as pipeline_config # For embedding model config
+
+# Import other modules from src
+from src._01_ingestion import file_hash_deduplication
+from src._02_parsing import stable_pdf_parsing, agentic_chunking
+from src._03_docs_deduplication import pre_save_deduplication, user_interaction
+from src._02_parsing import stable_save_to_lancedb # Note: stable_save_to_lancedb is in _02_parsing
+from src._04_extract_reqs import extract_requirements
+
+# Call setup_project_directory() early. It primarily affects CWD in interactive mode.
+setup_project_directory()
 
 # Load environment variables
 load_dotenv()
@@ -36,26 +57,8 @@ load_dotenv()
 # Setup logging with script prefix
 logger = get_logger("Pipeline_Controller")
 
-# Import Hash-based deduplication
-from src._01_ingestion import file_hash_deduplication
-
-# Import PDF parsing module
-from src._02_parsing import stable_pdf_parsing
-from src._02_parsing import agentic_chunking # Assuming this is also in _02_parsing
-
-# Import document deduplication modules
-from src._03_docs_deduplication import pre_save_deduplication
-from src._03_docs_deduplication import user_interaction
-
-# Import LanceDB saving module
-from src._02_parsing import stable_save_to_lancedb
-
-# Import requirements extraction module
-from src._04_extract_reqs import extract_requirements
-
-# Import SentenceTransformer for on-the-fly embedding generation in Step 5
+# SentenceTransformer for on-the-fly embedding generation in Step 5
 from sentence_transformers import SentenceTransformer
-from src import config as pipeline_config # For embedding model config
 
 # Constants
 DEFAULT_DOC_PATH = os.path.join("input", "raw", "fighter_jet_rocket_launcher_spec_2.pdf")
@@ -297,197 +300,226 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
         old_version_id = None
         document_id = doc_data.get('pdf_identifier', os.path.basename(doc_path))
         
-        # Check if there's a previous document with similar content
-        # We do this explicitly before chunking to decide on context-aware chunking
-        try:
-            # Import necessary functions from deduplication module
-            from src._03_docs_deduplication import pre_save_deduplication as dedup
-            from src._03_docs_deduplication.pre_save_deduplication import (
-                calculate_cosine_similarity, SIMILAR_THRESHOLD, connect_to_lancedb
-            )
-            import numpy as np
+        # Initialize similarity tracking variables to avoid unbound errors
+        similar_document_detected = False
+        similar_document_id = None
+        similarity_score = 0.0
+        
+        # Check if we've already done a page-level comparison and the user selected "detailed" analysis
+        # If so, skip the redundant comparison and use the stored result instead
+        if os.environ.get('REQUIFY_AUTO_CHOICE') == 'detailed' or os.environ.get('REQUIFY_DETAILED_ANALYSIS') == 'true':
+            logger.info(f"Detailed chunk-level analysis already chosen, skipping page-level comparison", extra={"icon": "⏩"})
             
-            # Initialize SentenceTransformer model for on-the-fly embedding if needed
-            text_embedder = None
+            # Use the previously identified similar document from step 4
+            previous_doc_id = os.environ.get('REQUIFY_SIMILAR_DOC_ID', '')
+            similarity_score = float(os.environ.get('REQUIFY_SIMILARITY_SCORE', '0.0'))
+            
+            if previous_doc_id:
+                logger.info(f"Using previously identified similar document: {previous_doc_id} (similarity: {similarity_score:.4f})")
+                old_version_id = previous_doc_id
+                dedup_info = {
+                    'similar_doc_id': previous_doc_id,
+                    'similarity': similarity_score
+                }
+        
+        # Only perform page-level embedding comparison if we don't already have deduplication info
+        # The user choice from stable_save_to_lancedb.main() (which calls user_interaction)
+        # sets environment variables like REQUIFY_SIMILAR_DOC_ID and REQUIFY_DETAILED_ANALYSIS.
+        
+        user_chose_detailed_analysis = os.environ.get('REQUIFY_DETAILED_ANALYSIS') == 'true'
+        similar_doc_id_from_user_env = os.environ.get('REQUIFY_SIMILAR_DOC_ID')
+
+        context_doc_id_for_chunking = None
+
+        if user_chose_detailed_analysis and similar_doc_id_from_user_env:
+            logger.info(f"User opted for detailed analysis. Using context document for chunking: {similar_doc_id_from_user_env}", extra={"icon": "🧩"})
+            context_doc_id_for_chunking = similar_doc_id_from_user_env
+        elif not dedup_info and not old_version_id: # This block is for the initial detection if user interaction hasn't happened or wasn't conclusive
             try:
-                EMBEDDING_MODEL_NAME = pipeline_config.EMBEDDING_MODEL_NAME
-            except AttributeError:
-                logger.warning("EMBEDDING_MODEL_NAME not found in config, using default.", extra={"icon": "⚠️"})
-                EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
-
-            # Connect to database
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            project_root = os.path.abspath(os.path.join(script_dir, '..'))
-            lancedb_path = os.path.join(project_root, DEFAULT_OUTPUT_DIR, LANCEDB_SUBDIR_NAME)
-            db = connect_to_lancedb(lancedb_path)
-            
-            # Determine if there's a similar document already in the database
-            similar_document_detected = False
-            similar_document_id = None
-            similarity_score = 0.0
-            
-            if db and "documents" in db.table_names():
-                doc_table = db.open_table("documents")
-                doc_df = doc_table.to_pandas()
+                # Import necessary functions from deduplication module
+                from src._03_docs_deduplication import pre_save_deduplication as dedup
+                from src._03_docs_deduplication.pre_save_deduplication import (
+                    calculate_cosine_similarity, SIMILAR_THRESHOLD, connect_to_lancedb
+                )
+                import numpy as np
                 
-                if not doc_df.empty:
-                    # Get document contents for comparison
-                    # For single-page docs with embedded markdown content
-                    doc_content = ""
-                    if 'md_content' in doc_data:
-                        doc_content = doc_data.get('md_content', '')
-                    # For multi-page documents
-                    elif 'pages' in doc_data:
-                        for _, page_info in sorted(doc_data.get('pages', {}).items()):
-                            doc_content += page_info.get('md_content', '') + "\n\n"
-                    
-                    current_embedding = None
-                    embedding_source = "None"
+                # Initialize SentenceTransformer model for on-the-fly embedding if needed
+                text_embedder = None
+                try:
+                    EMBEDDING_MODEL_NAME = pipeline_config.EMBEDDING_MODEL_NAME
+                except AttributeError:
+                    logger.warning("EMBEDDING_MODEL_NAME not found in config, using default.", extra={"icon": "⚠️"})
+                    EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
 
-                    # Try to get embedding from the document itself (e.g. if it's a single processed page/doc)
-                    if 'embedding' in doc_data and doc_data.get('embedding'):
-                        # Validate embedding
-                        temp_emb = np.array(doc_data.get('embedding', []))
-                        if temp_emb.size > 0 and not np.all(temp_emb == 0) and not np.isnan(temp_emb).any():
-                            current_embedding = temp_emb
-                            embedding_source = "doc_data['embedding']"
+                # Connect to database
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                project_root = os.path.abspath(os.path.join(script_dir, '..'))
+                lancedb_path = os.path.join(project_root, DEFAULT_OUTPUT_DIR, LANCEDB_SUBDIR_NAME)
+                db = connect_to_lancedb(lancedb_path)
+                
+                # Determine if there's a similar document already in the database
+                if db and "documents" in db.table_names():
+                    doc_table = db.open_table("documents")
+                    doc_df = doc_table.to_pandas()
                     
-                    # Or from the first page for multi-page docs
-                    if current_embedding is None and 'pages' in doc_data and len(doc_data.get('pages', {})) > 0:
-                        first_page_key = list(sorted(doc_data.get('pages', {}).keys()))[0]
-                        first_page = doc_data.get('pages', {}).get(first_page_key, {})
-                        if first_page.get('embedding'):
-                            temp_emb = np.array(first_page.get('embedding', []))
+                    if not doc_df.empty:
+                        # Get document contents for comparison
+                        # For single-page docs with embedded markdown content
+                        doc_content = ""
+                        if 'md_content' in doc_data:
+                            doc_content = doc_data.get('md_content', '')
+                        # For multi-page documents
+                        elif 'pages' in doc_data:
+                            for _, page_info in sorted(doc_data.get('pages', {}).items()):
+                                doc_content += page_info.get('md_content', '') + "\n\n"
+                        
+                        current_embedding = None
+                        embedding_source = "None"
+
+                        # Try to get embedding from the document itself (e.g. if it's a single processed page/doc)
+                        if 'embedding' in doc_data and doc_data.get('embedding'):
+                            # Validate embedding
+                            temp_emb = np.array(doc_data.get('embedding', []))
                             if temp_emb.size > 0 and not np.all(temp_emb == 0) and not np.isnan(temp_emb).any():
                                 current_embedding = temp_emb
-                                embedding_source = f"doc_data['pages']['{first_page_key}']['embedding']"
-
-                    # If no valid pre-existing embedding, generate one from doc_content
-                    if current_embedding is None:
-                        if doc_content.strip():
-                            logger.info("No valid pre-existing embedding found in JSON. Generating on-the-fly for similarity check.", extra={"icon": "⚙️"})
-                            if text_embedder is None:
-                                text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
-                            current_embedding = text_embedder.encode(doc_content, normalize_embeddings=True)
-                            embedding_source = "on-the-fly generation"
-                        else:
-                            logger.warning("No content available to generate on-the-fly embedding.", extra={"icon": "⚠️"})
-                    
-                    logger.info(f"Using embedding for similarity check. Source: {embedding_source}", extra={"icon": "ℹ️"})
-
-                    if current_embedding is not None and len(current_embedding) > 0:
-                        # Ensure current_embedding is a NumPy array
-                        if isinstance(current_embedding, list):
-                            current_embedding = np.array(current_embedding)
-                            
-                        # Get unique document IDs from the database
-                        unique_doc_ids = doc_df['pdf_identifier'].unique()
-                        highest_similarity = 0.0
-                        most_similar_doc_id = None
+                                embedding_source = "doc_data['embedding']"
                         
+                        # Or from the first page for multi-page docs
+                        if current_embedding is None and 'pages' in doc_data and len(doc_data.get('pages', {})) > 0:
+                            first_page_key = list(sorted(doc_data.get('pages', {}).keys()))[0]
+                            first_page = doc_data.get('pages', {}).get(first_page_key, {})
+                            if first_page.get('embedding'):
+                                temp_emb = np.array(first_page.get('embedding', []))
+                                if temp_emb.size > 0 and not np.all(temp_emb == 0) and not np.isnan(temp_emb).any():
+                                    current_embedding = temp_emb
+                                    embedding_source = f"doc_data['pages']['{first_page_key}']['embedding']"
+
+                        # If no valid pre-existing embedding, generate one from doc_content
+                        if current_embedding is None:
+                            if doc_content.strip():
+                                logger.info("No valid pre-existing embedding found in JSON. Generating on-the-fly for similarity check.", extra={"icon": "⚙️"})
+                                if text_embedder is None:
+                                    text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
+                                current_embedding = text_embedder.encode(doc_content, normalize_embeddings=True)
+                                embedding_source = "on-the-fly generation"
+                            else:
+                                logger.warning("No content available to generate on-the-fly embedding.", extra={"icon": "⚠️"})
+                        
+                        logger.info(f"Using embedding for similarity check. Source: {embedding_source}", extra={"icon": "ℹ️"})
+
+                        if current_embedding is not None and len(current_embedding) > 0:
+                            # Ensure current_embedding is a NumPy array
+                            if isinstance(current_embedding, list):
+                                current_embedding = np.array(current_embedding)
+                                
+                            # Get unique document IDs from the database
+                            unique_doc_ids = doc_df['pdf_identifier'].unique()
+                            highest_similarity = 0.0
+                            most_similar_doc_id = None
+                            
+                            for other_doc_id in unique_doc_ids:
+                                # Skip current document
+                                if other_doc_id == document_id:
+                                    continue
+                                    
+                                # Get all pages for this document
+                                doc_pages = doc_df[doc_df['pdf_identifier'] == other_doc_id]
+                                
+                                # Calculate similarity with each page
+                                doc_similarity = 0.0
+                                for _, page in doc_pages.iterrows():
+                                    if 'embedding' in page:
+                                        other_embedding = np.array(page.get('embedding', []))
+                                        if len(other_embedding) > 0:
+                                            sim = calculate_cosine_similarity(current_embedding, other_embedding)
+                                            doc_similarity = max(doc_similarity, sim)
+                                
+                                if doc_similarity > highest_similarity:
+                                    highest_similarity = doc_similarity
+                                    most_similar_doc_id = other_doc_id
+                            
+                            # If we found a similar document with high similarity score
+                            if highest_similarity >= SIMILAR_THRESHOLD and most_similar_doc_id:
+                                logger.info(f"📊 Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
+                                similar_document_detected = True
+                                similar_document_id = most_similar_doc_id
+                                similarity_score = highest_similarity
+                                
+                                # Explain the decision to use context-aware chunking
+                                if similarity_score >= 0.99:
+                                    logger.info(f"💯 Documents are nearly identical! Using context-aware chunking.", extra={"icon": "🔍"})
+                                elif similarity_score >= 0.95:
+                                    logger.info(f"🔄 Documents are very similar! Using context-aware chunking to detect changes.", extra={"icon": "🔍"})
+                                else:
+                                    logger.info(f"🔄 Documents have significant similarity. Using context-aware chunking.", extra={"icon": "🔍"})
+                
+                # Additional check at the chunk level - this helps detect similar documents
+                # even if page embeddings don't match closely enough
+                if not similar_document_detected and db and "document_chunks" in db.table_names():
+                    chunks_table = db.open_table("document_chunks")
+                    chunks_df = chunks_table.to_pandas()
+                    
+                    if not chunks_df.empty:
+                        # Get unique document IDs from chunks
+                        unique_doc_ids = chunks_df['document_id'].unique()
+                        doc_similarity_map = {}
+                        
+                        # For each document ID, count how many chunks are similar
                         for other_doc_id in unique_doc_ids:
                             # Skip current document
                             if other_doc_id == document_id:
                                 continue
+                            
+                            doc_chunks = chunks_df[chunks_df['document_id'] == other_doc_id]
+                            
+                            # Use this document's content to compare against chunks
+                            # Ensure doc_content is populated if not already
+                            if not doc_content and 'pages' in doc_data: # Re-calculate if empty and pages exist
+                                 for _, page_info in sorted(doc_data.get('pages', {}).items()):
+                                    doc_content += page_info.get('md_content', '') + "\n\n"
+                            elif not doc_content and 'md_content' in doc_data: # Re-calculate if empty from top-level md_content
+                                doc_content = doc_data.get('md_content', '')
+
+                            content_text = doc_content if doc_content else document_text # document_text is from page iteration below
+
+                            # If we have content to compare and there are chunks
+                            if content_text.strip() and not doc_chunks.empty:
+                                # Count how many chunks have similar content
+                                similar_chunks_count = 0 # Renamed from similar_chunks to avoid conflict
+                                total_chunks_in_other_doc = len(doc_chunks) # Renamed from total_chunks
+
+                                for _, chunk in doc_chunks.iterrows():
+                                    chunk_text = chunk.get('chunk_text', '')
+                                    if chunk_text:
+                                        # Use a simple text similarity measure first - faster than embeddings
+                                        from difflib import SequenceMatcher
+                                        similarity = SequenceMatcher(None, content_text, chunk_text).ratio()
+                                        
+                                        if similarity >= 0.7:  # Direct text similarity threshold
+                                            similar_chunks_count += 1
                                 
-                            # Get all pages for this document
-                            doc_pages = doc_df[doc_df['pdf_identifier'] == other_doc_id]
-                            
-                            # Calculate similarity with each page
-                            doc_similarity = 0.0
-                            for _, page in doc_pages.iterrows():
-                                if 'embedding' in page:
-                                    other_embedding = np.array(page.get('embedding', []))
-                                    if len(other_embedding) > 0:
-                                        sim = calculate_cosine_similarity(current_embedding, other_embedding)
-                                        doc_similarity = max(doc_similarity, sim)
-                            
-                            if doc_similarity > highest_similarity:
-                                highest_similarity = doc_similarity
-                                most_similar_doc_id = other_doc_id
+                                # Calculate percentage of similar chunks
+                                if total_chunks_in_other_doc > 0:
+                                    similarity_percentage = similar_chunks_count / total_chunks_in_other_doc
+                                    doc_similarity_map[other_doc_id] = similarity_percentage
                         
-                        # If we found a similar document with high similarity score
-                        if highest_similarity >= SIMILAR_THRESHOLD and most_similar_doc_id:
-                            logger.info(f"📊 Document {document_id} has high similarity ({highest_similarity:.4f}) with document {most_similar_doc_id}", extra={"icon": "🔍"})
-                            similar_document_detected = True
-                            similar_document_id = most_similar_doc_id
-                            similarity_score = highest_similarity
+                        # Find the document with highest chunk similarity
+                        if doc_similarity_map:
+                            most_similar_doc_id, highest_similarity = max(doc_similarity_map.items(), key=lambda x: x[1])
                             
-                            # Explain the decision to use context-aware chunking
-                            if similarity_score >= 0.99:
-                                logger.info(f"💯 Documents are nearly identical! Using context-aware chunking.", extra={"icon": "🔍"})
-                            elif similarity_score >= 0.95:
-                                logger.info(f"🔄 Documents are very similar! Using context-aware chunking to detect changes.", extra={"icon": "🔍"})
-                            else:
-                                logger.info(f"🔄 Documents have significant similarity. Using context-aware chunking.", extra={"icon": "🔍"})
-            
-            # Additional check at the chunk level - this helps detect similar documents
-            # even if page embeddings don't match closely enough
-            if not similar_document_detected and db and "document_chunks" in db.table_names():
-                chunks_table = db.open_table("document_chunks")
-                chunks_df = chunks_table.to_pandas()
+                            # If we have significant similarity in chunks
+                            if highest_similarity >= 0.5:  # At least 50% of chunks are similar
+                                logger.info(f"📊 Document {document_id} has chunk-level similarity with document {most_similar_doc_id} ({highest_similarity:.2%} of chunks similar)", extra={"icon": "🔍"})
+                                similar_document_detected = True
+                                similar_document_id = most_similar_doc_id
+                                similarity_score = highest_similarity
                 
-                if not chunks_df.empty:
-                    # Get unique document IDs from chunks
-                    unique_doc_ids = chunks_df['document_id'].unique()
-                    doc_similarity_map = {}
-                    
-                    # For each document ID, count how many chunks are similar
-                    for other_doc_id in unique_doc_ids:
-                        # Skip current document
-                        if other_doc_id == document_id:
-                            continue
-                        
-                        doc_chunks = chunks_df[chunks_df['document_id'] == other_doc_id]
-                        
-                        # Use this document's content to compare against chunks
-                        # Ensure doc_content is populated if not already
-                        if not doc_content and 'pages' in doc_data: # Re-calculate if empty and pages exist
-                             for _, page_info in sorted(doc_data.get('pages', {}).items()):
-                                doc_content += page_info.get('md_content', '') + "\n\n"
-                        elif not doc_content and 'md_content' in doc_data: # Re-calculate if empty from top-level md_content
-                            doc_content = doc_data.get('md_content', '')
-
-                        content_text = doc_content if doc_content else document_text # document_text is from page iteration below
-
-                        # If we have content to compare and there are chunks
-                        if content_text.strip() and not doc_chunks.empty:
-                            # Count how many chunks have similar content
-                            similar_chunks_count = 0 # Renamed from similar_chunks to avoid conflict
-                            total_chunks_in_other_doc = len(doc_chunks) # Renamed from total_chunks
-
-                            for _, chunk in doc_chunks.iterrows():
-                                chunk_text = chunk.get('chunk_text', '')
-                                if chunk_text:
-                                    # Use a simple text similarity measure first - faster than embeddings
-                                    from difflib import SequenceMatcher
-                                    similarity = SequenceMatcher(None, content_text, chunk_text).ratio()
-                                    
-                                    if similarity >= 0.7:  # Direct text similarity threshold
-                                        similar_chunks_count += 1
-                            
-                            # Calculate percentage of similar chunks
-                            if total_chunks_in_other_doc > 0:
-                                similarity_percentage = similar_chunks_count / total_chunks_in_other_doc
-                                doc_similarity_map[other_doc_id] = similarity_percentage
-                    
-                    # Find the document with highest chunk similarity
-                    if doc_similarity_map:
-                        most_similar_doc_id, highest_similarity = max(doc_similarity_map.items(), key=lambda x: x[1])
-                        
-                        # If we have significant similarity in chunks
-                        if highest_similarity >= 0.5:  # At least 50% of chunks are similar
-                            logger.info(f"📊 Document {document_id} has chunk-level similarity with document {most_similar_doc_id} ({highest_similarity:.2%} of chunks similar)", extra={"icon": "🔍"})
-                            similar_document_detected = True
-                            similar_document_id = most_similar_doc_id
-                            similarity_score = highest_similarity
-            
-            
-        except Exception as e:
-            logger.warning(f"⚠️ Error checking document similarity: {str(e)}. Will process as new document.", extra={"icon": "⚠️"})
-            similar_document_detected = False
-            similar_document_id = None
-            similarity_score = 0.0
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Error checking document similarity: {str(e)}. Will process as new document.", extra={"icon": "⚠️"})
+                similar_document_detected = False
+                similar_document_id = None
+                similarity_score = 0.0
         
         # Now process the content for chunking
         for page_key, page_info in sorted(doc_data.get('pages', {}).items()):
@@ -517,20 +549,26 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             # Add dry run logic if needed
             chunk_success = True
         else:
-            # If we detected this is a similar document, use context-aware chunking
-            if similar_document_detected and similar_document_id:
-                logger.info(f"🔄 Using context-aware chunking with reference document: {similar_document_id} (similarity: {similarity_score:.4f})", extra={"icon": "🔍"})
-                
-                # Process document with consolidated chunking using similar document ID
+            # Determine the final similar_doc_id to use for chunking
+            # Prioritize the one from user interaction if available and detailed analysis was chosen.
+            final_similar_doc_id_for_chunking = None
+            if user_chose_detailed_analysis and similar_doc_id_from_user_env:
+                final_similar_doc_id_for_chunking = similar_doc_id_from_user_env
+                logger.info(f"Prioritizing user-confirmed similar document for chunking: {final_similar_doc_id_for_chunking}", extra={"icon": "🎯"})
+            elif similar_document_detected and similar_document_id: # Fallback to initial detection
+                final_similar_doc_id_for_chunking = similar_document_id
+                logger.info(f"Using initially detected similar document for chunking: {final_similar_doc_id_for_chunking}", extra={"icon": "ℹ️"})
+            
+            if final_similar_doc_id_for_chunking:
+                logger.info(f"🔄 Using context-aware chunking with reference document: {final_similar_doc_id_for_chunking}", extra={"icon": "🔍"})
                 chunk_success = agentic_chunking.process_document(
                     document_text, 
                     document_id, 
-                    similar_document_id
+                    final_similar_doc_id_for_chunking
                 )
             else:
                 # Use standard chunking for new documents
-                logger.info(f"🔄 Using standard chunking for new document", extra={"icon": "🔄"})
-                # Process document with consolidated chunking, no similar document needed
+                logger.info(f"🔄 Using standard chunking for new document (no context determined)", extra={"icon": "🔄"})
                 chunk_success = agentic_chunking.process_document(document_text, document_id)
             
             if not chunk_success:

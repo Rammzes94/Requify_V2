@@ -33,26 +33,20 @@ from lancedb.pydantic import LanceModel, Vector
 from typing import List, Optional, Dict, Any, Tuple
 from src import config
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+from src._03_docs_deduplication import pre_save_deduplication as dedup
+from src._03_docs_deduplication import pipeline_interaction
 from src.utils.logging_utils import ScriptLogger
+
+logger = get_logger("Stable_Save_To_LanceDB")
+
 setup_project_directory()
 
 # -------------------------------------------------------------------------------------
 # Project Setup
 # -------------------------------------------------------------------------------------
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# Import deduplication and pipeline interaction modules
-from _03_docs_deduplication import pre_save_deduplication as dedup
-from _03_docs_deduplication import pipeline_interaction
-
 # Load environment variables
 load_dotenv()
-
-# Setup logging with script prefix
-
-logger = get_logger("Save_To_LanceDB")
 
 # -------------------------------------------------------------------------------------
 # Constants

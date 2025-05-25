@@ -12,15 +12,17 @@ import argparse
 import subprocess
 import time
 from pathlib import Path
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 
-# Add parent directory to path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-# Import utilities if needed (commenting out as we don't appear to use it directly in this file)
-# from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Constants
 TEST_FILES_DIR = os.path.join("input", "raw")
 RESULTS_DIR = os.path.join("output", "test_results")
+
+logger = get_logger("Run_Tests")
 
 def check_test_files():
     """Check if test files exist before running tests"""

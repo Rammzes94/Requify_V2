@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 # Add the parent directory to the system path to allow importing modules from it
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 from src import config
-from src.utils import setup_project_directory, get_logger
+from src.utils import setup_project_directory, setup_logging, get_logger
 
 # Set up project directory
 setup_project_directory()

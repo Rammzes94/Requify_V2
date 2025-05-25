@@ -36,19 +36,13 @@ from agno.agent import Agent
 from agno.media import Image
 from agno.models.openai import OpenAIChat
 from agno.models.groq import Groq
+import config
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import config
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
-setup_project_directory()
 
-# Setup centralized logging with script prefix
-logger = setup_logging()
-
-# Create a consistent logger with prefix for better visibility
-logger = get_logger("PDF_Parsing")
+logger = get_logger("Stable_PDF_Parsing")
 
 # ---------------------------------------------------------------------
 # Section 2: Configuration Constants
@@ -326,13 +320,14 @@ class PDFProcessor:
                         
                     logger.debug(f"[LLM_CALL] Description / System prompt:\n{self.plain_agent.description[:2000]}{'... [truncated]' if len(self.plain_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\nExtract the image contents... [see code for full prompt]")
                     response = self.plain_agent.run(
-                        "Extract the image contents. Do not say anything extra, such as 'Here is the content:'. "
+                        "Extract the image contents. Do NOT say anything extra, such as 'Here is the content:'. "
                         "First, decide which elements are text only - here you will just extract it exactly as it is. "
                         "Preserve Tables in Markdown format. Make sure tables are wide enough - add about 10 spaces extra always. "
                         "If there are pictures, graphs, diagrams or other non-text elements, describe them in great technical detail (100-300 words). "
                         "Focus on the key takeaway of what is shown. Ensure to keep the order of the elements as they are in the input. "
                         "Do not summarize what is shown in the input, other than pictures, graphs, diagrams or other non-text elements. "
-                        "Text will be used as input for further processing, so structure it as well as possible.",
+                        "Text will be used as input for further processing, so structure it as well as possible."
+                        "If there are no tables, pictures, graphs or diagrams, do NOT say so. Just return the text then.",
                         images=[Image(filepath=image_path)]
                     )
                     logger.debug(f"[LLM_CALL] Output from plain_agent: {str(response.content)[:2000]}{'... [truncated]' if len(str(response.content)) > 2000 else ''}")

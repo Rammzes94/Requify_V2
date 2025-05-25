@@ -237,7 +237,7 @@ def review_orphaned_chunks():
                 # Convert distance to similarity (cosine distance = 1 - similarity)
                 similarity = 1.0 - similar["_distance"]
                 display_similar_chunk(similar, similarity)
-                
+        
         # Ask for user decision
         print("\nWhat would you like to do with this chunk?")
         print("1. Mark as orphaned (keep but note it has no alignment)")
@@ -246,7 +246,13 @@ def review_orphaned_chunks():
         print("4. Skip (review later)")
         print("5. Exit review")
         
-        choice = input("\nEnter your choice (1-5): ")
+        # --- TEST MODE AUTO-SELECTION ---
+        if os.environ.get("REQUIFY_TEST_MODE", "false").lower() == "true":
+            logger.info("Auto-selecting 'skip' for chunk review in test mode", extra={"icon": "🤖"})
+            choice = '4'  # Always skip in test mode
+        else:
+            choice = input("\nEnter your choice (1-5): ")
+        # --- END TEST MODE ---
         
         if choice == '1':
             # Mark as orphaned
@@ -267,7 +273,13 @@ def review_orphaned_chunks():
                 similarity = 1.0 - similar["_distance"]
                 print(f"{j+1}. Chunk {similar['chunk_id']} (Similarity: {similarity:.2f})")
                 
-            align_choice = input(f"\nEnter chunk number (1-{len(similar_chunks)}): ")
+            # --- TEST MODE AUTO-SELECTION ---
+            if os.environ.get("REQUIFY_TEST_MODE", "false").lower() == "true":
+                logger.info("Auto-selecting 'skip' for manual alignment in test mode", extra={"icon": "🤖"})
+                align_choice = ''  # No alignment
+            else:
+                align_choice = input(f"\nEnter chunk number (1-{len(similar_chunks)}): ")
+            # --- END TEST MODE ---
             try:
                 align_idx = int(align_choice) - 1
                 if 0 <= align_idx < len(similar_chunks):
@@ -286,7 +298,13 @@ def review_orphaned_chunks():
                 
         elif choice == '3':
             # Delete chunk
-            confirm = input("Are you sure you want to delete this chunk? (y/n): ")
+            # --- TEST MODE AUTO-SELECTION ---
+            if os.environ.get("REQUIFY_TEST_MODE", "false").lower() == "true":
+                logger.info("Auto-selecting 'no' for delete confirmation in test mode", extra={"icon": "🤖"})
+                confirm = 'n'
+            else:
+                confirm = input("Are you sure you want to delete this chunk? (y/n): ")
+            # --- END TEST MODE ---
             if confirm.lower() == 'y':
                 try:
                     chunks_table = db.open_table(CHUNKS_TABLE_NAME)

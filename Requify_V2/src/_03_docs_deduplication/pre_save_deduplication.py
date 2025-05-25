@@ -18,7 +18,6 @@ duplicate or previous versions for traceability.
 # Imports & Setup
 # -------------------------------------------------------------------------------------
 import os
-import sys
 import logging
 import time
 import hashlib
@@ -33,9 +32,7 @@ from src.utils import setup_logging, get_logger, update_token_counters, get_toke
 setup_project_directory()
 
 # Setup logging with script prefix
-
-
-logger = get_logger("Docs_Deduplication")
+logger = get_logger("Pre_Save_Deduplication")
 
 # Load environment variables
 load_dotenv()
@@ -1092,7 +1089,7 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
     db = db_connection or connect_to_lancedb(lancedb_path)
     
     # Get document ID and log the check
-    doc_id = doc_data[0].get('pdf_identifier', 'unknown')
+    doc_id = doc_data[0].get("pdf_identifier", "unknown")
     logger.info(f"Checking for duplicate/similar documents: {doc_id}", extra={"icon": "🔍"})
     
     # Check duplicate pages first with existing document database
@@ -1122,9 +1119,15 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
         version_similarity=version_similarity
     )
     
+    # --- PATCH: If this is a new version (update), do NOT mark as duplicate ---
+    is_duplicate = is_complete_duplicate and not is_new_version
+    if is_new_version:
+        logger.info(f"Not marking as duplicate because this is a new version of {old_version_id}", extra={"icon": "🔄"})
+    # --- END PATCH ---
+    
     # Return comprehensive results
     return {
-        "is_duplicate": is_complete_duplicate,
+        "is_duplicate": is_duplicate,
         "duplicate_pages": duplicate_pages,
         "new_pages": new_pages,
         "update_pages": update_pages,

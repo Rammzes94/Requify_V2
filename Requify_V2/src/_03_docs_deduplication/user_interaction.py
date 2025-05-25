@@ -14,18 +14,15 @@ human intervention is required to determine the correct course of action.
 """
 
 import os
-import sys
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 setup_project_directory()
 
 # Setup logging with script prefix
-
-
 logger = get_logger("User_Interaction")
 
 # -------------------------------------------------------------------------------------
@@ -46,7 +43,15 @@ def prompt_for_update_choice(document_id: str, old_version_id: str, missing_chun
     """
     logger.info(f"Document {document_id} appears to be an update of {old_version_id}, but some content is missing", extra={"icon": "⚠️"})
     logger.info(f"There are {len(missing_chunks)} chunks in the old document that don't have a match in the new one", extra={"icon": "ℹ️"})
-    
+
+    # --- TEST MODE AUTO-SELECTION ---
+    auto_choice = os.environ.get("REQUIFY_AUTO_UPDATE_CHOICE")
+    if os.environ.get("REQUIFY_TEST_MODE", "false").lower() == "true" or auto_choice:
+        choice = auto_choice or "replace"
+        logger.info(f"Auto-selecting '{choice}' for document update in test mode", extra={"icon": "🤖"})
+        return choice
+    # --- END TEST MODE ---
+
     # Show sample of missing content
     if missing_chunks:
         print("\n=== Sample of Missing Content ===")
@@ -84,6 +89,11 @@ def confirm_action(action_description: str) -> bool:
     Returns:
         True if user confirms, False otherwise
     """
+    # --- TEST MODE AUTO-CONFIRM ---
+    if os.environ.get("REQUIFY_TEST_MODE", "false").lower() == "true":
+        logger.info(f"Auto-confirming action in test mode: {action_description}", extra={"icon": "🤖"})
+        return True
+    # --- END TEST MODE ---
     confirmation = input(f"\n{action_description} (y/n): ")
     return confirmation.lower() in ['y', 'yes']
 

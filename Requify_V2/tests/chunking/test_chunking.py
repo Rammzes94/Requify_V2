@@ -37,11 +37,12 @@ import torch
 import time
 from dotenv import load_dotenv
 
-# Add the parent directory to the system path to allow importing modules from it
+# Project-wide import strategy: Always use absolute imports from the project root (e.g., from src.utils import ...)
+# This ensures imports work whether scripts are run directly or as modules.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 # Import utilities
-from src._00_utils import setup_project_directory, get_logger
+from src.utils import setup_logging, get_logger
 
 # Set up the project directory
 setup_project_directory()

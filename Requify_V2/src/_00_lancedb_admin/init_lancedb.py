@@ -23,9 +23,7 @@ setup_project_directory() # Ensures working directory is project root
 load_dotenv()
 
 # Setup logging with script prefix
-
-
-logger = get_logger("LanceDB_Admin")
+logger = get_logger("Init_LanceDB")
 
 # --- Constants ---
 # These should align with constants used in other scripts that access these tables

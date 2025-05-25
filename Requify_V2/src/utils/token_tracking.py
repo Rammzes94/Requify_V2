@@ -14,8 +14,10 @@ from collections import defaultdict
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import sys
+# Ensure the root project directory is in sys.path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-# Import configuration from parent directory
 from src import config
 
 MODEL_PRICING = config.MODEL_PRICING

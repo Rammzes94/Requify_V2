@@ -33,18 +33,33 @@ from agno.models.groq import Groq
 import gc
 import torch
 
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src import config
+# --- Start of sys.path modification ---
+# Get the absolute path of the directory containing the current script (src/_02_parsing)
+_current_script_dir = os.path.dirname(os.path.abspath(__file__))
+# Get the absolute path of the project root (parent of src)
+_project_root = os.path.abspath(os.path.join(_current_script_dir, '..', '..'))
+
+# Add the project root to sys.path if it's not already there
+# This allows imports like `from src.module import ...`
+if _project_root not in sys.path:
+    sys.path.insert(0, _project_root)
+# --- End of sys.path modification ---
+
+# Now project-specific imports can be done
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '_00_utils'))) # Removed redundant/incorrect path append
+from src import config as project_config # Use an alias to avoid confusion with other 'config' variables
+
+# Call setup_project_directory() early.
 setup_project_directory()
 
+# Load environment variables
+load_dotenv()
+
 # Import deduplication module
-from _03_docs_deduplication import pre_save_deduplication as dedup
+from src._03_docs_deduplication import pre_save_deduplication as dedup
 
 # Setup logging with script prefix
-logger = get_logger("agentic_chunking")
+logger = get_logger("Agentic_Chunking")
 
 # Constants
 MAX_CHAR_SIZE = 900  # Maximum allowed character size for a chunk
@@ -60,25 +75,25 @@ OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 CHUNKS_TABLE_NAME = "document_chunks"
 
-# Use embedding model settings from config
-EMBEDDING_MODEL_NAME = config.EMBEDDING_MODEL_NAME
+# Use embedding model settings from project_config
+EMBEDDING_MODEL_NAME = project_config.EMBEDDING_MODEL_NAME
 EMBEDDING_DEVICE = "cpu"  # Force CPU usage to avoid memory issues
-EMBEDDING_MAX_SEQ_LENGTH = config.EMBEDDING_MAX_SEQ_LENGTH
-EMBEDDING_BATCH_SIZE = config.EMBEDDING_BATCH_SIZE
+EMBEDDING_MAX_SEQ_LENGTH = project_config.EMBEDDING_MAX_SEQ_LENGTH
+EMBEDDING_BATCH_SIZE = project_config.EMBEDDING_BATCH_SIZE
 
-# API keys from config
-api_key = config.OPENAI_API_KEY
-groq_api_key = config.GROQ_API_KEY
+# API keys from project_config
+api_key = project_config.OPENAI_API_KEY
+groq_api_key = project_config.GROQ_API_KEY
 
-# Get the model for chunking from the config
-chunking_model_name = config.get_model_for_task("chunking")
+# Get the model for chunking from the project_config
+chunking_model_name = project_config.get_model_for_task("chunking")
 
 # Initialize models
 openai_text_model = OpenAIChat(id=chunking_model_name, api_key=api_key)
 groq_text_model = Groq(id=chunking_model_name, api_key=groq_api_key)
 
 # Select which model to use based on configuration
-MODEL_PROVIDER = config.MODEL_PROVIDER.lower()
+MODEL_PROVIDER = project_config.MODEL_PROVIDER.lower()
 
 if MODEL_PROVIDER == "openai":
     active_model = openai_text_model
@@ -261,11 +276,12 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         6. Break large sections rather than creating oversized chunks
         7. Preserve headers with their content when possible
         
-        CRITICAL FOR REORDERED CONTENT:
-        - Detect and preserve the same content chunks even when sections are reordered
-        - Focus on semantic meaning rather than document order
-        - If you identify a section of text that matches a reference chunk, create similar chunk boundaries
-        - Compare all reference chunks to find the best match for each section
+        CRITICAL FOR IDENTICAL AND REORDERED CONTENT:
+        - Your PRIMARY GOAL is to replicate the chunk boundaries from a REFERENCE CHUNK if a section of the NEW DOCUMENT TEXT is IDENTICAL to that REFERENCE CHUNK's text.
+        - If a section of the NEW DOCUMENT TEXT exactly matches the text of a REFERENCE CHUNK, you MUST create a new chunk with the EXACT SAME text and boundaries.
+        - For sections of the NEW DOCUMENT TEXT that are reordered but still match a REFERENCE CHUNK, preserve the content and try to maintain similar chunking.
+        - Focus on semantic meaning but prioritize exact textual matches for boundary replication.
+        - Compare all reference chunks to find the best match for each section of the NEW DOCUMENT TEXT.
         
         ALWAYS output multiple chunks for text longer than {target_size} characters.
         
@@ -524,6 +540,12 @@ def compute_chunk_similarity(chunk1: str, chunk2: str) -> float:
     # Standard similarity using difflib
     seq_similarity = difflib.SequenceMatcher(None, chunk1, chunk2).ratio()
     
+    # If chunks are almost identical by sequence, return the high sequence similarity directly.
+    # This helps ensure that textually identical or very nearly identical chunks
+    # achieve a similarity score high enough to be considered duplicates.
+    if seq_similarity >= 0.99:
+        return seq_similarity
+
     # Set-based similarity to handle reordered content
     # Tokenize the chunks into words and compare as sets
     words1 = set(re.findall(r'\b\w+\b', chunk1.lower()))
@@ -543,7 +565,7 @@ def compute_chunk_similarity(chunk1: str, chunk2: str) -> float:
     
     return combined_similarity
 
-def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any]) -> Dict[str, Any]:
+def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any], actual_new_doc_id: str) -> Dict[str, Any]:
     """
     Evaluate a pair of chunks to determine if they're duplicates, similar, or different.
     
@@ -551,8 +573,6 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any]) -> Dict[str, 
     """
     # Extract necessary information from old_chunk
     old_chunk_text = old_chunk.get('chunk_text', '')
-    old_doc_id = old_chunk.get('document_id', '')
-    new_doc_id = old_doc_id.replace('.pdf', '_changed_values.pdf') if '_changed_values.pdf' not in old_doc_id else old_doc_id
     
     # First calculate simple text similarity
     similarity = compute_chunk_similarity(new_chunk, old_chunk_text)
@@ -574,9 +594,9 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any]) -> Dict[str, 
     # For medium similarity, use LLM to decide
     if similarity >= SIMILARITY_THRESHOLD:
         # Check if we're in test scenario 2 with changed values document
-        if "_changed_values.pdf" in new_doc_id:
+        if "_changed_values.pdf" in actual_new_doc_id:
             # For testing, in scenario 2, always request user input for changed values docs
-            logger.info(f"LLM suggested getting user input for chunk comparison (detected test scenario)", extra={"icon": "👨‍💻"})
+            logger.info(f"LLM suggested getting user input for chunk comparison (detected test scenario for '{actual_new_doc_id}')", extra={"icon": "👨‍💻"})
             decision_info["decision"] = "need_user_input"
             # Fix the reason string to use f-string for similarity
             decision_info["reason"] = f"Chunks are similar but may contain important changes (similarity: {similarity:.4f})"
@@ -584,7 +604,7 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any]) -> Dict[str, 
             user_decision = prompt_user_for_chunk_decision(
                 new_chunk=new_chunk,
                 old_chunk=old_chunk,
-                new_doc_id=new_doc_id,
+                new_doc_id=actual_new_doc_id,
                 decision_info=decision_info
             )
             decision_info["decision"] = user_decision
@@ -665,7 +685,7 @@ Remember: The differences field is REQUIRED and must contain SPECIFIC, CONCRETE 
                 user_decision = prompt_user_for_chunk_decision(
                     new_chunk=new_chunk,
                     old_chunk=old_chunk,
-                    new_doc_id=new_doc_id,
+                    new_doc_id=actual_new_doc_id,
                     decision_info=decision_info
                 )
                 decision_info["decision"] = user_decision
@@ -678,7 +698,7 @@ Remember: The differences field is REQUIRED and must contain SPECIFIC, CONCRETE 
             decision_info["reason"] = "LLM comparison failed, defaulting to keeping new chunk"
             
     else:
-        # Low similarity - keep new chunk
+        # Low similarity - this is a new chunk, not similar to any existing chunk
         decision_info["decision"] = "keep_new"
         decision_info["reason"] = f"Chunks are significantly different (similarity: {similarity:.4f})"
         
@@ -768,7 +788,7 @@ def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float
         chunk_id: ID of the current chunk
         similar_chunk_id: ID of the similar chunk found
         similarity: Similarity score between the chunks
-        decision: Decision made (e.g., "keep_original", "keep_new", "both")
+        decision: Decision made (e.g., "keep_original", "keep_new", "both", "evaluating", "need_user_input")
         reason: Reason for the decision
     """
     logger.info(f"🔍 Chunk Comparison: {chunk_id} vs {similar_chunk_id}", extra={"icon": "🔍"})
@@ -783,6 +803,10 @@ def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float
         logger.info(f"⬆️ Replacing {similar_chunk_id} with new chunk {chunk_id}", extra={"icon": "⬆️"})
     elif decision == "both":
         logger.info(f"➕ Keeping both {similar_chunk_id} and {chunk_id}", extra={"icon": "➕"})
+    elif decision == "evaluating":
+        logger.info(f"🔎 Evaluating {chunk_id} vs {similar_chunk_id}", extra={"icon": "🔎"})
+    elif decision == "need_user_input":
+        logger.info(f"👤 User input needed for {chunk_id} vs {similar_chunk_id}", extra={"icon": "👤"})
     else:
         logger.info(f"❓ Undefined decision for {chunk_id} vs {similar_chunk_id}: {decision}", extra={"icon": "❓"})
 
@@ -1020,7 +1044,7 @@ def process_document_with_context(
                     # Use our enhanced similarity measure
                     similarity = compute_chunk_similarity(chunk_text, ref_chunk.get('chunk_text', ''))
                     
-                    # Log the comparison with enhanced logging
+                    # Log the initial comparison status
                     log_chunk_comparison(
                         chunk_id=chunk_id,
                         similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
@@ -1040,10 +1064,32 @@ def process_document_with_context(
                         is_duplicate = True
                         duplicate_of = ref_chunk.get('chunk_id', '')
                         duplicate_count += 1
+                        
+                        # Log the final decision for duplicate chunks
+                        log_chunk_comparison(
+                            chunk_id=chunk_id,
+                            similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
+                            similarity=similarity,
+                            decision="keep_old",
+                            reason=f"Chunks are nearly identical (similarity: {similarity:.4f})"
+                        )
                         break
                     elif similarity >= SIMILARITY_THRESHOLD:
                         # This might be an updated version of the chunk
-                        decision_info = evaluate_chunk_pair(chunk_text, ref_chunk)
+                        decision_info = evaluate_chunk_pair(
+                            new_chunk=chunk_text,      # Text from the current new document's chunk
+                            old_chunk=ref_chunk,       # Dict of the old document's chunk
+                            actual_new_doc_id=document_id # Pass the ID of the new document being processed
+                        )
+                        
+                        # Log the final decision based on the evaluation
+                        log_chunk_comparison(
+                            chunk_id=chunk_id,
+                            similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
+                            similarity=similarity,
+                            decision=decision_info["decision"],
+                            reason=decision_info["reason"]
+                        )
                         
                         if decision_info["decision"] == "keep_old":
                             # Keep old chunk (it's a duplicate)
@@ -1060,7 +1106,7 @@ def process_document_with_context(
                             # Record replacement
                             replaced_chunks[chunk_id] = previous_chunk_id
                             
-                            # Log the decision
+                            # Log the decision with detailed reason
                             logger.info(
                                 f"Chunk {chunk_id} replaces {previous_chunk_id} - Reason: {decision_info['reason']}",
                                 extra={"icon": "🔄"}
@@ -1070,6 +1116,20 @@ def process_document_with_context(
             # If we didn't find a duplicate or similar chunk, it's a new chunk
             if not is_duplicate and not is_updated:
                 new_count += 1
+                
+                # Log that this is a completely new chunk
+                if best_chunk:
+                    # If we have a best match, log it even though it's below threshold
+                    log_chunk_comparison(
+                        chunk_id=chunk_id,
+                        similar_chunk_id=best_chunk.get('chunk_id', 'unknown'),
+                        similarity=best_similarity,
+                        decision="keep_new",
+                        reason=f"New chunk with no similar content above threshold (best similarity: {best_similarity:.4f})"
+                    )
+                else:
+                    # No similar chunks at all
+                    logger.info(f"✨ Chunk {chunk_id} is completely new with no similar content", extra={"icon": "✨"})
         else:
             # Without reference chunks, all chunks are new
             new_count += 1
@@ -1124,7 +1184,14 @@ def process_document_with_context(
     gc.collect()
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
-        
+    
+    # If using MPS (Apple Silicon), clear that cache too
+    if torch.backends.mps.is_available(): # More robust check
+        if hasattr(torch.mps, 'empty_cache'): # Still need to check for the attribute itself
+            torch.mps.empty_cache()
+    
+    logger.info("Memory cleaned up", extra={"icon": "🧹"})
+    
     duration = time.time() - start_time
     logger.info(
         f"Processed {len(processed_chunks)} chunks in {duration:.2f}s "
@@ -1188,28 +1255,26 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                     else:
                         existing_df[col] = ""
             
-            # Prepare replacement updates - only query for chunks that need updates
+            # Prepare replacement updates - find old chunks and mark them as replaced by new chunks
             replacement_updates = []
             if replaced_chunks and not existing_df.empty:
-                for old_chunk_id, new_chunk_id in replaced_chunks.items():
-                    mask = existing_df['chunk_id'] == old_chunk_id
+                for new_id_key, old_id_value in replaced_chunks.items(): # new_id_key is the new chunk, old_id_value is the old chunk to be marked
+                    mask = existing_df['chunk_id'] == old_id_value       # Find the OLD chunk in existing_df
                     if any(mask):
                         # Get the row indexes that need updating
-                        for idx in existing_df[mask].index:
-                            # Create a modified copy of the existing row
-                            updated_row = existing_df.loc[idx].copy()
+                        for idx_to_update in existing_df[mask].index:
+                            updated_row = existing_df.loc[idx_to_update].copy()
                             updated_row['is_replaced'] = True
-                            updated_row['replaced_by'] = new_chunk_id
+                            updated_row['replaced_by'] = new_id_key # The OLD chunk is replaced by this NEW chunk
                             replacement_updates.append(updated_row)
-                        
-                        logger.info(f"Marked chunk {old_chunk_id} as replaced by {new_chunk_id}", extra={"icon": "✅"})
+                        logger.info(f"Marked chunk {old_id_value} as replaced by {new_id_key}", extra={"icon": "✅"})
                     else:
-                        logger.warning(f"Could not find chunk {old_chunk_id} to mark as replaced", extra={"icon": "⚠️"})
+                        logger.warning(f"Could not find chunk {old_id_value} in existing_df to mark as replaced by {new_id_key}", extra={"icon": "⚠️"})
             
-            # Prepare new chunks dataframe
+            # Prepare new chunks dataframe (all chunks from the current document processing)
+            new_chunks_df = pd.DataFrame() # Initialize to empty DataFrame
             if chunks:
                 new_chunks_df = pd.DataFrame(chunks)
-                
                 # Ensure required columns exist in new chunks
                 for col in required_columns:
                     if col not in new_chunks_df.columns:
@@ -1221,31 +1286,45 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
             # Combine existing chunks that need updates with new chunks
             if replacement_updates or missing_columns:
                 # Convert replacement updates to DataFrame if any exist
-                if replacement_updates:
-                    updates_df = pd.DataFrame(replacement_updates)
-                    
-                    # Remove rows that will be updated (replaced chunks)
-                    if replaced_chunks:
-                        existing_df = existing_df[~existing_df['chunk_id'].isin(replaced_chunks.keys())]
-                    
-                    # Combine existing (non-replaced) + updates + new chunks
-                    combined_data = pd.concat([existing_df, updates_df, new_chunks_df], ignore_index=True)
-                else:
-                    # No replacements, just schema updates and adding new chunks
-                    combined_data = pd.concat([existing_df, new_chunks_df], ignore_index=True)
+                updates_df = pd.DataFrame(replacement_updates) if replacement_updates else pd.DataFrame()
                 
-                # Drop and recreate table with all data
-                db.drop_table(CHUNKS_TABLE_NAME)
-                chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=combined_data)
+                # Get IDs of old chunks that were actually found and are part of replacement_updates
+                ids_of_old_chunks_that_were_updated = set(updates_df['chunk_id']) if not updates_df.empty else set()
+
+                # Filter existing_df: keep rows that are NOT among the successfully updated old chunks
+                existing_df_non_replaced = existing_df[~existing_df['chunk_id'].isin(ids_of_old_chunks_that_were_updated)]
                 
-                if replacement_updates:
-                    logger.info(f"Updated {len(replacement_updates)} chunks, added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
+                # Combine:
+                # 1. Existing chunks that were NOT replaced.
+                # 2. The updated records of old chunks (from updates_df).
+                # 3. All new/updated chunks from the current document processing (new_chunks_df).
+                combined_data_frames = [existing_df_non_replaced, updates_df, new_chunks_df]
+                # Filter out empty DataFrames before concatenation
+                combined_data_frames = [df for df in combined_data_frames if not df.empty]
+                
+                if combined_data_frames:
+                    combined_data = pd.concat(combined_data_frames, ignore_index=True)
+                else: # Should not happen if new_chunks_df is not empty or existing_df was not empty
+                    combined_data = pd.DataFrame()
+
+                if not combined_data.empty:
+                    # Drop and recreate table with all data
+                    db.drop_table(CHUNKS_TABLE_NAME)
+                    chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=combined_data)
+                    logger.info(f"Recreated table '{CHUNKS_TABLE_NAME}' with updated and new chunks.", extra={"icon": "✅"})
+                    if not updates_df.empty:
+                        logger.info(f"Updated {len(updates_df)} existing chunks.", extra={"icon": "🔄"})
+                    if not new_chunks_df.empty:
+                        logger.info(f"Added {len(new_chunks_df)} new chunks from current document.", extra={"icon": "➕"})
                 else:
-                    logger.info(f"Updated schema with {len(missing_columns)} new columns, added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
-            else:
-                # No replacements or schema updates, just add new chunks
-                chunks_table.add(new_chunks_df)
-                logger.info(f"Added {len(new_chunks_df)} new chunks", extra={"icon": "✅"})
+                    logger.warning(f"No data to write to '{CHUNKS_TABLE_NAME}' after combining. Table might be empty or not recreated.", extra={"icon": "⚠️"})
+
+            else: # No replacements or schema updates, just add new chunks
+                if not new_chunks_df.empty:
+                    chunks_table.add(new_chunks_df)
+                    logger.info(f"Added {len(new_chunks_df)} new chunks to existing table.", extra={"icon": "➕"})
+                else:
+                    logger.info("No new chunks from current document to add.", extra={"icon": "ℹ️"})
         else:
             # First chunk added - create new table
             if chunks:
@@ -1311,8 +1390,9 @@ def cleanup_memory():
         torch.cuda.empty_cache()
     
     # If using MPS (Apple Silicon), clear that cache too
-    if hasattr(torch.mps, 'empty_cache'):
-        torch.mps.empty_cache()
+    if torch.backends.mps.is_available(): # More robust check
+        if hasattr(torch.mps, 'empty_cache'): # Still need to check for the attribute itself
+            torch.mps.empty_cache()
     
     logger.info("Memory cleaned up", extra={"icon": "🧹"})
 
