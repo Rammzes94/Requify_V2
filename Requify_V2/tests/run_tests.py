@@ -4,6 +4,50 @@ run_tests.py
 
 A simple driver script for running end-to-end test scenarios for the document processing pipeline.
 This script makes it easy to run specific scenarios or groups of scenarios.
+
+How to Use: run_tests.py
+========================
+
+This script is a command-line utility for running end-to-end test scenarios for the Requify document processing pipeline.
+
+You can use it to:
+- Run all test scenarios in sequence
+- Run a specific scenario by number
+- Run a range or list of scenarios
+- Get a summary of available scenarios
+
+Usage Examples:
+---------------
+
+1. Run all scenarios:
+    $ python tests/run_tests.py --all
+
+2. Run a specific scenario (e.g., scenario 3):
+    $ python tests/run_tests.py --scenario 3
+
+3. Run multiple scenarios (e.g., scenarios 2, 4, and 5):
+    $ python tests/run_tests.py --scenario 2 4 5
+
+4. Print the list of available scenarios:
+    $ python tests/run_tests.py --list
+
+5. Show help:
+    $ python tests/run_tests.py --help
+
+Arguments:
+----------
+--all               Run all available test scenarios.
+--scenario N [N ...]  Run one or more specific scenarios by number.
+--list              Print the list of available test scenarios and exit.
+
+Notes:
+------
+- Make sure all required test files are present in the input/raw directory before running tests.
+- Test results and logs will be saved in the output/test_results directory.
+- This script is intended to be run from the project root or the tests/ directory.
+
+
+
 """
 
 import os

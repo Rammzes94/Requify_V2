@@ -91,68 +91,14 @@ else:  # Default to Groq
 
 # LanceDB settings
 OUTPUT_DIR_BASE = config.OUTPUT_DIR_BASE  # Use from config
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within output
+LANCEDB_SUBDIR_NAME = config.LANCEDB_SUBDIR_NAME  # Now imported from config
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Construct path relative to project root
 LANCEDB_URI = LANCEDB_DIR_PATH  # Alias for consistency
-DOCUMENT_CHUNKS_TABLE = "document_chunks"
-DOCUMENTS_TABLE = "documents"
-REQUIREMENTS_TABLE = "requirements"
+DOCUMENT_CHUNKS_TABLE = config.DOCUMENT_CHUNKS_TABLE  # Now imported from config
+DOCUMENTS_TABLE = config.DOCUMENTS_TABLE  # Now imported from config
+REQUIREMENTS_TABLE = config.REQUIREMENTS_TABLE  # Now imported from config
 EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Use from config
 EMBEDDING_MODEL = config.EMBEDDING_MODEL_NAME  # Use from config
-
-# -------------------------------------------------------------------------------------
-# Prompt Templates
-# -------------------------------------------------------------------------------------
-
-EXTRACT_REQUIREMENTS_PROMPT = """Extract all atomic requirements from the following text. 
-Focus on sections that define technical specifications, technical requirements, and mandatory elements - things focused on the product.
-
-For the following input, identify ALL individual requirements and break them down into atomic units.
-Each atomic requirement should be a single, testable statement. You have to give me all requirements!
-Extract all technical prescriptions, specifications, and mandatory elements.
-
-For each requirement, provide:
-1. The requirement ID, section, title, and description.
-2. A rationale explaining why it is considered a technical product requirement. This should focus on the technical aspects that affect the physical vehicle or its systems.
-3. The 'source_text', which is the exact text segment from the input TEXT that directly led to this requirement's extraction.
-
-The input may not have a single technical product requirement in it. In that case, just give back nothing. 
-We only care about requirements for the product!
-
-TEXT:
-{text}"""
-
-ANALYZE_REQUIREMENT_PROMPT = """
-Analyze this requirement and determine if it is software-related (will affect software systems):
-
-"{requirement_description}"
-    
-Be concise in your rationale.
-"""
-
-BATCH_ANALYZE_REQUIREMENTS_PROMPT = """
-Analyze each of the following requirements and determine if it is software-related (will affect software systems).
-
-{requirements_text}
-
-For each requirement, provide:
-1. Whether it is software-related (true/false)
-2. Your confidence level (0.0 to 1.0) 
-3. A concise rationale for your decision
-
-Keep each analysis brief and focused.
-"""
-
-# -------------------------------------------------------------------------------------
-# Agent Descriptions
-# -------------------------------------------------------------------------------------
-
-REQUIREMENTS_AGENT_DESCRIPTION = """You are a specialized agent for extracting atomic requirements from technical documents.
-You are good at making sure to take the entire input into account and do not stop after a few examples.
-You focus only on technical product requirements!"""
-
-SOFTWARE_AGENT_DESCRIPTION = """You are a specialized agent for determining if requirements are related to software.
-You have expertise in software systems and understanding how requirements translate to software implementations."""
 
 # -------------------------------------------------------------------------------------
 # Data Models
@@ -226,12 +172,12 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
     # Initialize the agent with structured outputs
     requirements_agent = create_agent(
         response_model=RequirementsExtractor,
-        description=REQUIREMENTS_AGENT_DESCRIPTION
+        description=config.REQUIREMENTS_AGENT_DESCRIPTION
     )
     
     try:
         # Format the prompt without printing it
-        prompt = EXTRACT_REQUIREMENTS_PROMPT.format(text=text)
+        prompt = config.EXTRACT_REQUIREMENTS_PROMPT.format(text=text)
         logger.debug(f"[LLM_CALL] Description / System prompt:\n{requirements_agent.description[:2000]}{'... [truncated]' if len(requirements_agent.description) > 2000 else ''}\n\n[LLM_CALL] User Prompt:\n{prompt[:2000]}{'... [truncated]' if len(prompt) > 2000 else ''}")
         
         # Extract requirements using the agent
@@ -283,7 +229,7 @@ def extract_requirements_from_text(text: str, document_id: str, document_name: s
 
 def analyze_requirement(requirement: AtomicRequirement, agent: Agent) -> SoftwareRequirementAnalysis:
     """Analyze a single requirement to determine if it's software-related."""
-    prompt = ANALYZE_REQUIREMENT_PROMPT.format(requirement_description=requirement.description)
+    prompt = config.ANALYZE_REQUIREMENT_PROMPT.format(requirement_description=requirement.description)
     
     try:
         response = agent.run(prompt)
@@ -374,7 +320,7 @@ def analyze_requirements_batch(requirements: List[AtomicRequirement], agent: Age
         requirements_text += f"Requirement {i+1} - ID: {req.id}, Title: {req.title}\n"
         requirements_text += f"Description: {req.description}\n\n"
     
-    prompt = BATCH_ANALYZE_REQUIREMENTS_PROMPT.format(requirements_text=requirements_text)
+    prompt = config.BATCH_ANALYZE_REQUIREMENTS_PROMPT.format(requirements_text=requirements_text)
     
     try:
         # Run batch analysis
@@ -641,7 +587,7 @@ def process_single_document(doc_id: str):
     # Create a software analysis agent for later batch processing
     software_agent = create_agent(
         response_model=BatchSoftwareAnalysis,
-        description=SOFTWARE_AGENT_DESCRIPTION
+        description=config.SOFTWARE_AGENT_DESCRIPTION
     )
     
     try:

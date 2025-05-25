@@ -61,23 +61,24 @@ from src._03_docs_deduplication import pre_save_deduplication as dedup
 # Setup logging with script prefix
 logger = get_logger("Agentic_Chunking")
 
-# Constants
-MAX_CHAR_SIZE = 900  # Maximum allowed character size for a chunk
-TARGET_CHAR_SIZE = 700  # Target character size per chunk
-MAX_SECTION_SIZE = 30000  # Maximum section size for processing with LLM
-MAX_RETRIES = 3  # Maximum number of retries for API calls
-INITIAL_RETRY_DELAY = 2  # Initial delay (in seconds) before retrying
-SIMILARITY_THRESHOLD = 0.75  # Threshold for similar chunks - lowered to be more sensitive to reordered content
-DUPLICATE_THRESHOLD = 0.995  # High threshold for automatic duplicates without LLM
+# Constants - now imported from project_config
+MAX_CHAR_SIZE = project_config.MAX_CHAR_SIZE  # Maximum allowed character size for a chunk
+TARGET_CHAR_SIZE = project_config.TARGET_CHAR_SIZE  # Target character size per chunk
+MAX_SECTION_SIZE = project_config.MAX_SECTION_SIZE  # Maximum section size for processing with LLM
+MAX_RETRIES = project_config.MAX_RETRIES  # Maximum number of retries for API calls
+INITIAL_RETRY_DELAY = project_config.INITIAL_RETRY_DELAY  # Initial delay (in seconds) before retrying
+SIMILARITY_THRESHOLD = project_config.SIMILARITY_THRESHOLD  # Threshold for similar chunks
+DUPLICATE_THRESHOLD = project_config.DUPLICATE_THRESHOLD  # High threshold for automatic duplicates without LLM
 
-# LanceDB settings
-OUTPUT_DIR_BASE = "output"
-LANCEDB_SUBDIR_NAME = "lancedb"
-CHUNKS_TABLE_NAME = "document_chunks"
+# LanceDB settings - now imported from project_config
+OUTPUT_DIR_BASE = project_config.OUTPUT_DIR_BASE
+LANCEDB_SUBDIR_NAME = project_config.LANCEDB_SUBDIR_NAME
+CHUNKS_TABLE_NAME = project_config.DOCUMENT_CHUNKS_TABLE
+CHUNK_DIAGNOSTICS_DIR = project_config.CHUNK_DIAGNOSTICS_DIR
 
 # Use embedding model settings from project_config
 EMBEDDING_MODEL_NAME = project_config.EMBEDDING_MODEL_NAME
-EMBEDDING_DEVICE = "cpu"  # Force CPU usage to avoid memory issues
+EMBEDDING_DEVICE = project_config.EMBEDDING_DEVICE
 EMBEDDING_MAX_SEQ_LENGTH = project_config.EMBEDDING_MAX_SEQ_LENGTH
 EMBEDDING_BATCH_SIZE = project_config.EMBEDDING_BATCH_SIZE
 
@@ -264,29 +265,7 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         ])
         
         # Enhanced prompt for context-aware chunking
-        prompt = """
-        Chunk the NEW DOCUMENT TEXT to align with the REFERENCE CHUNKS.
-        
-        STRICT REQUIREMENTS:
-        1. ONLY split the text into chunks. NEVER modify, rephrase, paraphrase, summarize, or omit any content. Each chunk must contain the original text exactly as it appears in the input.
-        2. NEVER exceed {max_size} characters per chunk
-        3. Target {target_size} characters per chunk
-        4. Break at sentence boundaries, NEVER mid-sentence
-        5. Split at paragraph boundaries when possible
-        6. Break large sections rather than creating oversized chunks
-        7. Preserve headers with their content when possible
-        
-        CRITICAL FOR IDENTICAL AND REORDERED CONTENT:
-        - Your PRIMARY GOAL is to replicate the chunk boundaries from a REFERENCE CHUNK if a section of the NEW DOCUMENT TEXT is IDENTICAL to that REFERENCE CHUNK's text.
-        - If a section of the NEW DOCUMENT TEXT exactly matches the text of a REFERENCE CHUNK, you MUST create a new chunk with the EXACT SAME text and boundaries.
-        - For sections of the NEW DOCUMENT TEXT that are reordered but still match a REFERENCE CHUNK, preserve the content and try to maintain similar chunking.
-        - Focus on semantic meaning but prioritize exact textual matches for boundary replication.
-        - Compare all reference chunks to find the best match for each section of the NEW DOCUMENT TEXT.
-        
-        ALWAYS output multiple chunks for text longer than {target_size} characters.
-        
-        Format response as: {{"chunks": ["chunk1", "chunk2", ...]}}
-        """
+        prompt = project_config.CONTEXT_AWARE_CHUNKING_PROMPT
         
         # Prepare full prompt content with reference chunks
         full_prompt = f"""
@@ -299,21 +278,7 @@ def get_chunks_from_llm(md_text: str, context_chunks: Optional[List[Dict[str, An
         
     else:
         # Standard chunking prompt (improved from integrated_chunking)
-        prompt = """
-        Split this text into chunks of {target_size} to {max_size} characters.
-        
-        STRICT REQUIREMENTS:
-        1. ONLY split the text into chunks. NEVER modify, rephrase, paraphrase, summarize, or omit any content. Each chunk must contain the original text exactly as it appears in the input.
-        2. NEVER exceed {max_size} characters per chunk
-        3. Target {target_size} characters per chunk
-        4. Break at sentence boundaries, NEVER mid-sentence
-        5. Split at paragraph or section boundaries when possible
-        6. Break text at headers when available
-        7. ALWAYS create multiple chunks for text longer than {target_size} characters
-        8. Break large sections rather than creating oversized chunks
-        
-        Format response as: {{"chunks": ["chunk1", "chunk2", ...]}}
-        """
+        prompt = project_config.STANDARD_CHUNKING_PROMPT
         
         full_prompt = md_text
     
@@ -612,46 +577,7 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any], actual_new_do
             return decision_info
             
         # Set up the decision prompt
-        decision_prompt = """
-# Chunk Comparison
-
-Compare the following two chunks of text, which are from two different versions of the same document, and decide which to keep.
-
-## CHUNK FROM ORIGINAL DOCUMENT:
-{old_chunk}
-
-## CHUNK FROM NEW DOCUMENT:
-{new_chunk}
-
-You must analyze the chunks carefully to determine if they contain the same information or if one contains important new or different information that should be kept.
-
-Pay very close attention to numerical values, specifications, measurements, dates, requirements, and other concrete details that might have changed.
-
-Step 1: First, list EXACTLY what has changed between the two chunks in a detailed list format.
-Step 2: Then make your decision based on those differences.
-
-Provide your decision in JSON format with the following structure:
-```json
-{{
-  "decision": "keep_old | keep_new | need_user_input",
-  "reason": "detailed explanation of your reasoning, pointing out specific differences",
-  "differences": ["list at least 3 specific, concrete differences between the chunks", "be very precise about what changed"]
-}}
-```
-
-Decision choices:
-- "keep_old": The original document's chunk is better or the changes in the new chunk are insignificant.
-- "keep_new": The new document's chunk contains meaningful new or updated information.
-- "need_user_input": You're genuinely uncertain which chunk is better and need human judgment.
-
-IMPORTANT: You MUST include explicit concrete differences between the chunks. For example:
-- "Weight changed from 300kg to 350kg"
-- "Added new safety information in paragraph 2"
-- "Reordered sections without changing content"
-- "Added specifications for extreme temperatures"
-
-Remember: The differences field is REQUIRED and must contain SPECIFIC, CONCRETE differences.
-"""
+        decision_prompt = project_config.CHUNK_COMPARISON_PROMPT
         
         # Create an agent for the decision
         decision_agent = Agent(
@@ -978,7 +904,7 @@ def process_document_with_context(
                     extra={"icon": "⚠️"}
                 )
                 # Diagnostic: log and write chunk and document slice to temp file for analysis
-                temp_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'temp', 'chunk_diagnostics')
+                temp_dir = project_config.CHUNK_DIAGNOSTICS_DIR
                 os.makedirs(temp_dir, exist_ok=True)
                 doc_base = os.path.splitext(os.path.basename(document_id))[0]
                 temp_filename = f"{doc_base}_chunk_{i+1:04d}_diagnostic.txt"
@@ -1117,19 +1043,17 @@ def process_document_with_context(
             if not is_duplicate and not is_updated:
                 new_count += 1
                 
-                # Log that this is a completely new chunk
-                if best_chunk:
-                    # If we have a best match, log it even though it's below threshold
-                    log_chunk_comparison(
-                        chunk_id=chunk_id,
-                        similar_chunk_id=best_chunk.get('chunk_id', 'unknown'),
-                        similarity=best_similarity,
-                        decision="keep_new",
-                        reason=f"New chunk with no similar content above threshold (best similarity: {best_similarity:.4f})"
-                    )
-                else:
-                    # No similar chunks at all
-                    logger.info(f"✨ Chunk {chunk_id} is completely new with no similar content", extra={"icon": "✨"})
+                # If we have a best match, log it even though it's below threshold
+                log_chunk_comparison(
+                    chunk_id=chunk_id,
+                    similar_chunk_id=best_chunk.get('chunk_id', 'unknown'),
+                    similarity=best_similarity,
+                    decision="keep_new",
+                    reason=f"New chunk with no similar content above threshold (best similarity: {best_similarity:.4f})"
+                )
+            else:
+                # No similar chunks at all
+                logger.info(f"✨ Chunk {chunk_id} is completely new with no similar content", extra={"icon": "✨"})
         else:
             # Without reference chunks, all chunks are new
             new_count += 1

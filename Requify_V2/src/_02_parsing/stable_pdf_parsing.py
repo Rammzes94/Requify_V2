@@ -119,11 +119,7 @@ plain_agent = Agent(
     model=active_vision_model,
     markdown=True,
     debug_mode=False,
-    description=(
-        "You are an agent that extracts contents from an image that originated from a pdf file. "
-        "You want to extract as much information as possible - not only focussing on text but also images, graphs, diagrams, etc. "
-        "You are very technical and precise."
-    )
+    description=config.PDF_PLAIN_AGENT_DESCRIPTION
 )
 
 # Structured agent to generate metadata from extracted markdown.
@@ -131,14 +127,7 @@ structured_agent = Agent(
     model=active_text_model,
     markdown=False,
     debug_mode=False,
-    description=(
-        "You are an agent that receives plain markdown text extracted from a PDF page. "
-        "Your sole task is to generate and return a valid JSON object containing the following fields: "
-        "'document_title' (use the provided document title), "
-        "'summary' (a concise summary of the page content, 200-300 characters), "
-        "and 'hashtags' (a list of approximately 10 key search words for the content, without the '#' symbol). "
-        "Ensure your output is ONLY this JSON object and nothing else. Do not include any explanatory text before or after the JSON."
-    ),
+    description=config.PDF_STRUCTURED_AGENT_DESCRIPTION,
     response_model=AgnoPageMetadata,
     use_json_mode=True  # Ensure the LLM is constrained to output valid JSON
 )
@@ -148,12 +137,7 @@ document_title_agent = Agent(
     model=active_text_model,
     markdown=False,
     debug_mode=False,
-    description=(
-        "You are an agent that receives combined markdown text from the first pages of a PDF document and generates "
-        "a concise, descriptive title that captures the main subject and purpose of the document. "
-        "The title should be between 5-10 words and clearly identify what the document is about."
-        "Give back only the the title, NOTHING ELSE."
-    )
+    description=config.PDF_DOCUMENT_TITLE_AGENT_DESCRIPTION
 )
 
 # ---------------------------------------------------------------------
