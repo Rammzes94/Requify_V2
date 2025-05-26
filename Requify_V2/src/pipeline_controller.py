@@ -166,6 +166,12 @@ def process_document(doc_path: str, max_step: int = STEP_EXTRACT_REQS, dry_run: 
             
             # Run deduplication check
             dedup_results = pre_save_deduplication.check_new_document(pages_data)
+
+            # --- ABORT IF DOCUMENT IS A DUPLICATE ---
+            if dedup_results.get('is_duplicate', False):
+                logger.info(f"Document {doc_name} is a complete duplicate (all pages are duplicates, not a new version). Skipping further processing.", extra={"icon": "♻️"})
+                return True
+            # --- END ABORT ---
             
             # Log results
             duplicate_pages = dedup_results.get('duplicate_pages', {})

@@ -251,10 +251,7 @@ def main() -> None:
     # If verbose argument is provided, we could update the config values if needed
     # But we'll rely on the values already loaded from config
     
-    if args.test:
-        # Run the test with options
-        test_with_hardcoded_file(skip_hash_check=args.skip_hash_check)
-        return
+
         
     if args.interactive or not (args.input and args.max_step is not None):
         run_pipeline_interactive()
@@ -291,25 +288,6 @@ def main() -> None:
         logger.error(f"Pipeline error: {e}", extra={"icon": "💥"})
         raise
 
-def test_with_hardcoded_file(skip_hash_check=False):
-    """Test the pipeline with a hardcoded file."""
-    logger.info("=== Running Pipeline Test with Hardcoded File ===", extra={"icon": "🧪"})
-    
-    # Config is already loaded, no need to set environment variables
-    
-    test_file = "input/raw/fighter_jet_rocket_launcher_spec_2.pdf"
-    if not os.path.exists(test_file):
-        logger.error(f"Test file not found: {test_file}", extra={"icon": "❌"})
-        return False
-    logger.info(f"Running pipeline on test file: {test_file}", extra={"icon": "🚀"})
-    try:
-        # For the test, we run the complete pipeline, so we use the controller's STEP_EXTRACT_REQS directly.
-        controller_max_step_for_test = CTRL_STEP_EXTRACT_REQS
-        logger.info(f"Test will run up to controller step: {controller_max_step_for_test} (Requirements Extraction)")
-        return process_document(test_file, max_step=controller_max_step_for_test, dry_run=False, skip_hash_check=skip_hash_check)
-    except Exception as e:
-        logger.error(f"Pipeline test error: {e}", extra={"icon": "💥"})
-        return False
 
 if __name__ == "__main__":
     main()

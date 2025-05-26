@@ -553,7 +553,10 @@ def evaluate_chunk_pair(new_chunk: str, old_chunk: Dict[str, Any], actual_new_do
     # Automatic decision for high similarity (duplicate)
     if similarity >= DUPLICATE_THRESHOLD:
         decision_info["decision"] = "keep_old"
-        decision_info["reason"] = f"Chunks are nearly identical (similarity: {similarity:.4f})"
+        if similarity == 1:
+            decision_info["reason"] = f"Chunks are exactly identical (similarity: {similarity:.4f})"
+        else:
+            decision_info["reason"] = f"Chunks are nearly identical (similarity: {similarity:.4f})"
         return decision_info
     
     # For medium similarity, use LLM to decide
