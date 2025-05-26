@@ -686,12 +686,8 @@ def check_document_duplicates(
             # Check if embedding is all zeros or contains NaNs
             is_all_zeros = np.all(embedding == 0)
             has_nans = np.isnan(embedding).any()
-            # More robust logging that handles potential index errors
-            first_values = embedding[:min(5, len(embedding))].tolist() if len(embedding) > 0 else []
-            last_values = embedding[-min(5, len(embedding)):].tolist() if len(embedding) > 0 else []
-            logger.info(f"Querying with embedding for page {page_num} " 
-                       f"(first {len(first_values)}: {first_values}, "
-                       f"last {len(last_values)}: {last_values}). "
+            # Remove first 5 and last 5 values preview, only log status
+            logger.info(f"Querying with embedding for page {page_num}. " 
                        f"All zeros: {is_all_zeros}, Has NaNs: {has_nans}", 
                        extra={"icon": "🧬"})
 

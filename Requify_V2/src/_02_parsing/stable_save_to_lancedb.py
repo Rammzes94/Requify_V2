@@ -151,7 +151,6 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
                 logger.info(f"Generating embedding for page {page_num} (content length: {len(page_content)})", extra={"icon": "🧬"})
                 embedding = text_embedder.encode(page_content, normalize_embeddings=True)
                 logger.info(f"Embedding type: {type(embedding)}, shape: {embedding.shape}", extra={"icon": "🧬"})
-                logger.info(f"First 5 values: {embedding[:5].tolist()}", extra={"icon": "🧬"})
                 embedding = embedding.tolist()
             else:
                 embedding = [0.0] * EMBEDDING_DIMENSION  # Placeholder for testing

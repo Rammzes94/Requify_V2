@@ -630,57 +630,33 @@ def prompt_user_for_chunk_decision(
     Returns:
         User decision: 'keep_new', 'keep_old'
     """
-    # Check if we're in testing mode and should auto-select new
-    auto_select = os.environ.get("REQUIFY_AUTO_SELECT_NEW", "false").lower() == "true"
-    
-    if auto_select:
-        logger.info(f"Auto-selecting 'keep_new' for testing", extra={"icon": "🤖"})
-        # Add more detailed info about what would have been prompted
-        old_doc_id = old_chunk.get('document_id', 'unknown')
-        old_chunk_id = old_chunk.get('chunk_id', 'unknown')
-        logger.info(f"TESTING - USER WOULD HAVE BEEN PROMPTED: Comparing chunks between '{old_doc_id}' ({old_chunk_id}) and '{new_doc_id}'", extra={"icon": "🔍"})
-        return "keep_new"
-    
-    # For normal operation, prompt the user
     old_doc_id = old_chunk.get('document_id', 'unknown')
     old_chunk_text = old_chunk.get('chunk_text', '')
     reason = decision_info.get('reason', 'Reason not provided')
     differences = decision_info.get('differences', [])
     
-    logger.info("\n" + "="*80, extra={"icon": "🔍"})
+    logger.info("================================================================================", extra={"icon": "🔍"})
     logger.info("CHUNK COMPARISON NEEDED", extra={"icon": "🔍"})
-    logger.info("="*80, extra={"icon": "🔍"})
+    logger.info("================================================================================", extra={"icon": "🔍"})
     
-    logger.info(f"\nREASON: {reason}", extra={"icon": "ℹ️"})
+    logger.info(f"REASON: {reason}", extra={"icon": "ℹ️"})
     
-    logger.info("\nKEY DIFFERENCES:", extra={"icon": "📊"})
+    logger.info("KEY DIFFERENCES:", extra={"icon": "📊"})
     if differences:
         for i, diff in enumerate(differences, 1):
             logger.info(f"  {i}. {diff}", extra={"icon": "🔄"})
     else:
         logger.info("  (No specific differences detected)", extra={"icon": "⚠️"})
     
-    logger.info(f"\nOLD DOCUMENT: {old_doc_id}", extra={"icon": "📜"})
-    logger.info("-" * 40, extra={"icon": "📜"})
+    logger.info(f"OLD DOCUMENT: {old_doc_id}", extra={"icon": "📜"})
+    logger.info("----------------------------------------", extra={"icon": "📜"})
     logger.info(old_chunk_text, extra={"icon": "📜"})
-    logger.info("-" * 40, extra={"icon": "📜"})
+    logger.info("----------------------------------------", extra={"icon": "📜"})
     
-    logger.info(f"\nNEW DOCUMENT: {new_doc_id}", extra={"icon": "📄"})
-    logger.info("-" * 40, extra={"icon": "📄"})
+    logger.info(f"NEW DOCUMENT: {new_doc_id}", extra={"icon": "📄"})
+    logger.info("----------------------------------------", extra={"icon": "📄"})
     logger.info(new_chunk, extra={"icon": "📄"})
-    logger.info("-" * 40, extra={"icon": "📄"})
-    
-    # Auto-select option 2 (keep_new) if this is a test run
-    # Check if we're running in a test context by looking for testing-related env vars or args
-    is_test_environment = (
-        'test_scenarios.py' in sys.argv[0] or  # Check if being run from test_scenarios.py
-        '--scenario' in ' '.join(sys.argv) or  # Check if --scenario parameter is used
-        os.getenv('REQUIFY_TEST_MODE') == 'true'  # Check for test mode env var
-    )
-    
-    if is_test_environment:
-        logger.info("Auto-selecting 'keep_new' for testing", extra={"icon": "🔍"})
-        return "keep_new"
+    logger.info("----------------------------------------", extra={"icon": "📄"})
     
     while True:
         choice = input("\nChoose which chunk to use (1=old, 2=new): ")

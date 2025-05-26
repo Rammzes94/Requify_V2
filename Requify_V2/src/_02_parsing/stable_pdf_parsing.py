@@ -154,9 +154,9 @@ class PDFProcessor:
     def pdf_to_images(self, pdf_path, dpi=PDF_TO_IMAGE_DPI, output_images_dir=None) -> List[Tuple[str, Optional[str]]]:
         logger.info(f"Processing '{pdf_path}' to images...", extra={"icon": "🔄"})
         if VERBOSE_PDF_PARSING_OUTPUT:
-            logger.info(f"{'-'*80}", extra={"icon": "📄"})
-            logger.info(f"Converting PDF to images: {os.path.basename(pdf_path)}", extra={"icon": "📄"})
-            logger.info(f"{'-'*80}", extra={"icon": "📄"})
+            logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔍"})
+            logger.info(f"Converting PDF to images: {os.path.basename(pdf_path)}", extra={"icon": "🔍"})
+            logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔍"})
             
         if not os.path.exists(pdf_path):
             logger.error(f"PDF file '{pdf_path}' does not exist.", extra={"icon": "❌"})
@@ -197,6 +197,7 @@ class PDFProcessor:
 
             logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
             if VERBOSE_PDF_PARSING_OUTPUT:
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "✅"})
                 logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
             return image_data_list
         except Exception as e:
@@ -257,6 +258,7 @@ class PDFProcessor:
             logger.info(f"Generated document title from summaries: {document_title}")
             
             if VERBOSE_PDF_PARSING_OUTPUT:
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "✅"})
                 logger.info(f"Generated title: \"{document_title}\"", extra={"icon": "✅"})
                 
             return document_title
@@ -277,9 +279,9 @@ class PDFProcessor:
             os.makedirs(specific_output_dir, exist_ok=True)
 
             if VERBOSE_PDF_PARSING_OUTPUT:
-                logger.info(f"{'-'*80}", extra={"icon": "🔍"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔍"})
                 logger.info(f"PARSING PDF: {os.path.basename(pdf_path)}", extra={"icon": "🔍"})
-                logger.info(f"{'-'*80}", extra={"icon": "🔍"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔍"})
 
             image_data_list = self.pdf_to_images(pdf_path) # pdf_to_images now uses PROCESSED_OUTPUT_BASE_DIR for its output
             if not image_data_list:
@@ -351,9 +353,9 @@ class PDFProcessor:
             contents_dict = {}
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                logger.info(f"{'-'*80}", extra={"icon": "🔄"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔄"})
                 logger.info(f"GENERATING PAGE METADATA", extra={"icon": "🔄"})
-                logger.info(f"{'-'*80}", extra={"icon": "🔄"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "🔄"})
                 
             for i, (image_path, image_b64_content) in enumerate(image_data_list):
                 page_number = i + 1
@@ -464,12 +466,12 @@ class PDFProcessor:
             logger.info(f"All extracted page data combined and saved to {combined_file}")
             
             if VERBOSE_PDF_PARSING_OUTPUT:
-                logger.info(f"{'-'*80}", extra={"icon": "✅"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "✅"})
                 logger.info(f"PARSING COMPLETED: {os.path.basename(pdf_path)}", extra={"icon": "✅"})
                 logger.info(f"Document title: {document_title}", extra={"icon": "📄"})
                 logger.info(f"Pages processed: {len(contents_dict)}", extra={"icon": "📄"})
                 logger.info(f"Output saved to: {os.path.basename(combined_file)}", extra={"icon": "📄"})
-                logger.info(f"{'-'*80}", extra={"icon": "✅"})
+                logger.info("--------------------------------------------------------------------------------", extra={"icon": "✅"})
                 
             return combined_file
         except Exception as e:

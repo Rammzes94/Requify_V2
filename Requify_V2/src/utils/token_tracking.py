@@ -78,15 +78,15 @@ def update_token_counters(response, model_id="gpt-4o-mini"):
             }
         
         # Try to get the global logger, but handle case where it's not configured
-        try:
-            logger = logging.getLogger()
-            if logger.handlers:  # Check if logger is configured
-                logger.info(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
-            else:
-                print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
-        except Exception:
+        #try:
+            #logger = logging.getLogger()
+            #if logger.handlers:  # Check if logger is configured
+                #logger.info(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
+            #else:
+                #print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
+        #except Exception:
             # If there's any issue with logging, fall back to print
-            print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
+            #print(f"Token counters updated: {input_tokens_added} input, {output_tokens_added} output for {model_id}")
         
         # Save updated token usage to file
         save_token_usage(model_id)
