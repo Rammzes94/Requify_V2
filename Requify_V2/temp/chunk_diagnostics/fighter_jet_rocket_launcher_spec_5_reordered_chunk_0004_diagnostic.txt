@@ -1,17 +1,15 @@
 CHUNK 4 (not found verbatim):
 ----------------------------------------
-Operational Features
+The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability,  
+making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures  
+mission versatility and effectiveness.
 
-- Multi-mode targeting system: laser-guided, infrared, and GPS.  
-- Automatic target recognition for precision strikes.  
-- Quick reload mechanism for enhanced sortie effectiveness.  
-- Advanced thermal shielding for high-speed flight integration.  
-- Weather-resistant design for all-climate operations.
+Conclusion
 
-Document slice around current_offset=901:
+Document slice around current_offset=1244:
 ----------------------------------------
-er System for Fighter Jets  
-Rocket Type Max Range Speed Penetration Depth  
-Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  
-Technical Specifications  
-The RLX-5000 rocket launcher 
+ket launcher system integrated  
+Weight 320 kg  
+Zuni 6 km Mach 2.2 200 mm bunker walls  
+and safety considerations.  
+into modern fighter jets. It covers technical parameters, performance metrics, op

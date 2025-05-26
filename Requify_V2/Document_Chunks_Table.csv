@@ -1,0 +1,158 @@
+chunk_id,document_id,chunk_text,token_count,is_duplicate,duplicate_of,is_updated,previous_chunk_id,timestamp,aligned_with_chunk_id,aligned_with_document_id,is_duplicate_marker,is_replaced,replaced_by
+fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001,fighter_jet_rocket_launcher_spec_2.pdf,"Fighter Jet Rocket Launcher Specification
+
+Rocket Launcher System for Fighter Jets
+
+This document provides detailed specifications for the advanced rocket launcher system integrated into modern fighter jets. It covers technical parameters, performance metrics, operational features, and safety considerations.
+
+Technical Specifications
+
+Launcher Model RLX-5000  
+Weight 320 kg  
+Length 3.2 m  
+Diameter 45 cm  
+Max Rocket Capacity 7 Rockets  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Fire Rate Up to 2 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Operational Altitude Up to 50,500 ft  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  ",159,False,,False,,2025-05-26 19:14:37,,,False,True,fighter_jet_rocket_launcher_spec_3_language_variant.pdf_chunk_0001
+fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002,fighter_jet_rocket_launcher_spec_2.pdf,"Performance Metrics
+
+| Rocket Type | Max Range | Speed  | Penetration Depth            |           
+|-------------|-----------|--------|------------------------------|           
+| Hydra 70    | 8 km      | Mach 2.5 | 250 mm steel                |           
+| APKWS       | 12 km     | Mach 2.8 | 300 mm reinforced armor     |           
+| CRV7        | 10 km     | Mach 3.0 | 280 mm concrete             |           
+| Zuni        | 6 km      | Mach 2.2 | 200 mm bunker walls         |           
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.  ",205,False,,False,,2025-05-26 19:14:37,,,False,True,fighter_jet_rocket_launcher_spec_3_language_variant.pdf_chunk_0002
+fighter_jet_rocket_launcher_spec_2.pdf_chunk_0003,fighter_jet_rocket_launcher_spec_2.pdf,"Conclusion
+
+The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability, making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures mission versatility and effectiveness.",57,False,,False,,2025-05-26 19:14:37,,,False,True,fighter_jet_rocket_launcher_spec_2_extra_end.pdf_chunk_0003
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0001,fighter_jet_rocket_launcher_spec_2_changed_values.pdf,"Fighter Jet Rocket Launcher Specification
+
+Rocket Launcher System for Fighter Jets
+
+This document provides detailed specifications for the advanced rocket launcher system integrated into modern fighter jets. It covers technical parameters, performance metrics, operational features, and safety considerations.
+
+Technical Specifications
+
+Launcher Model RLX-5000  
+Weight 310 kg  
+Length 3.5 m  
+Diameter 45 cm  
+Max Rocket Capacity 9 Rockets  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Fire Rate Up to 3 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Operational Altitude Up to 50,500 ft  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  ",159,False,,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001,2025-05-26 19:15:36,,fighter_jet_rocket_launcher_spec_2.pdf,False,False,
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0002,fighter_jet_rocket_launcher_spec_2_changed_values.pdf,"Performance Metrics
+
+| Rocket Type | Max Range | Speed    | Penetration Depth        |             
+|-------------|-----------|----------|--------------------------|  
+| Hydra 70    | 8 km      | Mach 2.5 | 250 mm steel             |   
+| APKWS       | 12 km     | Mach 2.8 | 300 mm reinforced armor  |   
+| CRV7        | 10 km     | Mach 3.2 | 280 mm concrete          |   
+| Zuni        | 6 km      | Mach 2.2 | 200 mm bunker walls      |    
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.  ",202,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002,False,,2025-05-26 19:15:46,,fighter_jet_rocket_launcher_spec_2.pdf,True,False,
+fighter_jet_rocket_launcher_spec_2_changed_values.pdf_chunk_0003,fighter_jet_rocket_launcher_spec_2_changed_values.pdf,"Conclusion
+
+",4,False,,False,,2025-05-26 19:16:17,,fighter_jet_rocket_launcher_spec_2.pdf,False,False,
+fighter_jet_rocket_launcher_spec_3_language_variant.pdf_chunk_0001,fighter_jet_rocket_launcher_spec_3_language_variant.pdf,"Fighter Jet Rocket Launcher Specification
+
+Raketenwerfersystem für Kampfflugzeuge
+
+This document provides detailed specifications for the advanced rocket launcher system integrated into modern fighter jets. It covers technical parameters, performance metrics, operational features, and safety considerations.
+
+Technical Specifications
+
+Launcher Model RLX-5000  
+Weight 320 kg  
+Length 3.2 m  
+Diameter 45 cm  
+Max Rocket Capacity 7 Rockets  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Fire Rate Up to 2 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Operational Altitude Up to 50,000 ft  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  ",158,False,,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001,2025-05-26 19:29:10,,fighter_jet_rocket_launcher_spec_2.pdf,False,False,
+fighter_jet_rocket_launcher_spec_3_language_variant.pdf_chunk_0002,fighter_jet_rocket_launcher_spec_3_language_variant.pdf,"Performance Metrics
+
+| Rocket Type | Max Range | Speed  | Penetration Depth         |                   
+|-------------|------------|--------|---------------------------|                   
+| Hydra 70    | 8 km       | Mach 2.5 | 250 mm steel             |                   
+| APKWS       | 12 km      | Mach 2.8 | 300 mm reinforced armor  |                   
+| CRV7        | 10 km      | Mach 3.0 | 280 mm concrete          |                   
+| Zuni        | 6 km       | Mach 2.2 | 200 mm bunker walls      |                   
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.  ",206,False,,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002,2025-05-26 19:30:09,,fighter_jet_rocket_launcher_spec_2.pdf,False,False,
+fighter_jet_rocket_launcher_spec_3_language_variant.pdf_chunk_0003,fighter_jet_rocket_launcher_spec_3_language_variant.pdf,"Conclusion
+
+The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability, making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures mission versatility and effectiveness.",57,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0003,False,,2025-05-26 19:30:13,,fighter_jet_rocket_launcher_spec_2.pdf,True,False,
+fighter_jet_rocket_launcher_spec_2_extra_end.pdf_chunk_0001,fighter_jet_rocket_launcher_spec_2_extra_end.pdf,"Fighter Jet Rocket Launcher Specification
+
+Rocket Launcher System for Fighter Jets
+
+This document provides detailed specifications for the advanced rocket launcher system integrated  
+into modern fighter jets. It covers technical parameters, performance metrics, operational features,  
+and safety considerations.
+
+Technical Specifications
+
+Launcher Model RLX-5000
+Weight 320 kg
+Length 3.2 m
+Diameter 45 cm
+Max Rocket Capacity 7 Rockets
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni
+Fire Rate Up to 2 rockets per second
+Guidance System Laser, Infrared, GPS
+Operational Altitude Up to 50,500 ft
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection",159,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0001,False,,2025-05-26 19:32:42,,fighter_jet_rocket_launcher_spec_2.pdf,True,False,
+fighter_jet_rocket_launcher_spec_2_extra_end.pdf_chunk_0002,fighter_jet_rocket_launcher_spec_2_extra_end.pdf,"Performance Metrics
+
+Rocket Type Max Range Speed Penetration Depth
+
+Hydra 70 8 km Mach 2.5 250 mm steel
+APKWS 12 km Mach 2.8 300 mm reinforced armor
+CRV7 10 km Mach 3.0 280 mm concrete
+Zuni 6 km Mach 2.2 200 mm bunker walls
+
+Operational Features
+
+- Multi-mode targeting system: laser-guided, infrared, and GPS.  
+- Automatic target recognition for precision strikes.  
+- Quick reload mechanism for enhanced sortie effectiveness.  
+- Advanced thermal shielding for high-speed flight integration.  
+- Weather-resistant design for all-climate operations.",139,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0002,False,,2025-05-26 19:32:47,,fighter_jet_rocket_launcher_spec_2.pdf,True,False,
+fighter_jet_rocket_launcher_spec_2_extra_end.pdf_chunk_0003,fighter_jet_rocket_launcher_spec_2_extra_end.pdf,"Conclusion
+
+The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability,  
+making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures  
+mission versatility and effectiveness.
+
+Additional Specs:  
+- Smart fuse detection  
+- Stealth integration layer  
+- Shockwave dampening shell",84,False,,True,fighter_jet_rocket_launcher_spec_2.pdf_chunk_0003,2025-05-26 19:32:52,,fighter_jet_rocket_launcher_spec_2.pdf,False,False,

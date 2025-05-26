@@ -1083,6 +1083,24 @@ def process_document_with_context(
     
     return processed_chunks, replaced_chunks
 
+def update_replacement_references_in_df(df, old_chunk_id: str, new_chunk_id: str) -> None:
+    """
+    Update all replacement references in the DataFrame to point to the new chunk, flattening the chain.
+    Args:
+        df: DataFrame of all chunks
+        old_chunk_id: The chunk being replaced
+        new_chunk_id: The new chunk that replaces it
+    """
+    # Find all chunks that currently point to the old chunk
+    chunks_pointing_to_old = df[df['replaced_by'] == old_chunk_id]
+    if not chunks_pointing_to_old.empty:
+        logger.info(f"Flattening {len(chunks_pointing_to_old)} replacement references from {old_chunk_id} to {new_chunk_id}", extra={"icon": "🔄"})
+        df.loc[df['replaced_by'] == old_chunk_id, 'replaced_by'] = new_chunk_id
+    # Update the old chunk being replaced
+    df.loc[df['chunk_id'] == old_chunk_id, 'is_replaced'] = True
+    df.loc[df['chunk_id'] == old_chunk_id, 'replaced_by'] = new_chunk_id
+    logger.info(f"Successfully flattened replacement chain - all references now point to {new_chunk_id}", extra={"icon": "✅"})
+
 def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Dict[str, str]] = None) -> bool:
     """
     Save processed chunks to the LanceDB chunks table.
@@ -1112,7 +1130,6 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
         if table_exists:
             logger.info(f"Opened existing table: {CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
             chunks_table = db.open_table(CHUNKS_TABLE_NAME)
-            
             # Check table schema for required columns
             table_schema = chunks_table.schema
             existing_columns = {field.name for field in table_schema}
@@ -1121,92 +1138,40 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                 'is_replaced', 
                 'replaced_by'
             }
-            
             missing_columns = required_columns - existing_columns
-            
-            # Get existing chunks data
-            existing_df = chunks_table.to_pandas()
-            
+            # Load all current data to a DataFrame
+            current_df = chunks_table.to_pandas()
             # Add missing columns if needed
             if missing_columns:
                 logger.info(f"Adding missing columns: {missing_columns}", extra={"icon": "🔄"})
-                # Add required columns with default values
                 for col in missing_columns:
                     if col in ['is_duplicate_marker', 'is_replaced']:
-                        existing_df[col] = False
+                        current_df[col] = False
                     else:
-                        existing_df[col] = ""
-            
-            # Prepare replacement updates - find old chunks and mark them as replaced by new chunks
-            replacement_updates = []
-            if replaced_chunks and not existing_df.empty:
-                for new_id_key, old_id_value in replaced_chunks.items(): # new_id_key is the new chunk, old_id_value is the old chunk to be marked
-                    mask = existing_df['chunk_id'] == old_id_value       # Find the OLD chunk in existing_df
-                    if any(mask):
-                        # Get the row indexes that need updating
-                        for idx_to_update in existing_df[mask].index:
-                            updated_row = existing_df.loc[idx_to_update].copy()
-                            updated_row['is_replaced'] = True
-                            updated_row['replaced_by'] = new_id_key # The OLD chunk is replaced by this NEW chunk
-                            replacement_updates.append(updated_row)
-                        logger.info(f"Marked chunk {old_id_value} as replaced by {new_id_key}", extra={"icon": "✅"})
-                    else:
-                        logger.warning(f"Could not find chunk {old_id_value} in existing_df to mark as replaced by {new_id_key}", extra={"icon": "⚠️"})
-            
-            # Prepare new chunks dataframe (all chunks from the current document processing)
-            new_chunks_df = pd.DataFrame() # Initialize to empty DataFrame
-            if chunks:
-                new_chunks_df = pd.DataFrame(chunks)
-                # Ensure required columns exist in new chunks
-                for col in required_columns:
+                        current_df[col] = ""
+            # Handle replacement flattening in-memory
+            if replaced_chunks:
+                for new_chunk_id, old_chunk_id in replaced_chunks.items():
+                    logger.info(f"Flattening replacement: {old_chunk_id} → {new_chunk_id}", extra={"icon": "🔄"})
+                    update_replacement_references_in_df(current_df, old_chunk_id, new_chunk_id)
+            # Add new chunks to the DataFrame
+            new_chunks_df = pd.DataFrame(chunks) if chunks else pd.DataFrame()
+            if not new_chunks_df.empty:
+                for col in ['is_duplicate_marker', 'is_replaced', 'replaced_by']:
                     if col not in new_chunks_df.columns:
                         if col in ['is_duplicate_marker', 'is_replaced']:
                             new_chunks_df[col] = False
                         else:
                             new_chunks_df[col] = ""
-            
-            # Combine existing chunks that need updates with new chunks
-            if replacement_updates or missing_columns:
-                # Convert replacement updates to DataFrame if any exist
-                updates_df = pd.DataFrame(replacement_updates) if replacement_updates else pd.DataFrame()
-                
-                # Get IDs of old chunks that were actually found and are part of replacement_updates
-                ids_of_old_chunks_that_were_updated = set(updates_df['chunk_id']) if not updates_df.empty else set()
-
-                # Filter existing_df: keep rows that are NOT among the successfully updated old chunks
-                existing_df_non_replaced = existing_df[~existing_df['chunk_id'].isin(ids_of_old_chunks_that_were_updated)]
-                
-                # Combine:
-                # 1. Existing chunks that were NOT replaced.
-                # 2. The updated records of old chunks (from updates_df).
-                # 3. All new/updated chunks from the current document processing (new_chunks_df).
-                combined_data_frames = [existing_df_non_replaced, updates_df, new_chunks_df]
-                # Filter out empty DataFrames before concatenation
-                combined_data_frames = [df for df in combined_data_frames if not df.empty]
-                
-                if combined_data_frames:
-                    combined_data = pd.concat(combined_data_frames, ignore_index=True)
-                else: # Should not happen if new_chunks_df is not empty or existing_df was not empty
-                    combined_data = pd.DataFrame()
-
-                if not combined_data.empty:
-                    # Drop and recreate table with all data
-                    db.drop_table(CHUNKS_TABLE_NAME)
-                    chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=combined_data)
-                    logger.info(f"Recreated table '{CHUNKS_TABLE_NAME}' with updated and new chunks.", extra={"icon": "✅"})
-                    if not updates_df.empty:
-                        logger.info(f"Updated {len(updates_df)} existing chunks.", extra={"icon": "🔄"})
-                    if not new_chunks_df.empty:
-                        logger.info(f"Added {len(new_chunks_df)} new chunks from current document.", extra={"icon": "➕"})
-                else:
-                    logger.warning(f"No data to write to '{CHUNKS_TABLE_NAME}' after combining. Table might be empty or not recreated.", extra={"icon": "⚠️"})
-
-            else: # No replacements or schema updates, just add new chunks
-                if not new_chunks_df.empty:
-                    chunks_table.add(new_chunks_df)
-                    logger.info(f"Added {len(new_chunks_df)} new chunks to existing table.", extra={"icon": "➕"})
-                else:
-                    logger.info("No new chunks from current document to add.", extra={"icon": "ℹ️"})
+                combined_df = pd.concat([current_df, new_chunks_df], ignore_index=True)
+                logger.info(f"Added {len(new_chunks_df)} new chunks to existing table (in-memory)", extra={"icon": "➕"})
+            else:
+                combined_df = current_df
+                logger.info("No new chunks from current document to add.", extra={"icon": "ℹ️"})
+            # Write the updated DataFrame to LanceDB ONCE
+            db.drop_table(CHUNKS_TABLE_NAME)
+            db.create_table(CHUNKS_TABLE_NAME, combined_df)
+            logger.info(f"Recreated table '{CHUNKS_TABLE_NAME}' with all updated and new chunks.", extra={"icon": "✅"})
         else:
             # First chunk added - create new table
             if chunks:

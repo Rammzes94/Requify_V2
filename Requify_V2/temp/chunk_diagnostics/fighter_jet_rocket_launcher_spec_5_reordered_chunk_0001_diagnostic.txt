@@ -6,6 +6,19 @@ Rocket Launcher System for Fighter Jets
 
 This document provides detailed specifications for the advanced rocket launcher system integrated into modern fighter jets. It covers technical parameters, performance metrics, operational features, and safety considerations.
 
+Technical Specifications
+
+Launcher Model RLX-5000  
+Weight 320 kg  
+Length 3.2 m  
+Diameter 45 cm  
+Max Rocket Capacity 7 Rockets  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Fire Rate Up to 2 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Operational Altitude Up to 50,000 ft  
+Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  
+
 Document slice around current_offset=0:
 ----------------------------------------
 - Advanced thermal shielding for high-speed flight integration.  
