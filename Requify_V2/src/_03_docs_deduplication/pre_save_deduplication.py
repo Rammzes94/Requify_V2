@@ -38,40 +38,25 @@ logger = get_logger("Pre_Save_Deduplication")
 load_dotenv()
 
 # -------------------------------------------------------------------------------------
-# Constants
+# Deduplication constants are now in config.py. Only runtime state variables remain here.
 # -------------------------------------------------------------------------------------
-OUTPUT_DIR_BASE = "output"  # Define base output directory
-LANCEDB_SUBDIR_NAME = "lancedb"  # Subdirectory for LanceDB within output
-LANCEDB_TABLE_NAME = "documents"
-CHUNKS_TABLE_NAME = "document_chunks"
-EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Dimension for e5-large models (must match stable_save_to_lancedb.py)
-DUPLICATE_THRESHOLD = 0.995  # Cosine similarity threshold for duplicate pages
-# LanceDB returns distance for cosine as 1 - similarity. So, distance_threshold = 1 - SIMILARITY_THRESHOLD
-DISTANCE_THRESHOLD = 1.0 - DUPLICATE_THRESHOLD
-SIMILAR_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to better detect reordered content
-MIN_PAGES_TO_SAMPLE = 3  # Minimum number of pages to sample for comparison
-MAX_PAGES_TO_SAMPLE = 5  # Maximum number of pages to sample for comparison
-VERSION_SIMILARITY_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to match SIMILAR_THRESHOLD
+
+# Runtime state variables (do not move to config)
 INDEX_INITIALIZED_DOCS = False
 INDEX_INITIALIZED_CHUNKS = False
-CHUNK_DUPLICATION_THRESHOLD = 0.995  # Threshold for considering chunks as duplicates
-CHUNK_SIMILARITY_THRESHOLD = 0.82  # Reduced from 0.9 to 0.82 to better detect reordered content
-
-# Set to True to enable more detailed console output for deduplication processes
-VERBOSE_DEDUPLICATION_OUTPUT = True
 
 # -------------------------------------------------------------------------------------
 # Deduplication Logging Functions
 # -------------------------------------------------------------------------------------
 def log_document_comparison(doc_id: str, comparison_doc_id: str, similarity: float):
     """Log information about document comparison."""
-    if similarity >= DUPLICATE_THRESHOLD:
+    if similarity >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
         logger.info(
             f"📄 Document comparison: {doc_id} is a duplicate of {comparison_doc_id} "
             f"(similarity: {similarity:.4f})",
             extra={"icon": "♻️"}
         )
-    elif similarity >= SIMILAR_THRESHOLD:
+    elif similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD:
         logger.info(
             f"📄 Document comparison: {doc_id} is similar to {comparison_doc_id} "
             f"(similarity: {similarity:.4f})",
@@ -95,13 +80,13 @@ def log_page_comparison(
     page_id = f"{doc_id} p{page_num}"
     comparison_page_id = f"{comparison_doc_id} p{comparison_page_num}"
     
-    if similarity >= DUPLICATE_THRESHOLD:
+    if similarity >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
         logger.info(
             f"📃 Page comparison: {page_id} is a duplicate of {comparison_page_id} "
             f"(similarity: {similarity:.4f})",
             extra={"icon": "♻️"}
         )
-    elif similarity >= SIMILAR_THRESHOLD:
+    elif similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD:
         logger.info(
             f"📃 Page comparison: {page_id} is similar to {comparison_page_id} "
             f"(similarity: {similarity:.4f})",
@@ -133,14 +118,14 @@ def log_chunk_comparison(
             f"{match_id} {comparison_doc_context}",
             extra={"icon": "♻️"}
         )
-    elif is_duplicate or similarity >= DUPLICATE_THRESHOLD:
+    elif is_duplicate or similarity >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
         logger.info(
             f"🧩 Chunk comparison: {chunk_id} {doc_context} is a duplicate of "
             f"{match_id} {comparison_doc_context} "
             f"(similarity: {similarity:.4f})",
             extra={"icon": "♻️"}
         )
-    elif similarity >= SIMILAR_THRESHOLD:
+    elif similarity >= config.DEDUPLICATION_CHUNK_SIMILARITY_THRESHOLD:
         logger.info(
             f"🧩 Chunk comparison: {chunk_id} {doc_context} is similar to "
             f"{match_id} {comparison_doc_context} "
@@ -236,12 +221,12 @@ def log_chunk_deduplication_summary(
 
 def log_embedding_similarity(similarity: float, description: str = "Embedding comparison"):
     """Log information about embedding similarity."""
-    if similarity >= DUPLICATE_THRESHOLD:
+    if similarity >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
         logger.info(
             f"📏 {description} - Embedding similarity: {similarity:.4f} (DUPLICATE)",
             extra={"icon": "♻️"}
         )
-    elif similarity >= SIMILAR_THRESHOLD:
+    elif similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD:
         logger.info(
             f"📏 {description} - Embedding similarity: {similarity:.4f} (SIMILAR)",
             extra={"icon": "🔄"}
@@ -293,7 +278,7 @@ def calculate_cosine_similarity(embed1: np.ndarray, embed2: np.ndarray) -> float
     similarity = float(np.dot(norm_embed1, norm_embed2))
     
     # Log the embedding similarity if verbose mode is enabled
-    if VERBOSE_DEDUPLICATION_OUTPUT:
+    if config.DEDUPLICATION_VERBOSE_OUTPUT:
         log_embedding_similarity(similarity)
         
     return similarity
@@ -314,14 +299,14 @@ def ensure_index(db, table_name=None):
         return
         
     if not table_name:
-        table_name = LANCEDB_TABLE_NAME
+        table_name = config.DOCUMENTS_TABLE
         
     if table_name not in db.table_names():
         return
         
     # Check if this table's index is already initialized
-    if (table_name == LANCEDB_TABLE_NAME and INDEX_INITIALIZED_DOCS) or \
-       (table_name == CHUNKS_TABLE_NAME and INDEX_INITIALIZED_CHUNKS):
+    if (table_name == config.DOCUMENTS_TABLE and INDEX_INITIALIZED_DOCS) or \
+       (table_name == config.DOCUMENT_CHUNKS_TABLE and INDEX_INITIALIZED_CHUNKS):
         return
     
     table = db.open_table(table_name)
@@ -338,9 +323,9 @@ def ensure_index(db, table_name=None):
         vector_column_name="embedding"
     )
     
-    if table_name == LANCEDB_TABLE_NAME:
+    if table_name == config.DOCUMENTS_TABLE:
         INDEX_INITIALIZED_DOCS = True
-    elif table_name == CHUNKS_TABLE_NAME:
+    elif table_name == config.DOCUMENT_CHUNKS_TABLE:
         INDEX_INITIALIZED_CHUNKS = True
         
     logger.info(f"Built ANN index on embedding column for {table_name}", extra={"icon": "✅"})
@@ -366,7 +351,7 @@ def check_chunk_duplicates(
     
     doc_id = chunks_data[0].get('document_id', 'unknown')
     
-    if VERBOSE_DEDUPLICATION_OUTPUT:
+    if config.DEDUPLICATION_VERBOSE_OUTPUT:
         logger.info("\n" + "=" * 80, extra={"icon": "🧩"})
         logger.info(f"CHUNK DEDUPLICATION PROCESS FOR DOCUMENT: {doc_id}", extra={"icon": "🧩"})
         logger.info("=" * 80, extra={"icon": "🧩"})
@@ -376,26 +361,26 @@ def check_chunk_duplicates(
     # Connect to LanceDB
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
     db = db_connection or connect_to_lancedb(lancedb_path)
     
-    if not db or CHUNKS_TABLE_NAME not in db.table_names():
+    if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
         logger.info(
             f"No existing chunks table found. All {len(chunks_data)} chunks are new.",
             extra={"icon": "✅"}
         )
-        if VERBOSE_DEDUPLICATION_OUTPUT:
+        if config.DEDUPLICATION_VERBOSE_OUTPUT:
             logger.info(f"✅ No existing chunks table found. All {len(chunks_data)} chunks are new.", extra={"icon": "✅"})
         return {}, list(range(len(chunks_data))), {}
     
     # Ensure index exists if we have enough chunks
-    ensure_index(db, CHUNKS_TABLE_NAME)
-    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+    ensure_index(db, config.DOCUMENT_CHUNKS_TABLE)
+    chunks_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
     
     # Get a dataframe of all existing chunks for hash comparison
     existing_chunks_df = chunks_table.to_pandas()
     
-    if VERBOSE_DEDUPLICATION_OUTPUT and not existing_chunks_df.empty:
+    if config.DEDUPLICATION_VERBOSE_OUTPUT and not existing_chunks_df.empty:
         logger.info(f"📊 Found {len(existing_chunks_df)} existing chunks to compare against", extra={"icon": "🔍"})
     
     duplicate_chunks = {}
@@ -477,23 +462,23 @@ def check_chunk_duplicates(
                         except Exception:
                             continue
                             
-                if best_match is not None and best_similarity >= SIMILAR_THRESHOLD:
+                if best_match is not None and best_similarity >= config.DEDUPLICATION_CHUNK_SIMILARITY_THRESHOLD:
                     match_id = best_match.get('chunk_id', '')
                     
                     log_chunk_comparison(
                         chunk_id=chunk_id,
                         match_id=match_id,
                         similarity=best_similarity,
-                        is_duplicate=best_similarity >= CHUNK_DUPLICATION_THRESHOLD
+                        is_duplicate=best_similarity >= config.DEDUPLICATION_CHUNK_DUPLICATION_THRESHOLD
                     )
                     
-                    if best_similarity >= CHUNK_DUPLICATION_THRESHOLD:
+                    if best_similarity >= config.DEDUPLICATION_CHUNK_DUPLICATION_THRESHOLD:
                         duplicate_chunks[idx] = {
                             'similar_id': match_id,
                             'similarity': best_similarity,
                             'hash_match': False
                         }
-                    elif best_similarity >= SIMILAR_THRESHOLD:
+                    elif best_similarity >= config.DEDUPLICATION_CHUNK_SIMILARITY_THRESHOLD:
                         update_chunks[idx] = {
                             'similar_id': match_id,
                             'similarity': best_similarity
@@ -502,8 +487,8 @@ def check_chunk_duplicates(
                         new_chunks.append(idx)
                 else:
                     new_chunks.append(idx)
-                    if VERBOSE_DEDUPLICATION_OUTPUT:
-                        logger.info(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.", extra={"icon": "🆕"})
+                    if config.DEDUPLICATION_VERBOSE_OUTPUT:
+                        logger.info(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.", extra={"icon": "��"})
                 continue
             
             # Use vector search with explicit column specification
@@ -513,7 +498,7 @@ def check_chunk_duplicates(
             ).limit(5).to_pandas()
             
             if query_result.empty:
-                if VERBOSE_DEDUPLICATION_OUTPUT:
+                if config.DEDUPLICATION_VERBOSE_OUTPUT:
                     logger.info(f"🆕 Chunk {chunk_id} has no similar chunks. Marking as new.", extra={"icon": "🆕"})
                 new_chunks.append(idx)
                 continue
@@ -528,17 +513,17 @@ def check_chunk_duplicates(
                 chunk_id=chunk_id,
                 match_id=match_id,
                 similarity=similarity,
-                is_duplicate=similarity >= CHUNK_DUPLICATION_THRESHOLD
+                is_duplicate=similarity >= config.DEDUPLICATION_CHUNK_DUPLICATION_THRESHOLD
             )
             
-            if similarity >= CHUNK_DUPLICATION_THRESHOLD:
+            if similarity >= config.DEDUPLICATION_CHUNK_DUPLICATION_THRESHOLD:
                 # This is a duplicate chunk
                 duplicate_chunks[idx] = {
                     'similar_id': match_id,
                     'similarity': similarity,
                     'hash_match': False
                 }
-            elif similarity >= CHUNK_SIMILARITY_THRESHOLD:
+            elif similarity >= config.DEDUPLICATION_CHUNK_SIMILARITY_THRESHOLD:
                 # This might be an updated version of an existing chunk
                 update_chunks[idx] = {
                     'similar_id': match_id,
@@ -550,7 +535,7 @@ def check_chunk_duplicates(
                 
         except Exception as e:
             logger.error(f"Error during vector search for chunk {chunk_id}: {str(e)}", extra={"icon": "❌"})
-            if VERBOSE_DEDUPLICATION_OUTPUT:
+            if config.DEDUPLICATION_VERBOSE_OUTPUT:
                 logger.error(f"Error during vector search: {str(e)}", extra={"icon": "❌"})
                 logger.info(f"Marking chunk {chunk_id} as new due to search error.", extra={"icon": "🆕"})
             new_chunks.append(idx)
@@ -566,7 +551,7 @@ def check_chunk_duplicates(
     )
     
     # Print more detailed summary in verbose mode
-    if VERBOSE_DEDUPLICATION_OUTPUT:
+    if config.DEDUPLICATION_VERBOSE_OUTPUT:
         logger.info("\n" + "-" * 50, extra={"icon": "📊"})
         logger.info(f"CHUNK DEDUPLICATION SUMMARY:", extra={"icon": "📊"})
         logger.info(f"  • Total chunks processed: {len(chunks_data)}", extra={"icon": "📊"})
@@ -611,10 +596,10 @@ def check_document_duplicates(
     # ── DB set-up ────────────────────────────────────────────────────────────────
     script_dir   = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
 
     db = db_connection or connect_to_lancedb(lancedb_path)
-    if not db or LANCEDB_TABLE_NAME not in db.table_names():
+    if not db or config.DOCUMENTS_TABLE not in db.table_names():
         logger.info(
             f"No existing database/table; all {len(new_doc_data)} pages are new.",
             extra={"icon": "✅"}
@@ -622,7 +607,7 @@ def check_document_duplicates(
         return {}, list(range(len(new_doc_data))), {}
 
     # Check if table has content
-    table = db.open_table(LANCEDB_TABLE_NAME)
+    table = db.open_table(config.DOCUMENTS_TABLE)
     existing_docs = table.to_pandas()
     if existing_docs.empty:
         logger.info(
@@ -682,7 +667,7 @@ def check_document_duplicates(
             continue
 
         # Log the query embedding for debugging
-        if VERBOSE_DEDUPLICATION_OUTPUT:
+        if config.DEDUPLICATION_VERBOSE_OUTPUT:
             # Check if embedding is all zeros or contains NaNs
             is_all_zeros = np.all(embedding == 0)
             has_nans = np.isnan(embedding).any()
@@ -695,7 +680,7 @@ def check_document_duplicates(
             df = (
                 table.search(embedding)           # brute-force scan if no ANN index
                      .metric("cosine")
-                     .limit(MAX_PAGES_TO_SAMPLE)
+                     .limit(config.DEDUPLICATION_MAX_PAGES_TO_SAMPLE)
                      .to_df()
             )
             if df.empty:
@@ -718,8 +703,8 @@ def check_document_duplicates(
                     f"Page {page_num}: All similarity scores are NaN. No valid match found. Treating as new.",
                     extra={"icon": "⚠️"}
                 )
-                # Optionally log the problematic df for debugging if VERBOSE_DEDUPLICATION_OUTPUT is True
-                if VERBOSE_DEDUPLICATION_OUTPUT:
+                # Optionally log the problematic df for debugging if DEDUPLICATION_VERBOSE_OUTPUT is True
+                if config.DEDUPLICATION_VERBOSE_OUTPUT:
                     try:
                         # Attempt to log the DataFrame; use to_string() for better readability if it's large
                         logger.info(f"DataFrame for page {page_num} with all NaN similarities ({len(df)} rows):\n{df.to_string()}", extra={"icon": "🐛"})
@@ -768,7 +753,7 @@ def check_document_duplicates(
                     )
                 found = True
 
-            elif best_sim >= DUPLICATE_THRESHOLD:
+            elif best_sim >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
                 # Perfect / near-perfect duplicate in another document
                 duplicate_pages[idx] = {
                     "similar_id": f"{best_id}_{best_page}",
@@ -780,7 +765,7 @@ def check_document_duplicates(
                 )
                 found = True
 
-            # else: similarity < DUPLICATE_THRESHOLD  → keep as new
+            # else: similarity < DEDUPLICATION_DUPLICATE_THRESHOLD  → keep as new
 
             if not found:
                 new_pages.append(idx)
@@ -817,16 +802,16 @@ def get_document_pages_by_id(doc_id: str, db_connection=None) -> pd.DataFrame:
     """
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
     db = db_connection or connect_to_lancedb(lancedb_path)
-    if not db or LANCEDB_TABLE_NAME not in db.table_names():
+    if not db or config.DOCUMENTS_TABLE not in db.table_names():
         logger.warning(
             f"No existing database or table found for document {doc_id}",
             extra={"icon": "⚠️"}
         )
         return pd.DataFrame()
     ensure_index(db)
-    table = db.open_table(LANCEDB_TABLE_NAME)
+    table = db.open_table(config.DOCUMENTS_TABLE)
     try:
         df = table.to_pandas()
         res = df[df['pdf_identifier'] == doc_id]
@@ -850,14 +835,14 @@ def check_for_document_version_update(
     doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
     db = db_connection or connect_to_lancedb(lancedb_path)
-    if not db or LANCEDB_TABLE_NAME not in db.table_names():
+    if not db or config.DOCUMENTS_TABLE not in db.table_names():
         logger.info(f"No existing documents to compare with {doc_id}", extra={"icon": "ℹ️"})
         return False, 0.0, None
     
     # Check if table has content
-    table = db.open_table(LANCEDB_TABLE_NAME)
+    table = db.open_table(config.DOCUMENTS_TABLE)
     existing_docs = table.to_pandas()
     if existing_docs.empty:
         logger.info(f"Empty documents table; nothing to compare with {doc_id}", extra={"icon": "ℹ️"})
@@ -875,67 +860,11 @@ def check_for_document_version_update(
             break
     
     if not has_valid_embeddings:
-        logger.warning(
-            f"Document {doc_id} doesn't have valid embeddings yet. Document version detection is limited.",
-            extra={"icon": "⚠️"}
+        logger.error(
+            f"Document {doc_id} doesn't have valid embeddings. Cannot perform document version detection.",
+            extra={"icon": "❌"}
         )
-        # Do basic check using document title or keywords
-        document_title = new_doc_data[0].get('document_title', '')
-        
-        # Get unique document IDs from database
-        all_doc_ids = existing_docs['pdf_identifier'].unique().tolist()
-        if doc_id in all_doc_ids:
-            all_doc_ids.remove(doc_id)
-        
-        if document_title and all_doc_ids:
-            logger.info(f"Attempting metadata-based matching for {doc_id}", extra={"icon": "🔍"})
-            best_match = None
-            best_score = 0
-            
-            # Get all document titles from database for matching
-            for other_id in all_doc_ids:
-                other_docs = existing_docs[existing_docs['pdf_identifier'] == other_id]
-                other_title = other_docs.iloc[0].get('document_title', '') if not other_docs.empty else ''
-                
-                if other_title and document_title:
-                    # Very simple text matching based on common words
-                    words1 = set(document_title.lower().split())
-                    words2 = set(other_title.lower().split())
-                    common_words = words1.intersection(words2)
-                    score = len(common_words) / max(len(words1), len(words2))
-                    
-                    if score > best_score:
-                        best_score = score
-                        best_match = other_id
-                        
-            if best_match:
-                # Apply same thresholds but with text-based score
-                is_new = VERSION_SIMILARITY_THRESHOLD <= best_score < DUPLICATE_THRESHOLD
-                
-                # Log the match
-                if best_score >= DUPLICATE_THRESHOLD:
-                    logger.info(
-                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is a DUPLICATE of {best_match} (title similarity: {best_score:.4f})",
-                        extra={"icon": "♻️"}
-                    )
-                elif best_score >= VERSION_SIMILARITY_THRESHOLD:
-                    logger.info(
-                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is a NEW VERSION of {best_match} (title similarity: {best_score:.4f})",
-                        extra={"icon": "🔄"}
-                    )
-                else:
-                    logger.info(
-                        f"📚 DOCUMENT MATCH (metadata-based): {doc_id} is DIFFERENT from closest document {best_match} (title similarity: {best_score:.4f})",
-                        extra={"icon": "🆕"}
-                    )
-                
-                return is_new, best_score, best_match
-            else:
-                logger.info(f"No metadata match found for {doc_id}", extra={"icon": "ℹ️"})
-                return False, 0.0, None
-        else:
-            logger.info(f"Insufficient metadata for matching document {doc_id}", extra={"icon": "ℹ️"})
-            return False, 0.0, None
+        return False, 0.0, None
 
     ensure_index(db)
 
@@ -955,7 +884,7 @@ def check_for_document_version_update(
         return False, 0.0, None
 
     sim_map: Dict[str, List[float]] = {}
-    samples = new_doc_data[:min(MAX_PAGES_TO_SAMPLE, len(new_doc_data))]
+    samples = new_doc_data[:min(config.DEDUPLICATION_MAX_PAGES_TO_SAMPLE, len(new_doc_data))]
     
     # More robust embedding extraction
     embeddings = []
@@ -987,7 +916,7 @@ def check_for_document_version_update(
             df = (
                 table.search(emb)
                      .metric("cosine")
-                     .limit(MAX_PAGES_TO_SAMPLE)
+                     .limit(config.DEDUPLICATION_MAX_PAGES_TO_SAMPLE)
                      .to_df()
             )
             
@@ -1018,7 +947,7 @@ def check_for_document_version_update(
     avg_sims = {pid: sum(v)/len(v) for pid, v in sim_map.items() if v}
     
     # Log all document similarities for debugging
-    if VERBOSE_DEDUPLICATION_OUTPUT:
+    if config.DEDUPLICATION_VERBOSE_OUTPUT:
         for pid, sim in sorted(avg_sims.items(), key=lambda x: x[1], reverse=True):
             logger.info(f"Document similarity: {doc_id} ↔ {pid}: {sim:.4f}", extra={"icon": "📏"})
     
@@ -1030,12 +959,12 @@ def check_for_document_version_update(
     best_id, best_sim = max(avg_sims.items(), key=lambda x: x[1])
     
     # Always log the closest document match
-    if best_sim >= DUPLICATE_THRESHOLD:
+    if best_sim >= config.DEDUPLICATION_DUPLICATE_THRESHOLD:
         logger.info(
             f"📚 DOCUMENT MATCH: {doc_id} is a DUPLICATE of {best_id} (similarity: {best_sim:.4f})",
             extra={"icon": "♻️"}
         )
-    elif best_sim >= VERSION_SIMILARITY_THRESHOLD:
+    elif best_sim >= config.DEDUPLICATION_VERSION_SIMILARITY_THRESHOLD:
         logger.info(
             f"📚 DOCUMENT MATCH: {doc_id} is a NEW VERSION of {best_id} (similarity: {best_sim:.4f})",
             extra={"icon": "🔄"}
@@ -1047,7 +976,7 @@ def check_for_document_version_update(
         )
     
     # Determine if it's a new version (above threshold but below duplicate)
-    is_new = VERSION_SIMILARITY_THRESHOLD <= best_sim < DUPLICATE_THRESHOLD
+    is_new = config.DEDUPLICATION_VERSION_SIMILARITY_THRESHOLD <= best_sim < config.DEDUPLICATION_DUPLICATE_THRESHOLD
     
     # Always return the best match, even if below threshold
     return is_new, best_sim, best_id
@@ -1081,7 +1010,7 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
     # Connect to LanceDB
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
+    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
     db = db_connection or connect_to_lancedb(lancedb_path)
     
     # Get document ID and log the check

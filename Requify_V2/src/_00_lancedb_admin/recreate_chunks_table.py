@@ -28,7 +28,6 @@ logger = get_logger("LanceDB_Admin")
 OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
-DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
 EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # Use from config
 
 # Define the schema that matches what integrated_chunking.py is trying to use
@@ -65,22 +64,22 @@ def main():
         return
     
     # Check if table exists
-    if DOCUMENT_CHUNKS_TABLE_NAME not in db.table_names():
-        logger.info(f"ℹ️ Table {DOCUMENT_CHUNKS_TABLE_NAME} doesn't exist yet. Creating with correct schema.", extra={"icon": "ℹ️"})
+    if config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
+        logger.info(f"ℹ️ Table {config.DOCUMENT_CHUNKS_TABLE} doesn't exist yet. Creating with correct schema.", extra={"icon": "ℹ️"})
         try:
-            db.create_table(DOCUMENT_CHUNKS_TABLE_NAME, schema=DocumentChunk)
-            logger.info(f"✅ Created new table {DOCUMENT_CHUNKS_TABLE_NAME} with correct schema", extra={"icon": "✅"})
+            db.create_table(config.DOCUMENT_CHUNKS_TABLE, schema=DocumentChunk)
+            logger.info(f"✅ Created new table {config.DOCUMENT_CHUNKS_TABLE} with correct schema", extra={"icon": "✅"})
             return
         except Exception as e:
             logger.error(f"❌ Failed to create table: {e}", extra={"icon": "❌"})
             return
     
     # Table exists, so we need to backup, drop, and recreate
-    logger.info(f"🔄 Table {DOCUMENT_CHUNKS_TABLE_NAME} exists. Preparing to recreate with updated schema...", extra={"icon": "🔄"})
+    logger.info(f"🔄 Table {config.DOCUMENT_CHUNKS_TABLE} exists. Preparing to recreate with updated schema...", extra={"icon": "🔄"})
     
     # Attempt to backup existing data
     try:
-        existing_table = db.open_table(DOCUMENT_CHUNKS_TABLE_NAME)
+        existing_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
         existing_data = existing_table.to_pandas()
         
         if len(existing_data) > 0:
@@ -94,16 +93,16 @@ def main():
     
     # Drop the existing table
     try:
-        db.drop_table(DOCUMENT_CHUNKS_TABLE_NAME)
-        logger.info(f"✅ Dropped existing table {DOCUMENT_CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
+        db.drop_table(config.DOCUMENT_CHUNKS_TABLE)
+        logger.info(f"✅ Dropped existing table {config.DOCUMENT_CHUNKS_TABLE}", extra={"icon": "✅"})
     except Exception as e:
         logger.error(f"❌ Failed to drop existing table: {e}", extra={"icon": "❌"})
         return
     
     # Create new table with correct schema
     try:
-        new_table = db.create_table(DOCUMENT_CHUNKS_TABLE_NAME, schema=DocumentChunk)
-        logger.info(f"✅ Created new table {DOCUMENT_CHUNKS_TABLE_NAME} with updated schema", extra={"icon": "✅"})
+        new_table = db.create_table(config.DOCUMENT_CHUNKS_TABLE, schema=DocumentChunk)
+        logger.info(f"✅ Created new table {config.DOCUMENT_CHUNKS_TABLE} with updated schema", extra={"icon": "✅"})
     except Exception as e:
         logger.error(f"❌ Failed to create new table: {e}", extra={"icon": "❌"})
         return

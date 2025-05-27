@@ -54,7 +54,6 @@ load_dotenv()
 OUTPUT_DIR_BASE = "output" # Define base output directory
 PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from output
 LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within output
-LANCEDB_TABLE_NAME = "documents"
 
 # Try to import config, but use default values if not available
 try:
@@ -332,7 +331,7 @@ def save_document_to_lancedb(document_path):
         return False
     
     # Create or open the table
-    table = create_or_open_table(db, LANCEDB_TABLE_NAME)
+    table = create_or_open_table(db, config.DOCUMENTS_TABLE)
     
     # Add new records
     if new_records:
@@ -380,7 +379,7 @@ def save_document_to_lancedb(document_path):
             table.create_index(vector_column_name="embedding", replace=True)
             logger.info("Index created successfully", extra={"icon": "✅"})
         else:
-            logger.info(f"Not creating index: {LANCEDB_TABLE_NAME} has only {record_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+            logger.info(f"Not creating index: {config.DOCUMENTS_TABLE} has only {record_count} rows, minimum 256 required", extra={"icon": "⚠️"})
     except Exception as e:
         logger.error(f"Error creating index: {e}", extra={"icon": "❌"})
         # Index failure is not critical, continue

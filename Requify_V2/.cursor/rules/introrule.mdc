@@ -3,7 +3,11 @@ description:
 globs: 
 alwaysApply: true
 ---
-Be proactive, but if you changed something that you werent directly prompted, explain the reason behind it.
+Be very proactive, but if you changed something that you werent directly prompted, explain the reason behind it.
+Proactively keep trying until the thing you were prompted to do works. 
+Use the "temp" folder to store scripts that are likely just temporary.
+
+Generally try not to bloat, keep the code lean.
 
 Ensure to dive deep into our codebase for anything non-trivial, I want you to really find root causes of bugs.
 

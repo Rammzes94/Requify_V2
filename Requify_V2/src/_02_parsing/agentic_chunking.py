@@ -73,7 +73,6 @@ DUPLICATE_THRESHOLD = project_config.DUPLICATE_THRESHOLD  # High threshold for a
 # LanceDB settings - now imported from project_config
 OUTPUT_DIR_BASE = project_config.OUTPUT_DIR_BASE
 LANCEDB_SUBDIR_NAME = project_config.LANCEDB_SUBDIR_NAME
-CHUNKS_TABLE_NAME = project_config.DOCUMENT_CHUNKS_TABLE
 CHUNK_DIAGNOSTICS_DIR = project_config.CHUNK_DIAGNOSTICS_DIR
 
 # Use embedding model settings from project_config
@@ -754,12 +753,12 @@ def get_similar_document_chunks(document_id: str, similar_doc_id: str) -> List[D
         lancedb_path = os.path.join(project_root, OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
         
         db = dedup.connect_to_lancedb(lancedb_path)
-        if not db or CHUNKS_TABLE_NAME not in db.table_names():
+        if not db or project_config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
             logger.warning(f"No existing chunks table found for document {similar_doc_id}", extra={"icon": "⚠️"})
             return []
             
         # Query the database for chunks from the similar document
-        chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+        chunks_table = db.open_table(project_config.DOCUMENT_CHUNKS_TABLE)
         df = chunks_table.to_pandas()
         
         # Filter for chunks belonging to the similar document
@@ -1127,11 +1126,11 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
         db = dedup.connect_to_lancedb(lancedb_path)
         
         # Check if table exists
-        table_exists = CHUNKS_TABLE_NAME in db.table_names()
+        table_exists = project_config.DOCUMENT_CHUNKS_TABLE in db.table_names()
         
         if table_exists:
-            logger.info(f"Opened existing table: {CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
-            chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+            logger.info(f"Opened existing table: {project_config.DOCUMENT_CHUNKS_TABLE}", extra={"icon": "✅"})
+            chunks_table = db.open_table(project_config.DOCUMENT_CHUNKS_TABLE)
             # Check table schema for required columns
             table_schema = chunks_table.schema
             existing_columns = {field.name for field in table_schema}
@@ -1170,13 +1169,13 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                 combined_df = current_df
                 logger.info("No new chunks from current document to add.", extra={"icon": "ℹ️"})
             # Write the updated DataFrame to LanceDB ONCE
-            db.drop_table(CHUNKS_TABLE_NAME)
-            db.create_table(CHUNKS_TABLE_NAME, combined_df)
-            logger.info(f"Recreated table '{CHUNKS_TABLE_NAME}' with all updated and new chunks.", extra={"icon": "✅"})
+            db.drop_table(project_config.DOCUMENT_CHUNKS_TABLE)
+            db.create_table(project_config.DOCUMENT_CHUNKS_TABLE, combined_df)
+            logger.info(f"Recreated table '{project_config.DOCUMENT_CHUNKS_TABLE}' with all updated and new chunks.", extra={"icon": "✅"})
         else:
             # First chunk added - create new table
             if chunks:
-                logger.info(f"Creating new table: {CHUNKS_TABLE_NAME}", extra={"icon": "✅"})
+                logger.info(f"Creating new table: {project_config.DOCUMENT_CHUNKS_TABLE}", extra={"icon": "✅"})
                 data = pd.DataFrame(chunks)
                 
                 # Ensure all required columns exist
@@ -1187,14 +1186,14 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                         else:
                             data[col] = ""
                     
-                chunks_table = db.create_table(CHUNKS_TABLE_NAME, data=data)
+                chunks_table = db.create_table(project_config.DOCUMENT_CHUNKS_TABLE, data=data)
                 return True
             else:
                 logger.warning("No chunks to save, table not created", extra={"icon": "⚠️"})
                 return True
         
         # Create vector index if needed
-        dedup.ensure_index(db, CHUNKS_TABLE_NAME)
+        dedup.ensure_index(db, project_config.DOCUMENT_CHUNKS_TABLE)
         
         return True
         

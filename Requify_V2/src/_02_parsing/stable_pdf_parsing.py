@@ -479,8 +479,4 @@ class PDFProcessor:
             traceback.print_exc()
             return None
 
-# ---------------------------------------------------------------------
-# Section 5: Main Entry Point
-# ---------------------------------------------------------------------
 
-# Removed if __name__ == '__main__' block as this script is imported as a module.

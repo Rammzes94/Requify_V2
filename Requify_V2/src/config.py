@@ -344,14 +344,26 @@ SIMILARITY_THRESHOLD = 0.75    # Threshold for similar chunks (lowered to be mor
 DUPLICATE_THRESHOLD = 0.995    # High threshold for automatic duplicates without LLM
 
 # -------------------------------------------------------------------------------------
-# LanceDB Configuration
+# LanceDB Configuration (used for all modules
 # -------------------------------------------------------------------------------------
 
-# LanceDB subdirectory and table names
 LANCEDB_SUBDIR_NAME = "lancedb"
 DOCUMENT_CHUNKS_TABLE = "document_chunks"
-DOCUMENTS_TABLE = "documents" 
+DOCUMENTS_TABLE = "documents"
 REQUIREMENTS_TABLE = "requirements"
+
+# -------------------------------------------------------------------------------------
+# Deduplication Configuration (thresholds and settings only)
+# -------------------------------------------------------------------------------------
+
+# Cosine similarity threshold for duplicate pages/chunks
+DEDUPLICATION_DUPLICATE_THRESHOLD = 0.995  # Used for both pages and chunks
+DEDUPLICATION_SIMILAR_THRESHOLD = 0.82     # Used for both pages and chunks (reordered/near-duplicate)
+DEDUPLICATION_VERSION_SIMILARITY_THRESHOLD = 0.82  # For document version detection
+DEDUPLICATION_CHUNK_DUPLICATION_THRESHOLD = 0.995  # For chunk-level deduplication
+DEDUPLICATION_CHUNK_SIMILARITY_THRESHOLD = 0.82    # For chunk-level near-duplicate
+DEDUPLICATION_MAX_PAGES_TO_SAMPLE = 5              # Max pages to sample for doc-level comparison
+DEDUPLICATION_VERBOSE_OUTPUT = True                # Enable detailed deduplication logging
 
 # -------------------------------------------------------------------------------------
 # API and Retry Configuration

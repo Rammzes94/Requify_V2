@@ -20,6 +20,7 @@ import lancedb
 from typing import List, Dict, Tuple, Optional, Any
 from dotenv import load_dotenv
 from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
+from src import config
 setup_project_directory()
 
 # Load environment variables
@@ -33,7 +34,6 @@ logger = get_logger("Chunk_Review")
 # Constants
 OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
-CHUNKS_TABLE_NAME = "document_chunks"
 SIMILARITY_THRESHOLD = 0.85  # Threshold for suggesting similar chunks
 MAX_SUGGESTIONS = 5  # Maximum number of similarity suggestions to show
 
@@ -61,24 +61,24 @@ def ensure_metadata_fields(db):
     Ensure the chunks table has the needed metadata fields for review status.
     Adds fields if missing: is_orphaned, manually_aligned, user_reviewed.
     """
-    if not db or CHUNKS_TABLE_NAME not in db.table_names():
-        logger.error(f"No {CHUNKS_TABLE_NAME} table found in database", extra={"icon": "❌"})
+    if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
+        logger.error(f"No {config.DOCUMENT_CHUNKS_TABLE} table found in database", extra={"icon": "❌"})
         return False
     
     # Since LanceDB doesn't directly support adding columns, we'll take a simplified
     # approach: just check if the tables exist, and if not, just run the queries without 
     # the expected columns - mark all chunks as "new" for review purposes
     
-    logger.info(f"Using simplified schema check for {CHUNKS_TABLE_NAME}", extra={"icon": "ℹ️"})
+    logger.info(f"Using simplified schema check for {config.DOCUMENT_CHUNKS_TABLE}", extra={"icon": "ℹ️"})
     return True
 
 def get_orphaned_chunks(db):
     """Get chunks that might be orphaned (no alignment and not reviewed)."""
-    if not db or CHUNKS_TABLE_NAME not in db.table_names():
-        logger.error(f"No {CHUNKS_TABLE_NAME} table found in database", extra={"icon": "❌"})
+    if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
+        logger.error(f"No {config.DOCUMENT_CHUNKS_TABLE} table found in database", extra={"icon": "❌"})
         return pd.DataFrame()
         
-    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+    chunks_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
     
     # Create a query for potentially orphaned chunks
     try:
@@ -126,11 +126,11 @@ def get_orphaned_chunks(db):
 
 def find_similar_chunks(db, chunk_embedding, exclude_id):
     """Find chunks similar to the given chunk but not the same."""
-    if not db or CHUNKS_TABLE_NAME not in db.table_names():
-        logger.error(f"No {CHUNKS_TABLE_NAME} table found in database", extra={"icon": "❌"})
+    if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
+        logger.error(f"No {config.DOCUMENT_CHUNKS_TABLE} table found in database", extra={"icon": "❌"})
         return []
         
-    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+    chunks_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
     
     # Use vector search to find similar chunks
     try:
@@ -184,11 +184,11 @@ def display_similar_chunk(chunk, similarity):
 
 def update_chunk_status(db, chunk_id, updates):
     """Update a chunk's metadata fields."""
-    if not db or CHUNKS_TABLE_NAME not in db.table_names():
-        logger.error(f"No {CHUNKS_TABLE_NAME} table found in database", extra={"icon": "❌"})
+    if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
+        logger.error(f"No {config.DOCUMENT_CHUNKS_TABLE} table found in database", extra={"icon": "❌"})
         return False
         
-    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+    chunks_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
     
     try:
         # Create update dataframe with just the ID and fields to update
@@ -307,14 +307,14 @@ def review_orphaned_chunks():
             # --- END TEST MODE ---
             if confirm.lower() == 'y':
                 try:
-                    chunks_table = db.open_table(CHUNKS_TABLE_NAME)
+                    chunks_table = db.open_table(config.DOCUMENT_CHUNKS_TABLE)
                     # Get current data as DataFrame
                     df = chunks_table.to_pandas()
                     # Filter out the chunk to delete
                     df = df[df["chunk_id"] != chunk["chunk_id"]]
                     # Overwrite the table (since LanceDB doesn't have direct delete)
                     chunks_table.delete()
-                    db.create_table(CHUNKS_TABLE_NAME, df)
+                    db.create_table(config.DOCUMENT_CHUNKS_TABLE, df)
                     print(f"Chunk {chunk['chunk_id']} deleted.")
                 except Exception as e:
                     logger.error(f"Failed to delete chunk: {e}", extra={"icon": "❌"})

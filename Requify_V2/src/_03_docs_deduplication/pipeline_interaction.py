@@ -28,6 +28,9 @@ setup_project_directory()
 # Import user interaction utilities
 from src._03_docs_deduplication import user_interaction
 
+# Import config
+from src import config
+
 # Setup logging with script prefix
 logger = get_logger("Pipeline_Interaction")
 
@@ -38,8 +41,6 @@ load_dotenv()
 OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME)
-DOCUMENTS_TABLE_NAME = "documents"
-DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
 FILE_HASHES_TABLE_NAME = "file_hashes"
 
 # Threshold constants

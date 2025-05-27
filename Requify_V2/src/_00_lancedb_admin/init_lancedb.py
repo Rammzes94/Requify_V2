@@ -31,7 +31,6 @@ OUTPUT_DIR_BASE = "output"
 LANCEDB_SUBDIR_NAME = "lancedb"
 LANCEDB_DIR_PATH = os.path.join(OUTPUT_DIR_BASE, LANCEDB_SUBDIR_NAME) # Relative to project root
 DOCUMENTS_TABLE_NAME = "documents"
-DOCUMENT_CHUNKS_TABLE_NAME = "document_chunks"
 REQUIREMENTS_TABLE_NAME = "requirements"
 FILE_HASHES_TABLE_NAME = "file_hashes"
 EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION  # This must be consistent with the embedding model used
@@ -178,7 +177,7 @@ def main():
     # Create or verify all tables
     tables = {
         DOCUMENTS_TABLE_NAME: PDFPage,
-        DOCUMENT_CHUNKS_TABLE_NAME: DocumentChunk,
+        config.DOCUMENT_CHUNKS_TABLE: DocumentChunk,
         REQUIREMENTS_TABLE_NAME: Requirement,
         FILE_HASHES_TABLE_NAME: FileHash
     }
