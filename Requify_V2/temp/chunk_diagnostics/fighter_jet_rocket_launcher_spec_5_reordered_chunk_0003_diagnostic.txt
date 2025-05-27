@@ -1,17 +1,29 @@
 CHUNK 3 (not found verbatim):
 ----------------------------------------
-Operational Features
-
-- Multi-mode targeting system: laser-guided, infrared, and GPS.  
-- Automatic target recognition for precision strikes.  
-- Quick reload mechanism for enhanced sortie effectiveness.  
-- Advanced thermal shielding for high-speed flight integration.  
-- Weather-resistant design for all-climate operations.  
-
-Document slice around current_offset=916:
-----------------------------------------
-ighter Jets  
-Rocket Type    Max Range    Speed    Penetration Depth  
+Compatible Rockets Hydra 70, APKWS, CRV7, Zuni  
+Conclusion  
+Diameter 45 cm  
+Fighter Jet Rocket Launcher Specification  
+Fire Rate Up to 2 rockets per second  
+Guidance System Laser, Infrared, GPS  
+Launcher Model RLX-5000  
+Length 3.2 m  
+Max Rocket Capacity 7 Rockets  
+Operational Altitude Up to 50,000 ft  
+Operational Features  
+Performance Metrics  
+Rocket Launcher System for Fighter Jets  
+Rocket Type Max Range Speed Penetration Depth  
 Safety Features Auto-Lock, Failsafe Ejection, Thermal Protection  
 Technical Specifications  
-The RLX-5000 rocket launcher system
+Weight 320 kg
+
+Document slice around current_offset=636:
+----------------------------------------
+kets per second  
+Guidance System Laser, Infrared, GPS  
+Hydra 70 8 km Mach 2.5 250 mm steel  
+Launcher Model RLX-5000  
+Length 3.2 m  
+Max Rocket Capacity 7 Rockets  
+Operational Altitude Up to 50,00

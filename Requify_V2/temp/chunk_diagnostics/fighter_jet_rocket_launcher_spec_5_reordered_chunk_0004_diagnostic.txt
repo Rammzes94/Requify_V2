@@ -1,15 +1,16 @@
 CHUNK 4 (not found verbatim):
 ----------------------------------------
+This document provides detailed specifications for the advanced rocket launcher system integrated  
+into modern fighter jets. It covers technical parameters, performance metrics, operational features,  
+and safety considerations.  
 The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability,  
 making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures  
 mission versatility and effectiveness.
 
-Conclusion
-
-Document slice around current_offset=1244:
+Document slice around current_offset=1191:
 ----------------------------------------
-ket launcher system integrated  
+detailed specifications for the advanced rocket launcher system integrated  
 Weight 320 kg  
 Zuni 6 km Mach 2.2 200 mm bunker walls  
 and safety considerations.  
-into modern fighter jets. It covers technical parameters, performance metrics, op
+into modern fighter jets. It covers t

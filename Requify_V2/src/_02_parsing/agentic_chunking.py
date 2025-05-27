@@ -1045,7 +1045,6 @@ def process_document_with_context(
             "timestamp": timestamp,
             "aligned_with_chunk_id": "",
             "aligned_with_document_id": similar_doc_id or "",
-            "is_duplicate_marker": is_duplicate  # Add a duplicate marker flag
         }
         
         processed_chunks.append(chunk_data)
@@ -1137,7 +1136,6 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
             table_schema = chunks_table.schema
             existing_columns = {field.name for field in table_schema}
             required_columns = {
-                'is_duplicate_marker', 
                 'is_replaced', 
                 'replaced_by'
             }
@@ -1148,7 +1146,7 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
             if missing_columns:
                 logger.info(f"Adding missing columns: {missing_columns}", extra={"icon": "🔄"})
                 for col in missing_columns:
-                    if col in ['is_duplicate_marker', 'is_replaced']:
+                    if col == 'is_replaced':
                         current_df[col] = False
                     else:
                         current_df[col] = ""
@@ -1160,9 +1158,9 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
             # Add new chunks to the DataFrame
             new_chunks_df = pd.DataFrame(chunks) if chunks else pd.DataFrame()
             if not new_chunks_df.empty:
-                for col in ['is_duplicate_marker', 'is_replaced', 'replaced_by']:
+                for col in ['is_replaced', 'replaced_by']:
                     if col not in new_chunks_df.columns:
-                        if col in ['is_duplicate_marker', 'is_replaced']:
+                        if col == 'is_replaced':
                             new_chunks_df[col] = False
                         else:
                             new_chunks_df[col] = ""
@@ -1182,9 +1180,9 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                 data = pd.DataFrame(chunks)
                 
                 # Ensure all required columns exist
-                for col in ['is_duplicate_marker', 'is_replaced', 'replaced_by']:
+                for col in ['is_replaced', 'replaced_by']:
                     if col not in data.columns:
-                        if col in ['is_duplicate_marker', 'is_replaced']:
+                        if col == 'is_replaced':
                             data[col] = False
                         else:
                             data[col] = ""
