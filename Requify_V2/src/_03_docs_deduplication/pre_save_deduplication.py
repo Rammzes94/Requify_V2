@@ -45,6 +45,10 @@ load_dotenv()
 INDEX_INITIALIZED_DOCS = False
 INDEX_INITIALIZED_CHUNKS = False
 
+# Export constants used by other modules for backwards compatibility
+SIMILAR_THRESHOLD = config.DEDUPLICATION_SIMILAR_THRESHOLD
+DUPLICATE_THRESHOLD = config.DEDUPLICATION_DUPLICATE_THRESHOLD
+
 # -------------------------------------------------------------------------------------
 # Deduplication Logging Functions
 # -------------------------------------------------------------------------------------
@@ -240,9 +244,17 @@ def log_embedding_similarity(similarity: float, description: str = "Embedding co
 # -------------------------------------------------------------------------------------
 # Helper Functions
 # -------------------------------------------------------------------------------------
-def connect_to_lancedb(lancedb_path: str):
-    """Connect to LanceDB and return the connection."""
-    logger.info(f"Connecting to LanceDB at: {lancedb_path}", extra={"icon": "🔄"})
+def connect_to_lancedb(lancedb_path: str, log_connection: bool = True):
+    """
+    Connect to LanceDB and return the connection.
+    
+    Args:
+        lancedb_path: Path to the LanceDB directory
+        log_connection: Whether to log connection messages (set to False for reused connections)
+    """
+    if log_connection:
+        logger.info(f"Connecting to LanceDB at: {lancedb_path}", extra={"icon": "🔄"})
+        
     if not os.path.exists(lancedb_path):
         logger.warning(
             f"LanceDB directory does not exist at {lancedb_path}. It will be created when saving.",
@@ -252,7 +264,8 @@ def connect_to_lancedb(lancedb_path: str):
 
     try:
         db = lancedb.connect(lancedb_path)
-        logger.info(f"Successfully connected to LanceDB", extra={"icon": "✅"})
+        if log_connection:
+            logger.info(f"Successfully connected to LanceDB", extra={"icon": "✅"})
         return db
     except Exception as e:
         logger.error(f"Failed to connect to LanceDB: {e}", extra={"icon": "❌"})
@@ -358,11 +371,15 @@ def check_chunk_duplicates(
     
     logger.info(f"Checking for duplicate chunks in document: {doc_id}", extra={"icon": "🔄"})
     
-    # Connect to LanceDB
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
-    db = db_connection or connect_to_lancedb(lancedb_path)
+    # Connect to LanceDB or reuse existing connection
+    if db_connection:
+        db = db_connection
+    else:
+        # Connect to LanceDB
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+        lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
+        db = connect_to_lancedb(lancedb_path, log_connection=True)
     
     if not db or config.DOCUMENT_CHUNKS_TABLE not in db.table_names():
         logger.info(
@@ -570,40 +587,35 @@ def check_document_duplicates(
     new_doc_data: List[Dict], db_connection=None
 ) -> Tuple[Dict[int, Dict[str, object]], List[int], Dict[int, Dict[str, object]]]:
     """
-    Check if a newly parsed document has duplicate pages in the existing database
-    **and log the closest match (ID, page, cosine similarity) for every page**.
+    Check if a new document has duplicates in the existing database.
     
-    Handles both cases where embeddings exist and where they don't exist.
-
-    Returns
-    -------
-    duplicate_pages : dict
-        page-idx ➜ {"similar_id": "<pdf>_<page>", "similarity": float}
-    new_pages : list[int]
-        indices of pages that are completely new
-    update_pages : dict
-        page-idx ➜ {"record_id": <row-id>, "is_newer": bool}
+    Returns:
+        duplicate_pages: dict mapping page idx -> {'similar_id', 'similarity', 'hash_match'}
+        new_pages: list of new page indices
+        update_pages: dict mapping page idx -> {'record_id', 'is_newer'}
     """
     start_time = time.time()
-
+    
     if not new_doc_data:
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return {}, [], {}
-
-    doc_id = new_doc_data[0].get("pdf_identifier", "unknown")
-    logger.info(f"Checking for duplicates of document: {doc_id}", extra={"icon": "🔄"})
-
-    # ── DB set-up ────────────────────────────────────────────────────────────────
-    script_dir   = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, "..", ".."))
-    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
-
-    db = db_connection or connect_to_lancedb(lancedb_path)
+        
+    doc_id = new_doc_data[0].get('document_id', 'unknown')
+    
+    logger.info(f"Checking for duplicate document: {doc_id}", extra={"icon": "🔄"})
+    
+    # Connect to LanceDB or reuse existing connection
+    if db_connection:
+        db = db_connection
+    else:
+        # Connect to LanceDB
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+        lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
+        db = connect_to_lancedb(lancedb_path, log_connection=True)
+    
     if not db or config.DOCUMENTS_TABLE not in db.table_names():
-        logger.info(
-            f"No existing database/table; all {len(new_doc_data)} pages are new.",
-            extra={"icon": "✅"}
-        )
+        logger.info(f"No existing documents table found. Document {doc_id} is new.", extra={"icon": "✅"})
         return {}, list(range(len(new_doc_data))), {}
 
     # Check if table has content
@@ -826,26 +838,31 @@ def check_for_document_version_update(
     new_doc_data: List[Dict], db_connection=None
 ) -> Tuple[bool, float, Optional[str]]:
     """
-    Check if a document is a new version of an existing document via ANN.
-    Always returns the closest document match (if any), regardless of threshold.
-    Handles cases where input documents don't have valid embeddings yet.
+    Check if a document appears to be a new version of an existing document.
+    
+    Returns:
+        is_update: Whether the document is a new version
+        similarity: Similarity score between new and old version
+        old_version_id: ID of the old version if found
     """
     if not new_doc_data:
+        logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return False, 0.0, None
-    doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
-    db = db_connection or connect_to_lancedb(lancedb_path)
-    if not db or config.DOCUMENTS_TABLE not in db.table_names():
-        logger.info(f"No existing documents to compare with {doc_id}", extra={"icon": "ℹ️"})
-        return False, 0.0, None
+        
+    doc_id = new_doc_data[0].get('document_id', 'unknown')
     
-    # Check if table has content
-    table = db.open_table(config.DOCUMENTS_TABLE)
-    existing_docs = table.to_pandas()
-    if existing_docs.empty:
-        logger.info(f"Empty documents table; nothing to compare with {doc_id}", extra={"icon": "ℹ️"})
+    # Connect to LanceDB or reuse existing connection
+    if db_connection:
+        db = db_connection
+    else:
+        # Connect to LanceDB
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+        lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
+        db = connect_to_lancedb(lancedb_path, log_connection=True)
+    
+    if not db or config.DOCUMENTS_TABLE not in db.table_names():
+        logger.info(f"No existing documents table found. Document {doc_id} is new.", extra={"icon": "✅"})
         return False, 0.0, None
 
     # Check if the new documents have valid embeddings
@@ -868,6 +885,10 @@ def check_for_document_version_update(
 
     ensure_index(db)
 
+    # Load all existing documents from the table
+    table = db.open_table(config.DOCUMENTS_TABLE)
+    existing_docs = table.to_pandas()
+
     # Get list of unique document IDs (excluding current doc)
     try:
         all_doc_ids = existing_docs['pdf_identifier'].unique().tolist()
@@ -877,7 +898,7 @@ def check_for_document_version_update(
         if not all_doc_ids:
             logger.info(f"No other documents to compare with {doc_id}", extra={"icon": "ℹ️"})
             return False, 0.0, None
-            
+        
         logger.info(f"Comparing {doc_id} with {len(all_doc_ids)} existing documents", extra={"icon": "🔍"})
     except Exception as e:
         logger.error(f"Error retrieving document IDs: {e}", extra={"icon": "❌"})
@@ -986,32 +1007,27 @@ def check_for_document_version_update(
 # -------------------------------------------------------------------------------------
 def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, object]:
     """
-    Check if a document is already in the database and return detailed information.
+    Check if a document is new, a duplicate, or an update of an existing document.
     
-    Args:
-        doc_data: List of page dictionaries with document information
-        db_connection: Optional LanceDB connection to reuse
-        
     Returns:
-        Dictionary with detailed duplicate/similarity information
+        result: Dict with document status and processing information
     """
     if not doc_data:
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return {
-            "is_duplicate": False,
-            "duplicate_pages": {},
-            "new_pages": [],
-            "update_pages": {},
-            "is_new_version": False,
-            "old_version_id": None,
-            "version_similarity": 0.0
+            "status": "error",
+            "message": "Empty document data provided"
         }
     
-    # Connect to LanceDB
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
-    lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
-    db = db_connection or connect_to_lancedb(lancedb_path)
+    # Establish connection to the database (or reuse provided connection)
+    if db_connection:
+        db = db_connection
+    else:
+        # Connect to LanceDB
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+        lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
+        db = connect_to_lancedb(lancedb_path, log_connection=True)
     
     # Get document ID and log the check
     doc_id = doc_data[0].get("pdf_identifier", "unknown")
@@ -1052,6 +1068,8 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
     
     # Return comprehensive results
     return {
+        "status": "success",
+        "message": "Duplicate check completed successfully",
         "is_duplicate": is_duplicate,
         "duplicate_pages": duplicate_pages,
         "new_pages": new_pages,

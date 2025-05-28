@@ -154,7 +154,7 @@ def get_model_for_task(task, sub_task=None):
     return provider_models[task]
 
 # Logging Configuration
-VERBOSE_PDF_PARSING_OUTPUT = True  # Controls detailed logging during PDF parsing
+VERBOSE_PDF_PARSING_OUTPUT = False  # Controls detailed logging during PDF parsing
 VERBOSE_CHUNKING_OUTPUT = True     # Controls detailed logging during document chunking
 LOG_LEVEL_CONSOLE = "INFO"         # Console log level
 LOG_LEVEL_FILE = "DEBUG"           # File log level

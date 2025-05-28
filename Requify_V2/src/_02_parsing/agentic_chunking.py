@@ -666,7 +666,7 @@ def prompt_user_for_chunk_decision(
             return "keep_old" if choice == '1' else "keep_new"
         logger.warning("Invalid choice. Please enter 1 or 2.", extra={"icon": "⚠️"})
 
-def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float, decision: str, reason: str):
+def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float, decision: str, reason: str, is_evaluating: bool = False):
     """
     Log the comparison between two chunks with a detailed explanation of the decision.
     
@@ -676,24 +676,32 @@ def log_chunk_comparison(chunk_id: str, similar_chunk_id: str, similarity: float
         similarity: Similarity score between the chunks
         decision: Decision made (e.g., "keep_original", "keep_new", "both", "evaluating", "need_user_input")
         reason: Reason for the decision
+        is_evaluating: If True, only log at DEBUG level (for intermediate evaluation messages)
     """
-    logger.info(f"🔍 Chunk Comparison: {chunk_id} vs {similar_chunk_id}", extra={"icon": "🔍"})
-    logger.info(f"   Similarity: {similarity:.4f}", extra={"icon": "📏"})
-    logger.info(f"   Decision: {decision}", extra={"icon": "⚖️"})
-    logger.info(f"   Reason: {reason}", extra={"icon": "💬"})
+    # For intermediate evaluation messages (not final decisions), log at debug level
+    if is_evaluating or decision == "evaluating":
+        logger.debug(
+            f"🔍 Chunk Comparison: {chunk_id} vs {similar_chunk_id} | Similarity: {similarity:.4f} | Status: Evaluating",
+            extra={"icon": "🔍"}
+        )
+        return
     
-    # Log a summary of the decision with an appropriate icon
+    # For final decisions, log a structured message with all information
+    logger.info(
+        f"🔍 Chunk: {chunk_id} vs {similar_chunk_id} | Sim: {similarity:.4f} | Decision: {decision} | {reason}",
+        extra={"icon": "🔍"}
+    )
+    
+    # Log a summary of the decision with an appropriate icon (but only for final decisions)
     if decision == "keep_original" or decision == "keep_old":
         logger.info(f"🔄 Using existing chunk {similar_chunk_id} instead of {chunk_id}", extra={"icon": "🔄"})
     elif decision == "keep_new":
         logger.info(f"⬆️ Replacing {similar_chunk_id} with new chunk {chunk_id}", extra={"icon": "⬆️"})
     elif decision == "both":
         logger.info(f"➕ Keeping both {similar_chunk_id} and {chunk_id}", extra={"icon": "➕"})
-    elif decision == "evaluating":
-        logger.info(f"🔎 Evaluating {chunk_id} vs {similar_chunk_id}", extra={"icon": "🔎"})
     elif decision == "need_user_input":
         logger.info(f"👤 User input needed for {chunk_id} vs {similar_chunk_id}", extra={"icon": "👤"})
-    else:
+    elif decision != "evaluating":  # Don't log for evaluating as we've already handled it
         logger.info(f"❓ Undefined decision for {chunk_id} vs {similar_chunk_id}: {decision}", extra={"icon": "❓"})
 
 def log_chunk_deduplication_summary(doc_id: str, total_chunks: int, duplicate_chunks: int, similar_chunks: int, new_chunks: int, is_document_update: bool = False, updated_doc_id: Optional[str] = None):
@@ -936,7 +944,8 @@ def process_document_with_context(
                         similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
                         similarity=similarity,
                         decision="evaluating",
-                        reason="Comparing chunks for similarity"
+                        reason="Comparing chunks for similarity",
+                        is_evaluating=True
                     )
                     
                     # Track best match
@@ -957,7 +966,8 @@ def process_document_with_context(
                             similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
                             similarity=similarity,
                             decision="keep_old",
-                            reason=f"Chunks are nearly identical (similarity: {similarity:.4f})"
+                            reason=f"Chunks are nearly identical (similarity: {similarity:.4f})",
+                            is_evaluating=True
                         )
                         break
                     elif similarity >= SIMILARITY_THRESHOLD:
@@ -974,7 +984,8 @@ def process_document_with_context(
                             similar_chunk_id=ref_chunk.get('chunk_id', 'unknown'),
                             similarity=similarity,
                             decision=decision_info["decision"],
-                            reason=decision_info["reason"]
+                            reason=decision_info["reason"],
+                            is_evaluating=True
                         )
                         
                         if decision_info["decision"] == "keep_old":
@@ -1009,7 +1020,8 @@ def process_document_with_context(
                     similar_chunk_id=best_chunk.get('chunk_id', 'unknown'),
                     similarity=best_similarity,
                     decision="keep_new",
-                    reason=f"New chunk with no similar content above threshold (best similarity: {best_similarity:.4f})"
+                    reason=f"New chunk with no similar content above threshold (best similarity: {best_similarity:.4f})",
+                    is_evaluating=True
                 )
             else:
                 # No similar chunks at all
@@ -1073,7 +1085,8 @@ def process_document_with_context(
         if hasattr(torch.mps, 'empty_cache'): # Still need to check for the attribute itself
             torch.mps.empty_cache()
     
-    logger.info("Memory cleaned up", extra={"icon": "🧹"})
+    # Use directly instead of duplicating the code (replaced with our new helper function)
+    cleanup_memory(log_message=True)
     
     duration = time.time() - start_time
     logger.info(
@@ -1097,10 +1110,10 @@ def update_replacement_references_in_df(df, old_chunk_id: str, new_chunk_id: str
     if not chunks_pointing_to_old.empty:
         logger.info(f"Flattening {len(chunks_pointing_to_old)} replacement references from {old_chunk_id} to {new_chunk_id}", extra={"icon": "🔄"})
         df.loc[df['replaced_by'] == old_chunk_id, 'replaced_by'] = new_chunk_id
+    
     # Update the old chunk being replaced
     df.loc[df['chunk_id'] == old_chunk_id, 'is_replaced'] = True
     df.loc[df['chunk_id'] == old_chunk_id, 'replaced_by'] = new_chunk_id
-    logger.info(f"Successfully flattened replacement chain - all references now point to {new_chunk_id}", extra={"icon": "✅"})
 
 def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Dict[str, str]] = None) -> bool:
     """
@@ -1151,9 +1164,15 @@ def save_chunks_to_db(chunks: List[Dict[str, Any]], replaced_chunks: Optional[Di
                         current_df[col] = ""
             # Handle replacement flattening in-memory
             if replaced_chunks:
+                if len(replaced_chunks) > 0:
+                    logger.info(f"Flattening {len(replaced_chunks)} replacement chains", extra={"icon": "🔄"})
+                    
                 for new_chunk_id, old_chunk_id in replaced_chunks.items():
-                    logger.info(f"Flattening replacement: {old_chunk_id} → {new_chunk_id}", extra={"icon": "🔄"})
+                    # Don't log individual flattening messages here, just do the updates silently
                     update_replacement_references_in_df(current_df, old_chunk_id, new_chunk_id)
+                
+                if len(replaced_chunks) > 0:
+                    logger.info(f"Successfully flattened all replacement chains", extra={"icon": "✅"})
             # Add new chunks to the DataFrame
             new_chunks_df = pd.DataFrame(chunks) if chunks else pd.DataFrame()
             if not new_chunks_df.empty:
@@ -1227,10 +1246,13 @@ def analyze_chunks(chunks: List[str]) -> Dict[str, Any]:
         }
     }
 
-def cleanup_memory():
+def cleanup_memory(log_message: bool = True):
     """
     Release memory after processing to prevent memory leaks.
     Especially important when running multiple document processing tasks in sequence.
+    
+    Args:
+        log_message: Whether to log a message about cleaning up memory
     """
     gc.collect()
     if torch.cuda.is_available():
@@ -1241,7 +1263,8 @@ def cleanup_memory():
         if hasattr(torch.mps, 'empty_cache'): # Still need to check for the attribute itself
             torch.mps.empty_cache()
     
-    logger.info("Memory cleaned up", extra={"icon": "🧹"})
+    if log_message:
+        logger.info("Memory cleaned up", extra={"icon": "🧹"})
 
 def process_document(
     document_text: str, 
@@ -1291,8 +1314,8 @@ def process_document(
         logger.error(f"Error processing document {document_id}: {e}", extra={"icon": "❌"})
         return False
     finally:
-        # Clean up memory regardless of success or failure
-        cleanup_memory()
+        # Clean up memory regardless of success or failure, but don't log since it was likely already logged
+        cleanup_memory(log_message=False)
 
 def process_document_pages(document_pages: List[Dict[str, Any]], document_id: str) -> bool:
     """
