@@ -37,6 +37,9 @@ from src._03_docs_deduplication import pre_save_deduplication as dedup
 from src._03_docs_deduplication import pipeline_interaction
 from src.utils.logging_utils import ScriptLogger
 
+# Suppress Hugging Face Tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 logger = get_logger("Stable_Save_To_LanceDB")
 
 setup_project_directory()
@@ -56,6 +59,8 @@ PARSED_CONTENT_DIR = os.path.join(OUTPUT_DIR_BASE, "parsed_content") # Read from
 LANCEDB_SUBDIR_NAME = "lancedb" # Subdirectory for LanceDB within output
 
 # Try to import config, but use default values if not available
+LANCEDB_INDEX_CHECK_DOCUMENTS_TABLE_DONE = False # Flag for DOCS_TABLE index check
+
 try:
     EMBEDDING_MODEL_NAME = config.EMBEDDING_MODEL_NAME
     EMBEDDING_DIMENSION = config.EMBEDDING_DIMENSION
@@ -297,10 +302,10 @@ def save_document_to_lancedb(document_path):
         st_logger = logging.getLogger('sentence_transformers')
         for handler in st_logger.handlers:
             st_logger.removeHandler(handler)
-        st_logger.addHandler(logging.StreamHandler())
+        # st_logger.addHandler(logging.StreamHandler()) # Removed to prevent duplicate console output
         st_logger.setLevel(logging.INFO)
         # Wrap the sentence-transformers logger with our ScriptLogger
-        st_logger = ScriptLogger(st_logger, "[Save_To_LanceDB] ")
+        # st_logger = ScriptLogger(st_logger, "[Save_To_LanceDB] ") # Removed ScriptLogger wrapping
         
         text_embedder = SentenceTransformer(EMBEDDING_MODEL_NAME)
         logger.info("Model loaded successfully", extra={"icon": "✅"})
@@ -374,12 +379,15 @@ def save_document_to_lancedb(document_path):
     # Create an index if we have enough data
     try:
         record_count = len(table.to_pandas())
-        if record_count > 256:  # Only create index with sufficient data
-            logger.info("Creating vector search index", extra={"icon": "🔍"})
-            table.create_index(vector_column_name="embedding", replace=True)
-            logger.info("Index created successfully", extra={"icon": "✅"})
-        else:
-            logger.info(f"Not creating index: {config.DOCUMENTS_TABLE} has only {record_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+        global LANCEDB_INDEX_CHECK_DOCUMENTS_TABLE_DONE
+        if not LANCEDB_INDEX_CHECK_DOCUMENTS_TABLE_DONE:
+            if record_count > 256:  # Only create index with sufficient data
+                logger.info("Creating vector search index", extra={"icon": "🔍"})
+                table.create_index(vector_column_name="embedding", replace=True)
+                logger.info("Index created successfully", extra={"icon": "✅"})
+            else:
+                logger.info(f"Not creating index: {config.DOCUMENTS_TABLE} has only {record_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+            LANCEDB_INDEX_CHECK_DOCUMENTS_TABLE_DONE = True
     except Exception as e:
         logger.error(f"Error creating index: {e}", extra={"icon": "❌"})
         # Index failure is not critical, continue

@@ -44,6 +44,8 @@ load_dotenv()
 # Runtime state variables (do not move to config)
 INDEX_INITIALIZED_DOCS = False
 INDEX_INITIALIZED_CHUNKS = False
+WARNED_DOCS_TABLE_INDEX_LOW_COUNT = False
+WARNED_CHUNKS_TABLE_INDEX_LOW_COUNT = False
 
 # Export constants used by other modules for backwards compatibility
 SIMILAR_THRESHOLD = config.DEDUPLICATION_SIMILAR_THRESHOLD
@@ -306,7 +308,7 @@ def create_chunk_hash(chunk_text: str) -> str:
 
 def ensure_index(db, table_name=None):
     """Ensure ANN index exists on the embedding column."""
-    global INDEX_INITIALIZED_DOCS, INDEX_INITIALIZED_CHUNKS
+    global INDEX_INITIALIZED_DOCS, INDEX_INITIALIZED_CHUNKS, WARNED_DOCS_TABLE_INDEX_LOW_COUNT, WARNED_CHUNKS_TABLE_INDEX_LOW_COUNT
     
     if not db:
         return
@@ -328,7 +330,12 @@ def ensure_index(db, table_name=None):
     row_count = len(table.to_pandas())
     
     if row_count < 256:
-        logger.info(f"Not creating index: {table_name} has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+        if table_name == config.DOCUMENTS_TABLE and not WARNED_DOCS_TABLE_INDEX_LOW_COUNT:
+            logger.info(f"Not creating index: {table_name} has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+            WARNED_DOCS_TABLE_INDEX_LOW_COUNT = True
+        elif table_name == config.DOCUMENT_CHUNKS_TABLE and not WARNED_CHUNKS_TABLE_INDEX_LOW_COUNT:
+            logger.info(f"Not creating index: {table_name} has only {row_count} rows, minimum 256 required", extra={"icon": "⚠️"})
+            WARNED_CHUNKS_TABLE_INDEX_LOW_COUNT = True
         return
         
     table.create_index(

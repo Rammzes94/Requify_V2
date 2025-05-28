@@ -33,6 +33,9 @@ from agno.models.groq import Groq
 import gc
 import torch
 
+# Suppress Hugging Face Tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 # --- Start of sys.path modification ---
 # Get the absolute path of the directory containing the current script (src/_02_parsing)
 _current_script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -466,10 +469,10 @@ def chunk_markdown(md_text: str, context_chunks: Optional[List[Dict[str, Any]]] 
         logger.info("ℹ️ Document is empty. No chunks to create.", extra={"icon": "ℹ️"})
         return []
     
-    if context_chunks:
-        logger.info(f"🔄 Performing context-aware chunking with {len(context_chunks)} reference chunks", extra={"icon": "🔄"})
-    else:
-        logger.info(f"🔄 Chunking markdown text of {len(md_text)} characters using standard approach", extra={"icon": "🔄"})
+    # if context_chunks:
+    #     logger.info(f"🔄 Performing context-aware chunking with {len(context_chunks)} reference chunks", extra={"icon": "🔄"})
+    # else:
+    #     logger.info(f"🔄 Chunking markdown text of {len(md_text)} characters using standard approach", extra={"icon": "🔄"})
     
     # Handle large documents by splitting into sections first
     document_sections = split_large_document(md_text)
@@ -812,7 +815,7 @@ def process_document_with_context(
     similar_count = 0
     new_count = 0
     
-    logger.info(f"Processing document: {document_id}", extra={"icon": "🔄"})
+    # logger.info(f"Processing document: {document_id}", extra={"icon": "🔄"})
     
     # If a similar document is provided, retrieve its chunks for context
     similar_chunks = []

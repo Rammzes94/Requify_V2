@@ -29,6 +29,9 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple # Added Tuple
 import logging
 
+# Suppress Hugging Face Tokenizers parallelism warning
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import fitz  # PyMuPDF
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -196,9 +199,6 @@ class PDFProcessor:
                 image_data_list.append((image_path, image_b64_string))
 
             logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
-            if VERBOSE_PDF_PARSING_OUTPUT:
-                logger.info("--------------------------------------------------------------------------------", extra={"icon": "✅"})
-                logger.info(f"Generated {len(image_data_list)} images from PDF", extra={"icon": "✅"})
             return image_data_list
         except Exception as e:
             logger.error(f"Error converting PDF to images: {e}")
