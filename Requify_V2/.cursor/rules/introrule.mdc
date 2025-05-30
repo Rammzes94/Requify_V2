@@ -14,19 +14,8 @@ Ensure to dive deep into our codebase for anything non-trivial, I want you to re
 add a rough description of what the script does to any script we have, even if its there already. Use """..."""
 
 add this to any script we start from scratch:
+from src.utils import setup_logging, get_logger, update_token_counters, get_token_usage, print_token_usage, reset_token_counters, setup_project_directory, generate_timestamp
 
-import os
-import sys
-from dotenv import load_dotenv
-
-
-# Add the parent directory to the system path to allow importing modules from it
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import _00_utils
-_00_utils.setup_project_directory()
-
-# Load environment variables
-load_dotenv()
 
 ---------------------------
 
