@@ -1,0 +1,15 @@
+CHUNK 6 (not found verbatim):
+----------------------------------------
+- **Bottom view**: Notes the positioning of the Pratt & Whitney F100-PW-229 engine, four chaff/flare dispensers, main landing gear, and normal shock inlet. It highlights the heavyweight gear and wheels, bulged main gear doors, and the relocation of the landing light to the nose gear door.
+
+The various vents are circled and labeled meticulously to show airflow management points. The depiction gives a clear understanding of the aerodynamic and mechanical design aspects critical to the jet's operation, cooling, and electronic countermeasures.
+
+This technical schematic allows for a comprehensive visualization of the F-16C Block 52 CCIP's structural and functional design elements relevant for maintenance, modification, or educational purposes.
+
+*Page 2*
+
+Document slice around current_offset=2715:
+----------------------------------------
+ircraft.  
+- **Side views (left and right)**: Show multiple vents located across the fuselage and wings.  
+- **Bottom view**: Notes the positioning of the Pratt & Whitney F100-PW-229 engine, four chaf

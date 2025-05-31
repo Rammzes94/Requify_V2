@@ -1,0 +1,22 @@
+CHUNK 5 (not found verbatim):
+----------------------------------------
+**F-16C Block 52 CCIP**
+
+---
+
+The image depicts technical line drawings of the F-16C Block 52 CCIP fighter jet from multiple views: top, side, bottom, and another side profile, each annotated with several technical features. The diagrams are highly detailed, showing structural outlines and component placements, with several callouts identifying specific parts and features:
+
+- **Top view**: Focuses on antennas near the nose of the aircraft.
+- **Side views (left and right)**: Show multiple vents located across the fuselage and wings.
+
+Document slice around current_offset=2178:
+----------------------------------------
+re. Its compatibility with multiple rocket types ensures mission versatility and effectiveness.
+
+---
+
+**F-16C Block 52 CCIP**
+
+---
+
+The image depicts technical line drawings of the F-16C Block 52 CCIP

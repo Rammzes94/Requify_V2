@@ -1,0 +1,18 @@
+CHUNK 1 (not found verbatim):
+----------------------------------------
+| Rocket Type | Max Range | Speed  | Penetration Depth                  |          
+|-------------|-----------|--------|----------------------------------|          
+| Hydra 70   | 8 km      | Mach 2.5 | 250 mm steel                     |          
+| APKWS      | 12 km     | Mach 2.8 | 300 mm reinforced armor         |          
+| CRV7       | 10 km     | Mach 3.0 | 280 mm concrete                 |          
+| Zuni       | 6 km      | Mach 2.2 | 200 mm bunker walls             |          
+
+---
+
+Document slice around current_offset=0:
+----------------------------------------
+Fighter Jet Rocket Launcher Specification
+
+Rocket Launcher System for Fighter Jets
+
+This document pr
