@@ -1,14 +1,20 @@
 CHUNK 3 (not found verbatim):
 ----------------------------------------
-The RLX-5000 rocket launcher system offers superior performance, precision, and adaptability, making it a critical asset in modern aerial warfare. Its compatibility with multiple rocket types ensures mission versatility and effectiveness.
+Performance Metrics
 
-Document slice around current_offset=671:
+Rocket Type Max Range Speed Penetration Depth
+Hydra 70 8 km Mach 2.5 250 mm steel
+APKWS 12 km Mach 2.8 300 mm reinforced armor
+CRV7 10 km Mach 3.0 280 mm concrete
+Zuni 6 km Mach 2.2 200 mm bunker walls
+
+Document slice around current_offset=653:
 ----------------------------------------
-aser, Infrared, GPS  
+
+Guidance System Laser, Infrared, GPS  
 Hydra 70 8 km Mach 2.5 250 mm steel  
 Launcher Model RLX-5000  
 Length 3.2 m  
 Max Rocket Capacity 7 Rockets  
 Operational Altitude Up to 50,000 ft  
-Operational Features  
-Perfo
+Operationa

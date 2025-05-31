@@ -1,0 +1,15 @@
+CHUNK 9 (not found verbatim):
+----------------------------------------
+- **Bottom View:**  
+Emphasizes the aircraft's landing gear configuration, showing heavyweight gear and wheels with bulged main gear doors and a relocated landing light to the nose gear door. It also marks the Pratt & Whitney F100-PW-229 engine position and highlights four chaff/flare dispensers located near the rear fuselage.
+
+Each annotation is accompanied by directional lines for clarity. The drawing strongly focuses on the physical ventilation system, antenna placement, and survival mechanisms like countermeasure dispensers and landing gear design, emphasizing the technical sophistication and operational readiness of the F-16C Block 52 CCIP.  
+
+Page 2
+
+Document slice around current_offset=2895:
+----------------------------------------
+side views also provide a detailed look at the landing gear doors, shock inlets, and aerodynamic panels.
+
+- **Bottom View:**  
+  Emphasizes the aircraft's landing gear configuration, showing heavyweig

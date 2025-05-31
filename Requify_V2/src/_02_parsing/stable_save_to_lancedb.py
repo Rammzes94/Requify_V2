@@ -36,6 +36,7 @@ from src.utils import setup_logging, get_logger, update_token_counters, get_toke
 from src._03_docs_deduplication import pre_save_deduplication as dedup
 from src._03_docs_deduplication import pipeline_interaction
 from src.utils.logging_utils import ScriptLogger
+from src.utils.doc_embedding_utils import prepare_document_text, generate_document_embedding, get_document_embedder
 
 # Suppress Hugging Face Tokenizers parallelism warning
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -183,6 +184,35 @@ def process_document(document_path: str, text_embedder) -> Tuple[List[Dict], Lis
             
         logger.info(f"Successfully extracted {len(all_records)} pages from document", extra={"icon": "✅"})
         
+        # Generate document-level embedding using Alibaba-NLP/gte-Qwen2-1.5B-instruct
+        logger.info(f"Generating document-level embedding", extra={"icon": "🧠"})
+        try:
+            # Initialize document embedder
+            doc_embedder = get_document_embedder()
+            if doc_embedder:
+                # Prepare document text with proper tokenization
+                doc_text = prepare_document_text(all_records)
+                
+                if doc_text:
+                    # Generate document embedding
+                    document_embedding = generate_document_embedding(doc_text, doc_embedder)
+                    
+                    # Add document embedding to all records
+                    if document_embedding is not None:
+                        document_embedding_list = document_embedding.tolist()
+                        for record in all_records:
+                            record["document_embedding"] = document_embedding_list
+                        logger.info(f"Added document-level embedding to all {len(all_records)} records", extra={"icon": "✅"})
+                    else:
+                        logger.warning(f"Failed to generate document embedding, records will not have document_embedding field", extra={"icon": "⚠️"})
+                else:
+                    logger.warning(f"Empty document text, skipping document embedding", extra={"icon": "⚠️"})
+            else:
+                logger.warning(f"Failed to initialize document embedder, skipping document embedding", extra={"icon": "⚠️"})
+        except Exception as e:
+            logger.error(f"Error generating document-level embedding: {str(e)}", extra={"icon": "❌"})
+            # Continue processing even if document embedding fails
+        
         # Check for duplicates before saving
         logger.info(f"Checking for document duplicates", extra={"icon": "🔄"})
         dedup_results = dedup.check_new_document(all_records)
@@ -264,6 +294,7 @@ class PDFPage(LanceModel):
     error_flag: Optional[bool]
     timestamp: Optional[str]
     embedding: Vector(EMBEDDING_DIMENSION) # Text embedding
+    document_embedding: Optional[Vector(config.DOC_EMBEDDING_DIMENSION)] # Document-level embedding (1536 dim)
     image_b64: Optional[str] # Base64 encoded image
     image: Optional[str] # Alternative image field name
 

@@ -49,6 +49,7 @@ class PDFPage(LanceModel):
     error_flag: Optional[bool]
     timestamp: Optional[str]
     embedding: Vector(EMBEDDING_DIMENSION) # Text embedding
+    document_embedding: Optional[Vector(config.DOC_EMBEDDING_DIMENSION)] # Document-level embedding
     image_b64: Optional[str] # Base64 encoded image of the page
 
 # --- LanceDB Schema Definition for the 'document_chunks' table ---

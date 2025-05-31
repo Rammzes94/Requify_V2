@@ -350,6 +350,40 @@ def ensure_index(db, table_name=None):
         
     logger.info(f"Built ANN index on embedding column for {table_name}", extra={"icon": "✅"})
 
+def find_page_match(doc_table, embedding, top_k=1, similarity_threshold=0.97):
+    """
+    Find the most similar page to the given embedding.
+    
+    Args:
+        doc_table: LanceDB table for documents
+        embedding: Embedding vector to search for
+        top_k: Number of results to return
+        similarity_threshold: Minimum similarity threshold
+        
+    Returns:
+        Tuple of (match_found, best_match_record, similarity)
+    """
+    try:
+        # Specify 'embedding' as the vector column for search
+        results = doc_table.search(embedding, vector_column_name="embedding").limit(top_k).to_list()
+        
+        if not results:
+            return False, None, 0.0
+            
+        best_match = results[0]
+        similarity = best_match["_distance"]
+        
+        # Convert distance to similarity
+        similarity = 1.0 - similarity
+        
+        if similarity >= similarity_threshold:
+            return True, best_match, similarity
+        else:
+            return False, best_match, similarity
+    except Exception as e:
+        logger.error(f"Error in find_page_match: {e}", extra={"icon": "❌"})
+        return False, None, 0.0
+
 # -------------------------------------------------------------------------------------
 # Chunk Deduplication Logic
 # -------------------------------------------------------------------------------------
@@ -607,7 +641,7 @@ def check_document_duplicates(
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return {}, [], {}
         
-    doc_id = new_doc_data[0].get('document_id', 'unknown')
+    doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
     
     logger.info(f"Checking for duplicate document: {doc_id}", extra={"icon": "🔄"})
     
@@ -697,7 +731,7 @@ def check_document_duplicates(
 
         try:
             df = (
-                table.search(embedding)           # brute-force scan if no ANN index
+                table.search(embedding, vector_column_name="embedding")
                      .metric("cosine")
                      .limit(config.DEDUPLICATION_MAX_PAGES_TO_SAMPLE)
                      .to_df()
@@ -856,7 +890,7 @@ def check_for_document_version_update(
         logger.warning("Empty document data provided", extra={"icon": "⚠️"})
         return False, 0.0, None
         
-    doc_id = new_doc_data[0].get('document_id', 'unknown')
+    doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
     
     # Connect to LanceDB or reuse existing connection
     if db_connection:
@@ -942,7 +976,7 @@ def check_for_document_version_update(
                 continue
                 
             df = (
-                table.search(emb)
+                table.search(emb, vector_column_name="embedding")
                      .metric("cosine")
                      .limit(config.DEDUPLICATION_MAX_PAGES_TO_SAMPLE)
                      .to_df()
@@ -1009,6 +1043,147 @@ def check_for_document_version_update(
     # Always return the best match, even if below threshold
     return is_new, best_sim, best_id
 
+def check_document_level_embedding_similarity(
+    new_doc_data: List[Dict], db_connection=None
+) -> Tuple[bool, float, Optional[str]]:
+    """
+    Check if a document has duplicates using the document-level embedding.
+    
+    Args:
+        new_doc_data: List of page records containing document_embedding field
+        db_connection: Optional existing database connection to reuse
+        
+    Returns:
+        is_duplicate: Whether the document is a duplicate
+        similarity: Similarity score between this document and the most similar one
+        similar_doc_id: ID of the most similar document, if any
+    """
+    if not new_doc_data:
+        logger.warning("Empty document data provided", extra={"icon": "⚠️"})
+        return False, 0.0, None
+        
+    # Extract document ID for logging
+    doc_id = new_doc_data[0].get('pdf_identifier', 'unknown')
+    
+    # Check if document_embedding is available in the records
+    if 'document_embedding' not in new_doc_data[0]:
+        logger.info(f"Document {doc_id} has no document-level embedding, skipping document-level similarity check", 
+                   extra={"icon": "ℹ️"})
+        return False, 0.0, None
+    
+    # Use document embedding from the first record (should be the same for all records)
+    doc_embedding = new_doc_data[0].get('document_embedding')
+    
+    if not doc_embedding or not isinstance(doc_embedding, (list, np.ndarray)):
+        logger.info(f"Document {doc_id} has invalid document embedding format", extra={"icon": "ℹ️"})
+        return False, 0.0, None
+    
+    # Connect to LanceDB or reuse existing connection
+    if db_connection:
+        db = db_connection
+    else:
+        # Connect to LanceDB
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+        lancedb_path = os.path.join(project_root, config.OUTPUT_DIR_BASE, config.LANCEDB_SUBDIR_NAME)
+        db = connect_to_lancedb(lancedb_path, log_connection=True)
+    
+    if not db or config.DOCUMENTS_TABLE not in db.table_names():
+        logger.info(f"No existing documents table found. Document {doc_id} is new.", extra={"icon": "✅"})
+        return False, 0.0, None
+    
+    # Ensure the documents table is indexed
+    ensure_index(db)
+    
+    # Open the documents table
+    table = db.open_table(config.DOCUMENTS_TABLE)
+    
+    # Check if the table has document_embedding column
+    has_doc_embedding_field = False
+    for field in table.schema:
+        if field.name == 'document_embedding':
+            has_doc_embedding_field = True
+            break
+            
+    if not has_doc_embedding_field:
+        logger.info("Documents table does not have document_embedding field yet, skipping document-level check", 
+                   extra={"icon": "ℹ️"})
+        return False, 0.0, None
+    
+    try:
+        # Convert embedding to numpy array if it's a list
+        if isinstance(doc_embedding, list):
+            doc_embedding = np.array(doc_embedding)
+        
+        # Query for similar documents using document embedding
+        logger.info(f"Searching for similar documents to {doc_id} using document-level embedding", 
+                   extra={"icon": "🔍"})
+        
+        # Perform vector similarity search
+        query_result = table.search(
+            doc_embedding, 
+            vector_column_name="document_embedding"
+        ).limit(5).to_pandas()
+        
+        if query_result.empty:
+            logger.info(f"No similar documents found for {doc_id} using document-level embedding", 
+                       extra={"icon": "🆕"})
+            return False, 0.0, None
+        
+        # Get unique document IDs from results
+        doc_ids = []
+        for _, row in query_result.iterrows():
+            pdf_id = row.get('pdf_identifier')
+            if pdf_id and pdf_id != doc_id and pdf_id not in doc_ids:
+                doc_ids.append(pdf_id)
+        
+        if not doc_ids:
+            logger.info(f"No other documents similar to {doc_id} found", extra={"icon": "🆕"})
+            return False, 0.0, None
+        
+        # Calculate similarity with each unique document
+        similarities = {}
+        for result_doc_id in doc_ids:
+            # Get document rows for this document ID
+            doc_rows = query_result[query_result['pdf_identifier'] == result_doc_id]
+            
+            # Calculate similarity (1.0 - distance for cosine similarity)
+            best_similarity = 0.0
+            for _, row in doc_rows.iterrows():
+                similarity = 1.0 - row['_distance']
+                best_similarity = max(best_similarity, similarity)
+            
+            similarities[result_doc_id] = best_similarity
+            
+            # Log similarity
+            log_document_comparison(doc_id, result_doc_id, best_similarity)
+        
+        # Get the most similar document
+        if similarities:
+            most_similar_doc_id, highest_similarity = max(similarities.items(), key=lambda x: x[1])
+            
+            # Log highest similarity document
+            logger.info(f"Most similar document to {doc_id}: {most_similar_doc_id} with similarity {highest_similarity:.4f}",
+                      extra={"icon": "📊"})
+            
+            # Determine if it's a duplicate based on threshold
+            is_duplicate = highest_similarity >= config.DEDUPLICATION_DUPLICATE_THRESHOLD
+            is_similar = highest_similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD
+            
+            # Return appropriate values based on similarity
+            if is_duplicate:
+                return True, highest_similarity, most_similar_doc_id
+            elif is_similar:
+                return False, highest_similarity, most_similar_doc_id
+            else:
+                return False, highest_similarity, None
+        else:
+            return False, 0.0, None
+            
+    except Exception as e:
+        logger.error(f"Error during document-level embedding similarity check: {str(e)}", extra={"icon": "❌"})
+        return False, 0.0, None
+
 # -------------------------------------------------------------------------------------
 # Main Function
 # -------------------------------------------------------------------------------------
@@ -1040,7 +1215,51 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
     doc_id = doc_data[0].get("pdf_identifier", "unknown")
     logger.info(f"Checking for duplicate/similar documents: {doc_id}", extra={"icon": "🔍"})
     
-    # Check duplicate pages first with existing document database
+    # First try document-level embedding check for faster detection
+    doc_is_duplicate, doc_similarity, similar_doc_id = check_document_level_embedding_similarity(doc_data, db)
+    
+    # If document-level embedding shows high similarity, we can skip page-level checks
+    if doc_is_duplicate or (doc_similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD and similar_doc_id):
+        logger.info(f"Document-level embedding similarity check identified document {doc_id} as "
+                   f"{'duplicate' if doc_is_duplicate else 'similar'} to {similar_doc_id} "
+                   f"(similarity: {doc_similarity:.4f})", 
+                  extra={"icon": "♻️" if doc_is_duplicate else "🔄"})
+                  
+        # Calculate some placeholder values for compatibility with existing code
+        total_pages = len(doc_data)
+        
+        # For complete duplicates, mark all pages as duplicates
+        if doc_is_duplicate:
+            logger.info(f"Document {doc_id} is a complete duplicate of {similar_doc_id} based on document-level embedding. "
+                       f"Skipping page-level checks.", extra={"icon": "♻️"})
+            
+            # Create a placeholder for duplicate pages (all pages)
+            duplicate_pages = {idx: {
+                "similar_id": f"{similar_doc_id}_{idx+1}",
+                "similarity": doc_similarity
+            } for idx in range(total_pages)}
+            
+            # Return results indicating duplicate
+            return {
+                "status": "success",
+                "message": "Document-level duplicate check completed",
+                "is_duplicate": True,
+                "duplicate_pages": duplicate_pages,
+                "new_pages": [],
+                "update_pages": {},
+                "is_new_version": False,
+                "old_version_id": similar_doc_id,
+                "version_similarity": doc_similarity,
+                "document_level_match": True
+            }
+        
+        # For similar but not duplicate documents, mark as a new version
+        logger.info(f"Document {doc_id} is a similar to {similar_doc_id} based on document-level embedding "
+                   f"(similarity: {doc_similarity:.4f}). Proceeding with page-level checks.", 
+                  extra={"icon": "🔄"})
+    
+    # If document-level check didn't find a clear match, proceed with page-level checks
+    # Check duplicate pages with existing document database
     duplicate_pages, new_pages, update_pages = check_document_duplicates(doc_data, db)
     
     # Calculate summary counts
@@ -1053,7 +1272,13 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
     is_complete_duplicate = duplicate_count == total_pages
     
     # Check if this might be a new version of an existing document
-    is_new_version, version_similarity, old_version_id = check_for_document_version_update(doc_data, db)
+    # Use the document-level similarity info if it exists, otherwise do page-level check
+    if doc_similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD and similar_doc_id:
+        is_new_version = True
+        version_similarity = doc_similarity
+        old_version_id = similar_doc_id
+    else:
+        is_new_version, version_similarity, old_version_id = check_for_document_version_update(doc_data, db)
     
     # Log detailed summary using enhanced logging
     log_document_deduplication_summary(
@@ -1083,7 +1308,8 @@ def check_new_document(doc_data: List[Dict], db_connection=None) -> Dict[str, ob
         "update_pages": update_pages,
         "is_new_version": is_new_version,
         "old_version_id": old_version_id,
-        "version_similarity": version_similarity
+        "version_similarity": version_similarity,
+        "document_level_match": doc_similarity >= config.DEDUPLICATION_SIMILAR_THRESHOLD
     }
 
 if __name__ == "__main__":

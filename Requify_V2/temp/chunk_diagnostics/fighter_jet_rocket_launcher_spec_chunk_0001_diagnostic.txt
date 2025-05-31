@@ -1,0 +1,24 @@
+CHUNK 1 (not found verbatim):
+----------------------------------------
+---
+
+**F-16C Block 52 CCIP**
+
+The image consists of three technical schematic views of the F-16C Block 52 CCIP fighter jet, annotated with labels pointing to specific components and features:
+
+1. **Top View**:  
+   - Shows the entire layout from above, including the wingspan, fuselage, and tail section.  
+   - The nose cone is detailed with an arrow pointing to "Antennas."
+
+2. **Side View (Left Profile)**:  
+   - Reveals the jet's profile emphasizing airflow features and external vents.  
+   - Labels pointing to multiple "Vents" on the rear fuselage and near the cockpit area.  
+   - A note highlights Heavyweight gear and wheels, bulged main gear doors, landing light re-located to nose gear door.
+
+Document slice around current_offset=0:
+----------------------------------------
+# Fighter Jet Rocket Launcher Specification
+
+## Rocket Launcher System for Fighter Jets
+
+This docume

@@ -1,0 +1,11 @@
+CHUNK 8 (not found verbatim):
+----------------------------------------
+- **Side Views (Left and Right):**  
+Identifies various vents on the aircraft's mid and rear fuselage as well as near the cockpit area. The side views also provide a detailed look at the landing gear doors, shock inlets, and aerodynamic panels.
+
+Document slice around current_offset=2651:
+----------------------------------------
+wings, fuselage, tail, and cockpit area. Annotations pinpoint antenna locations at the nose section.
+
+- **Side Views (Left and Right):**  
+  Identifies various vents on the aircraft's mid and rear fus

@@ -4,7 +4,7 @@ globs:
 alwaysApply: true
 ---
 Be very proactive, but if you changed something that you werent directly prompted, explain the reason behind it.
-Proactively keep trying until the thing you were prompted to do works. 
+Proactively keep trying until the thing you were prompted to do works. Implement, Test, Evaluate until you achieve the task. 
 Use the "temp" folder to store scripts that are likely just temporary.
 
 Generally try not to bloat, keep the code lean.

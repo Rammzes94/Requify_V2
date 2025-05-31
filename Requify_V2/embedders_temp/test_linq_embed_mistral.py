@@ -52,6 +52,9 @@ load_dotenv()
 MODEL_NAME = "Alibaba-NLP/gte-Qwen2-1.5B-instruct"
 MAX_SEQ_LENGTH = 32768  # manually set if you need more than 8960
 
+MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
+
+
 
 # =====================
 # Logging Setup
@@ -102,7 +105,7 @@ def count_tokens_qwen(text: str) -> int:
 
 # Example usage
 if __name__ == "__main__":
-    with open("embedders_temp/test_file_longer.txt", "r", encoding="utf-8") as f:
+    with open("embedders_temp/page_001.md", "r", encoding="utf-8") as f:
         text = f.read()
 
     token_count = count_tokens_qwen(text)

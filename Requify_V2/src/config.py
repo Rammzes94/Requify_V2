@@ -18,8 +18,13 @@ MODEL_PROVIDER = "openai"  # Options: "openai", "groq"
 EMBEDDING_MODEL_NAME = "intfloat/multilingual-e5-large-instruct"
 EMBEDDING_DIMENSION = 1024  # Dimension for e5-large models
 EMBEDDING_DEVICE = "cpu"  # Force CPU usage to avoid memory issues
-EMBEDDING_MAX_SEQ_LENGTH = 256  # Reduce sequence length to save memory
+EMBEDDING_MAX_SEQ_LENGTH = 512  # Default sequence length for page embeddings
 EMBEDDING_BATCH_SIZE = 8  # Control batch size for memory management
+
+# Document-level embedding model configuration
+DOC_EMBEDDING_MODEL_NAME = "Alibaba-NLP/gte-Qwen2-1.5B-instruct"
+DOC_EMBEDDING_DIMENSION = 1536  # Dimension for document embedding model (1536 for gte-Qwen2-1.5B-instruct)
+DOC_EMBEDDING_MAX_SEQ_LENGTH = 32768  # Maximum sequence length for doc embedding
 
 # LLM Model Configuration by Provider and Task
 MODELS = {
